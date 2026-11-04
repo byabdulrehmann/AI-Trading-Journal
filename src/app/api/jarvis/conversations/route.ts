@@ -1,12 +1,15 @@
-import { dynamic, json } from "@/lib/server/http";
+import { json } from "@/lib/server/http";
+import { requireUser } from "@/lib/server/auth";
 import { deleteAllConversations, listConversations } from "@/lib/server/repo/jarvis";
 
 export async function GET() {
-  await dynamic();
-  return json({ conversations: listConversations() });
+  const user = await requireUser();
+  if (user instanceof Response) return user;
+  return json({ conversations: listConversations(user.id) });
 }
 
 export async function DELETE() {
-  await dynamic();
-  return json({ removed: deleteAllConversations() });
+  const user = await requireUser();
+  if (user instanceof Response) return user;
+  return json({ removed: deleteAllConversations(user.id) });
 }

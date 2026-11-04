@@ -2,6 +2,7 @@ import { TradeInput, type TradeData } from "./types";
 
 /** Fields a CSV column can map to. */
 export const CSV_FIELDS = {
+  sourceId: { label: "Ticket / position ID", required: false, hints: ["ticket", "position id", "position", "deal id", "order id", "trade id"] },
   symbol: { label: "Symbol", required: true, hints: ["symbol", "instrument", "ticker", "market", "pair"] },
   side: { label: "Side (buy/sell, long/short)", required: true, hints: ["side", "direction", "type", "action"] },
   openedAt: { label: "Open time", required: true, hints: ["open time", "opened", "entry time", "open date", "date", "time"] },
@@ -187,7 +188,8 @@ export function mapRows(rows: string[][], mapping: ColumnMapping, accountId: num
       stopPrice: numbers.stopPrice,
       targetPrice: numbers.targetPrice,
       // Brokers sign commission either way, so its sign means nothing; swap's sign says who paid.
-      fees: Math.abs(numbers.fees ?? 0) - (numbers.swap ?? 0),
+      commission: Math.abs(numbers.fees ?? 0),
+      swap: -(numbers.swap ?? 0),
       setup: (get("setup") ?? "").slice(0, 60),
       notes: get("notes") ?? "",
     });

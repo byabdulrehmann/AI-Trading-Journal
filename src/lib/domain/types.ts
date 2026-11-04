@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ASSET_CLASSES, SESSIONS, type AssetClass, type MarketSession } from "./engine/instruments";
 
 export const EMOTIONS = [
   "calm",
@@ -15,9 +16,20 @@ export const EMOTIONS = [
 
 export const GRADES = ["A", "B", "C", "D", "F"] as const;
 
-const isoDate = z
-  .string()
-  .refine((v) => !Number.isNaN(Date.parse(v)), "Enter a valid date and time");
+export const MISTAKES = ["no_stop", "moved_stop", "oversized", "chased_entry", "early_exit", "late_exit", "against_plan", "news_blindside", "fomo"] as const;
+
+export const ExecutionInput = z.object({
+  role: z.enum(["entry", "exit"]),
+  price: z.number().positive("Price must be above 0"),
+  quantity: z.number().positive("Size must be above 0"),
+  executedAt: isoDateLazy(),
+});
+export type ExecutionInput = z.output<typeof ExecutionInput>;
+
+function isoDateLazy() {
+  return z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Enter a valid date and time");
+}
+const isoDate = isoDateLazy();
 
 const optionalNumber = z
   .union([z.number(), z.null()])
@@ -39,8 +51,11 @@ export interface Account extends AccountInput {
   id: number;
   archived: boolean;
   isSample: boolean;
+  source: "manual" | "mt5";
   createdAt: string;
 }
+
+const rating = z.number().int().min(1).max(5).nullable().default(null);
 
 export const TradeInput = z
   .object({
@@ -55,8 +70,18 @@ export const TradeInput = z
     multiplier: z.number().positive().default(1),
     stopPrice: optionalNumber,
     targetPrice: optionalNumber,
-    /** Negative when the trade earned more than it cost, such as swap paid to the trader. */
-    fees: z.number().default(0),
+    /** Costs: positive is a cost, negative a credit, such as swap paid to the trader. */
+    commission: z.number().default(0),
+    swap: z.number().default(0),
+    otherFees: z.number().default(0),
+    /** Converts profit currency to account currency. Null: not needed, or derived by the engine. */
+    fxRate: z.number().positive().nullable().default(null),
+    assetClass: z.enum(ASSET_CLASSES).nullable().default(null),
+    session: z.enum(SESSIONS).nullable().default(null),
+    strategy: z.string().trim().max(60).default(""),
+    strategyTags: z.array(z.string().trim().min(1).max(30)).max(12).default([]),
+    /** Extra detail for partial entries and exits. When given, these fills are the source of truth. */
+    executions: z.array(ExecutionInput).max(200).nullable().default(null),
     setup: z.string().trim().max(60).default(""),
     tags: z.array(z.string().trim().min(1).max(30)).max(12).default([]),
     emotionBefore: z.enum(EMOTIONS).nullable().default(null),
@@ -65,9 +90,22 @@ export const TradeInput = z
     grade: z.enum(GRADES).nullable().default(null),
     planNotes: z.string().max(4000).default(""),
     notes: z.string().max(8000).default(""),
+    entryReason: z.string().max(2000).default(""),
+    exitReason: z.string().max(2000).default(""),
+    lessons: z.string().max(4000).default(""),
+    mistakes: z.array(z.enum(MISTAKES)).max(MISTAKES.length).default([]),
+    confidence: rating,
+    discipline: rating,
+    fear: rating,
+    greed: rating,
+    revengeTrade: z.boolean().default(false),
+    overtrading: z.boolean().default(false),
+    impulsiveEntry: z.boolean().default(false),
+    earlyExit: z.boolean().default(false),
+    ruleViolations: z.string().max(2000).default(""),
   })
   .superRefine((t, ctx) => {
-    if ((t.exitPrice === null) !== (t.closedAt === null)) {
+    if (!t.executions?.length && (t.exitPrice === null) !== (t.closedAt === null)) {
       ctx.addIssue({
         code: "custom",
         path: ["exitPrice"],
@@ -99,18 +137,54 @@ export const TradeInput = z
 export type TradeInput = z.input<typeof TradeInput>;
 export type TradeData = z.output<typeof TradeInput>;
 
-export interface Trade extends TradeData {
+export interface Execution extends ExecutionInput {
   id: number;
-  source: "manual" | "csv" | "sample";
+  commission: number;
+  swap: number;
+  fee: number;
+  profit: number | null;
+  source: string;
+  brokerDealId: string | null;
+  brokerOrderId: string | null;
+  brokerPositionId: string | null;
+}
+
+export interface Attachment {
+  id: number;
+  tradeId: number;
+  kind: "entry" | "exit" | "chart" | "document";
+  filename: string;
+  mime: string;
+  size: number;
+  createdAt: string;
+}
+
+export type TradeSource = "manual" | "csv" | "sample" | "mt5";
+
+export interface Trade extends Omit<TradeData, "assetClass" | "session" | "executions"> {
+  id: number;
+  assetClass: AssetClass;
+  session: MarketSession | null;
+  source: TradeSource;
   importBatch: string | null;
+  brokerPositionId: string | null;
   createdAt: string;
   updatedAt: string;
-  /** Derived; null while the trade is open. */
+  status: "open" | "partial" | "closed";
+  pnlStatus: "ok" | "needs_rate" | "over_closed";
+  remainingQty: number;
+  grossPnl: number | null;
+  /** Net P&L in account currency. Null while nothing is closed, or if a rate is missing. */
   pnl: number | null;
-  /** Derived from the planned stop; null without a stop or while open. */
+  riskAmount: number | null;
+  /** Null without a stop, or while nothing is closed. */
   rMultiple: number | null;
   /** Planned reward:risk from stop and target, when both are set. */
   plannedR: number | null;
+  holdingMinutes: number | null;
+  /** Present on single-trade reads only. */
+  executions?: Execution[];
+  attachments?: Attachment[];
 }
 
 export const COACHING_STYLES = ["direct", "supportive", "analytical"] as const;

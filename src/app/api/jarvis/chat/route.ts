@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { body, dynamic, fail } from "@/lib/server/http";
+import { body, fail } from "@/lib/server/http";
+import { requireUser } from "@/lib/server/auth";
 import { buildContext } from "@/lib/server/ai/context";
 import { systemPrompt } from "@/lib/server/ai/prompt";
 import { findModels, getProvider, PROVIDERS, resolveActive, validateChoice } from "@/lib/server/ai/registry";
@@ -29,16 +30,17 @@ type Send = (event: string, data: unknown) => void;
  * Closing the request (Stop button / navigation) aborts the provider call.
  */
 export async function POST(req: Request) {
-  await dynamic();
+  const user = await requireUser();
+  if (user instanceof Response) return user;
   const data = await body(req, Body);
   if (data instanceof Response) return data;
-  const settings = getSettings();
+  const settings = getSettings(user.id);
   if (!settings.jarvis.enabled) return fail("Jarvis is turned off in Settings.", 403);
-  if (data.conversationId && !conversationExists(data.conversationId)) return fail("Conversation not found.", 404);
+  if (data.conversationId && !conversationExists(user.id, data.conversationId)) return fail("Conversation not found.", 404);
 
-  const conversationId = data.conversationId ?? createConversation(data.message);
+  const conversationId = data.conversationId ?? createConversation(user.id, data.message);
   addMessage(conversationId, "user", data.message);
-  recordActivity("jarvis.chat", { length: data.message.length });
+  recordActivity(user.id, "jarvis.chat", { length: data.message.length });
 
   const signal = AbortSignal.any([req.signal, AbortSignal.timeout(OVERALL_TIMEOUT_MS)]);
   const encoder = new TextEncoder();
@@ -53,7 +55,7 @@ export async function POST(req: Request) {
         }
       };
       try {
-        const command = await handleModelCommand(data.message);
+        const command = await handleModelCommand(user.id, data.message);
         if (command) {
           send("meta", { conversationId, provider: "kestrel", model: null, disclosure: ["Nothing — this was handled inside Kestrel."] });
           send("delta", { text: command });
@@ -61,7 +63,7 @@ export async function POST(req: Request) {
           send("done", { messageId: saved.id, switched: true });
           return;
         }
-        await reply(conversationId, data.focusTradeId, signal, req.signal, send);
+        await reply(user.id, conversationId, data.focusTradeId, signal, req.signal, send);
       } finally {
         try {
           controller.close();
@@ -75,9 +77,9 @@ export async function POST(req: Request) {
   });
 }
 
-async function reply(conversationId: number, focusTradeId: number | null, signal: AbortSignal, clientSignal: AbortSignal, send: Send) {
-  const settings = getSettings();
-  const context = buildContext(settings, focusTradeId);
+async function reply(userId: number, conversationId: number, focusTradeId: number | null, signal: AbortSignal, clientSignal: AbortSignal, send: Send) {
+  const settings = getSettings(userId);
+  const context = buildContext(userId, settings, focusTradeId);
   const active = resolveActive(settings);
   const history = listMessages(conversationId, HISTORY_LIMIT)
     .filter((m) => m.provider !== "kestrel")
@@ -140,7 +142,7 @@ const MODEL_NAME =
   /^(?:the\s+)?(demo(?:\s+mode)?|anthropic|claude|(?:claude[\s-]*)?(?:opus|sonnet|haiku|fable)(?:[\s-]*\d[\d.-]*)?|claude-[a-z0-9.-]+)(?:\s+(?:model|provider))?$/i;
 
 /** Handles "/model sonnet", "switch to demo", "/models". Returns null if not a command. */
-async function handleModelCommand(message: string): Promise<string | null> {
+async function handleModelCommand(userId: number, message: string): Promise<string | null> {
   const msg = message.trim();
   if (/^\/models?$/i.test(msg) || /^(which|what) models?\b.*\b(available|can i use|are there)/i.test(msg)) {
     const lines: string[] = [];
@@ -167,10 +169,10 @@ async function handleModelCommand(message: string): Promise<string | null> {
     const result = await validateChoice(provider, model);
     if (!result.ok) {
       const alt = result.candidates?.length ? `\n\nModels I can see: ${result.candidates.map((c) => `\`${c.id}\``).join(", ")}` : "";
-      return `I couldn't switch: ${result.message}${alt}\n\nI'll keep using ${resolveActive(getSettings()).provider.label}.`;
+      return `I couldn't switch: ${result.message}${alt}\n\nI'll keep using ${resolveActive(getSettings(userId)).provider.label}.`;
     }
-    updateSettings({ jarvis: { provider: result.provider, model: result.model } });
-    recordActivity("settings.changed", { settings: ["jarvis.provider", "jarvis.model"] });
+    updateSettings(userId, { jarvis: { provider: result.provider, model: result.model } });
+    recordActivity(userId, "settings.changed", { settings: ["jarvis.provider", "jarvis.model"] });
     const external = getProvider(result.provider!)?.status().external;
     return `${result.message}${external ? " Replies now go to an external provider; see Settings → Privacy for what is shared." : " Nothing leaves this computer in this mode."}`;
   };

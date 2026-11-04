@@ -1,8 +1,10 @@
-import { dynamic, json } from "@/lib/server/http";
+import { json } from "@/lib/server/http";
+import { requireUser } from "@/lib/server/auth";
 import { marketProvider } from "@/lib/server/market/demo";
 
 export async function GET(req: Request) {
-  await dynamic();
+  const user = await requireUser();
+  if (user instanceof Response) return user;
   const provider = marketProvider();
   const url = new URL(req.url);
   const from = new Date();

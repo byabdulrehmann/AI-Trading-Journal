@@ -1,8 +1,6 @@
 import "server-only";
-import { db, transaction } from "./db";
 import { createAccount, createTrade, hasSampleData } from "./repo/journal";
-import type { TradeData } from "@/lib/domain/types";
-import { EMOTIONS } from "@/lib/domain/types";
+import { EMOTIONS, TradeInput } from "@/lib/domain/types";
 
 /**
  * Sample journal for exploring the app. Every row is stored with
@@ -25,12 +23,12 @@ function rng(seed: number) {
   };
 }
 
-export function loadSampleData(): number {
-  if (hasSampleData()) return 0;
+export function loadSampleData(userId: number): number {
+  if (hasSampleData(userId)) return 0;
   const rand = rng(20261103);
   const pick = <T,>(xs: readonly T[]) => xs[Math.floor(rand() * xs.length)];
-  return transaction(db(), () => {
-    const account = createAccount({ name: "Sample account", broker: "Sample data", currency: "USD", startingBalance: 25000 }, true);
+  return (() => {
+    const account = createAccount(userId, { name: "Sample account", broker: "Sample data", currency: "USD", startingBalance: 25000 }, { isSample: true });
     const start = new Date();
     start.setDate(start.getDate() - 42);
     let count = 0;
@@ -76,7 +74,7 @@ export function loadSampleData(): number {
         const closedAt = new Date(clock.getTime() + holdMin * 60000);
         const followedPlan = revenge ? false : rOutcome < -1.2 ? false : rand() < 0.85;
 
-        const trade: TradeData = {
+        const trade = TradeInput.parse({
           accountId: account.id,
           symbol: ins.symbol,
           side,
@@ -88,7 +86,7 @@ export function loadSampleData(): number {
           multiplier: ins.mult,
           stopPrice: round(stop, ins.tick < 0.01 ? 5 : 2),
           targetPrice: round(target, ins.tick < 0.01 ? 5 : 2),
-          fees: round(2 + rand() * 6, 2),
+          commission: round(2 + rand() * 6, 2),
           setup: revenge ? "" : pick(SETUPS),
           tags: revenge ? ["unplanned"] : [],
           emotionBefore: revenge ? pick(["frustrated", "impatient"] as const) : pick(EMOTIONS.slice(0, 4)),
@@ -97,15 +95,15 @@ export function loadSampleData(): number {
           grade: followedPlan ? pick(["A", "B", "B", "C"] as const) : pick(["C", "D", "F"] as const),
           planNotes: revenge ? "" : `Sample plan: ${side} on ${pick(SETUPS).toLowerCase()} with stop beyond the last swing.`,
           notes: "",
-        };
-        createTrade(trade, "sample");
+        });
+        createTrade(userId, trade, { source: "sample" });
         count++;
         lastLoss = rOutcome < 0 ? { closedAt: closedAt.getTime() } : null;
         clock = new Date(closedAt.getTime() + (20 + rand() * 90) * 60000);
       }
     }
     return count;
-  });
+  })();
 }
 
 function round(n: number, dp: number) {

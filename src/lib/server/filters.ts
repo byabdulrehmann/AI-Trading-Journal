@@ -1,0 +1,29 @@
+import "server-only";
+import { z } from "zod";
+import type { TradeFilters } from "./repo/journal";
+import { fail } from "./http";
+
+const FilterQuery = z.object({
+  accountId: z.coerce.number().int().positive().optional(),
+  symbol: z.string().trim().max(30).optional(),
+  strategy: z.string().trim().max(60).optional(),
+  from: z.iso.datetime().optional(),
+  to: z.iso.datetime().optional(),
+  source: z.enum(["manual", "csv", "sample", "mt5"]).optional(),
+  outcome: z.enum(["win", "loss", "breakeven", "open"]).optional(),
+  plan: z.enum(["on", "off", "unanswered"]).optional(),
+  session: z.string().trim().max(30).optional(),
+  tag: z.string().trim().max(30).optional(),
+  q: z.string().trim().max(100).optional(),
+  currency: z.string().trim().length(3).optional(),
+  includeSample: z.enum(["1"]).optional(),
+});
+
+/** Reads the shared trade filters from a query string. Empty values mean "not filtered". */
+export function filtersFrom(params: URLSearchParams): TradeFilters | Response {
+  const raw = Object.fromEntries([...params].filter(([k, v]) => v !== "" && k in FilterQuery.shape));
+  const parsed = FilterQuery.safeParse(raw);
+  if (!parsed.success) return fail("Invalid filters.", 400, parsed.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })));
+  const { includeSample, ...rest } = parsed.data;
+  return { ...rest, includeSample: includeSample === "1" };
+}

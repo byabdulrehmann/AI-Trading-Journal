@@ -1,5 +1,7 @@
 import type { Account, Trade } from "./types";
 import { round } from "./trade-math";
+import { addMoney } from "./engine/position";
+import { computeStats } from "./engine/stats";
 
 /** Currencies that have trades, plus the one to report in first. Money in different currencies never adds up. */
 export function reportingCurrencies(accounts: Account[], trades: Trade[]): { currencies: string[]; primary: string | null } {
@@ -36,7 +38,7 @@ export const METRIC_DEFINITIONS = {
   profitFactor: {
     label: "Profit factor",
     formula: "gross profit ÷ |gross loss|",
-    meaning: "Above 1 means winners earned more than losers cost. Shown as ∞ when there are no losses.",
+    meaning: "Above 1 means winners earned more than losers cost. Not applicable when there are no losses.",
   },
   expectancy: {
     label: "Expectancy",
@@ -83,10 +85,18 @@ export const METRIC_DEFINITIONS = {
 export type MetricKey = keyof typeof METRIC_DEFINITIONS;
 
 export interface Metrics {
+  totalTrades: number;
   closedTrades: number;
   openTrades: number;
+  /** Closed, but missing a conversion rate or with bad fills: left out of every figure. */
+  excludedTrades: number;
   wins: number;
   losses: number;
+  breakeven: number;
+  totalFees: number;
+  avgHoldMin: number | null;
+  maxConsecutiveWins: number;
+  maxConsecutiveLosses: number;
   netPnl: number;
   grossProfit: number;
   grossLoss: number;
@@ -107,7 +117,7 @@ export interface Metrics {
 }
 
 export const isClosed = (t: Trade): t is Trade & { pnl: number; closedAt: string; exitPrice: number } =>
-  t.pnl !== null && t.closedAt !== null;
+  t.status === "closed" && t.pnlStatus === "ok" && t.pnl !== null && t.closedAt !== null;
 
 export function holdMinutes(t: Trade): number | null {
   if (!t.closedAt) return null;
@@ -123,44 +133,39 @@ export function median(values: number[]): number | null {
 
 export function computeMetrics(trades: Trade[]): Metrics {
   const closed = trades.filter(isClosed).sort((a, b) => Date.parse(a.closedAt) - Date.parse(b.closedAt));
+  const s = computeStats(closed.map((t) => t.pnl));
   const winners = closed.filter((t) => t.pnl > 0);
   const losers = closed.filter((t) => t.pnl < 0);
-  const grossProfit = sum(winners.map((t) => t.pnl));
-  const grossLoss = sum(losers.map((t) => t.pnl));
-  const netPnl = sum(closed.map((t) => t.pnl));
   const withR = closed.filter((t) => t.rMultiple !== null);
   const planAnswered = trades.filter((t) => t.followedPlan !== null);
-
-  let peak = 0;
-  let equity = 0;
-  let maxDrawdown = 0;
-  for (const t of closed) {
-    equity += t.pnl;
-    peak = Math.max(peak, equity);
-    maxDrawdown = Math.max(maxDrawdown, peak - equity);
-  }
-
+  const holds = closed.map((t) => holdMinutes(t) as number);
   const byPnl = [...closed].sort((a, b) => b.pnl - a.pnl);
   return {
-    closedTrades: closed.length,
-    openTrades: trades.length - closed.length,
-    wins: winners.length,
-    losses: losers.length,
-    netPnl: round(netPnl),
-    grossProfit: round(grossProfit),
-    grossLoss: round(grossLoss),
-    winRate: closed.length ? winners.length / closed.length : null,
-    profitFactor: losers.length ? round(grossProfit / Math.abs(grossLoss), 2) : winners.length ? Infinity : null,
-    expectancy: closed.length ? round(netPnl / closed.length) : null,
-    avgR: withR.length ? round(sum(withR.map((t) => t.rMultiple as number)) / withR.length, 2) : null,
+    totalTrades: trades.length,
+    closedTrades: s.closed,
+    openTrades: trades.filter((t) => t.status !== "closed").length,
+    excludedTrades: trades.filter((t) => t.status === "closed" && t.pnlStatus !== "ok").length,
+    wins: s.wins,
+    losses: s.losses,
+    breakeven: s.breakeven,
+    netPnl: s.netPnl,
+    grossProfit: s.grossProfit,
+    grossLoss: s.grossLoss,
+    totalFees: addMoney(closed.flatMap((t) => [t.commission, t.swap, t.otherFees])),
+    winRate: s.winRate === null ? null : s.winRate / 100,
+    // JSON can't carry Infinity, so "no losses" travels as null and the page shows it from the counts.
+    profitFactor: s.profitFactor,
+    expectancy: s.expectancy,
+    avgR: withR.length ? round(withR.reduce((a, t) => a + (t.rMultiple as number), 0) / withR.length, 2) : null,
     rSample: withR.length,
-    maxDrawdown: round(maxDrawdown),
-    planAdherence: planAnswered.length
-      ? planAnswered.filter((t) => t.followedPlan).length / planAnswered.length
-      : null,
+    maxDrawdown: s.maxDrawdown,
+    maxConsecutiveWins: s.maxConsecutiveWins,
+    maxConsecutiveLosses: s.maxConsecutiveLosses,
+    planAdherence: planAnswered.length ? planAnswered.filter((t) => t.followedPlan).length / planAnswered.length : null,
     planSample: planAnswered.length,
-    avgWin: winners.length ? round(grossProfit / winners.length) : null,
-    avgLoss: losers.length ? round(grossLoss / losers.length) : null,
+    avgWin: s.avgWin,
+    avgLoss: s.avgLoss,
+    avgHoldMin: holds.length ? holds.reduce((a, b) => a + b, 0) / holds.length : null,
     holdWinnersMin: median(winners.map((t) => holdMinutes(t) as number)),
     holdLosersMin: median(losers.map((t) => holdMinutes(t) as number)),
     bestTrade: byPnl[0] ?? null,
@@ -180,9 +185,69 @@ export function equityCurve(trades: Trade[]): EquityPoint[] {
     .filter(isClosed)
     .sort((a, b) => Date.parse(a.closedAt) - Date.parse(b.closedAt))
     .map((t) => {
-      equity = round(equity + t.pnl);
+      equity = addMoney([equity, t.pnl]);
       return { tradeId: t.id, at: t.closedAt, equity };
     });
+}
+
+export interface DrawdownPoint {
+  at: string;
+  drawdown: number;
+}
+
+/** Fall from the running peak after each closed trade. Zero at a new high, negative below it. */
+export function drawdownCurve(trades: Trade[]): DrawdownPoint[] {
+  let peak = 0;
+  return equityCurve(trades).map((p) => {
+    peak = Math.max(peak, p.equity);
+    return { at: p.at, drawdown: addMoney([p.equity, -peak]) };
+  });
+}
+
+export type Period = "day" | "week" | "month" | "year";
+
+/** The bucket a local date falls in. Weeks start on Monday. */
+export function periodKey(iso: string, period: Period): string {
+  const day = localDateKey(iso);
+  if (period === "day") return day;
+  if (period === "month") return day.slice(0, 7);
+  if (period === "year") return day.slice(0, 4);
+  const d = new Date(iso);
+  const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7));
+  return localDateKey(monday.toISOString());
+}
+
+export interface PeriodRow {
+  key: string;
+  pnl: number;
+  trades: number;
+  wins: number;
+  losses: number;
+}
+
+export function periodSummaries(trades: Trade[], period: Period): PeriodRow[] {
+  const rows = new Map<string, PeriodRow>();
+  for (const t of trades.filter(isClosed)) {
+    const key = periodKey(t.closedAt, period);
+    const r = rows.get(key) ?? { key, pnl: 0, trades: 0, wins: 0, losses: 0 };
+    r.pnl = addMoney([r.pnl, t.pnl]);
+    r.trades += 1;
+    if (t.pnl > 0) r.wins += 1;
+    if (t.pnl < 0) r.losses += 1;
+    rows.set(key, r);
+  }
+  return [...rows.values()].sort((a, b) => a.key.localeCompare(b.key));
+}
+
+/** Win/loss distribution: counts of closed trades per P&L bucket of equal width. */
+export function pnlDistribution(trades: Trade[], buckets = 12): { from: number; to: number; count: number }[] {
+  const values = trades.filter(isClosed).map((t) => t.pnl);
+  if (values.length === 0) return [];
+  const [min, max] = [Math.min(...values), Math.max(...values)];
+  const width = (max - min) / buckets || 1;
+  const out = Array.from({ length: buckets }, (_, i) => ({ from: round(min + i * width), to: round(min + (i + 1) * width), count: 0 }));
+  for (const v of values) out[Math.min(buckets - 1, Math.floor((v - min) / width))].count += 1;
+  return out;
 }
 
 export interface DaySummary {
@@ -205,7 +270,7 @@ export function dailySummaries(trades: Trade[]): Map<string, DaySummary> {
   for (const t of trades.filter(isClosed)) {
     const key = localDateKey(t.closedAt);
     const d = days.get(key) ?? { date: key, pnl: 0, trades: 0, tradeIds: [] };
-    d.pnl = round(d.pnl + t.pnl);
+    d.pnl = addMoney([d.pnl, t.pnl]);
     d.trades += 1;
     d.tradeIds.push(t.id);
     days.set(key, d);
@@ -231,12 +296,9 @@ export function breakdown(trades: Trade[], keyOf: (t: Trade) => string | null): 
     .map(([key, ts]) => ({
       key,
       trades: ts.length,
-      netPnl: round(sum(ts.map((t) => t.pnl as number))),
+      netPnl: addMoney(ts.map((t) => t.pnl as number)),
       winRate: ts.filter((t) => (t.pnl as number) > 0).length / ts.length,
     }))
     .sort((a, b) => b.netPnl - a.netPnl);
 }
 
-function sum(values: number[]): number {
-  return values.reduce((a, b) => a + b, 0);
-}

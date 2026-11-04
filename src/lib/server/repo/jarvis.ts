@@ -20,24 +20,24 @@ function toMemory(r: Row): Memory {
   };
 }
 
-export function listMemories(onlyActive = false): Memory[] {
+export function listMemories(userId: number, onlyActive = false): Memory[] {
   const rows = db()
-    .prepare(`SELECT * FROM jarvis_memories ${onlyActive ? "WHERE active = 1" : ""} ORDER BY id DESC`)
-    .all() as Row[];
+    .prepare(`SELECT * FROM jarvis_memories WHERE user_id = ? ${onlyActive ? "AND active = 1" : ""} ORDER BY id DESC`)
+    .all(userId) as Row[];
   return rows.map(toMemory);
 }
 
-export function createMemory(input: MemoryInput): Memory {
+export function createMemory(userId: number, input: MemoryInput): Memory {
   const m = MemorySchema.parse(input);
   const ts = now();
   const res = db()
-    .prepare("INSERT INTO jarvis_memories (kind, content, source, evidence_trade_ids, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
-    .run(m.kind, m.content, m.source, JSON.stringify(m.evidenceTradeIds), ts, ts);
+    .prepare("INSERT INTO jarvis_memories (user_id, kind, content, source, evidence_trade_ids, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+    .run(userId, m.kind, m.content, m.source, JSON.stringify(m.evidenceTradeIds), ts, ts);
   return toMemory(db().prepare("SELECT * FROM jarvis_memories WHERE id = ?").get(Number(res.lastInsertRowid)) as Row);
 }
 
-export function updateMemory(id: number, patch: { content?: string; kind?: Memory["kind"]; active?: boolean }): Memory | null {
-  const cur = db().prepare("SELECT * FROM jarvis_memories WHERE id = ?").get(id) as Row | undefined;
+export function updateMemory(userId: number, id: number, patch: { content?: string; kind?: Memory["kind"]; active?: boolean }): Memory | null {
+  const cur = db().prepare("SELECT * FROM jarvis_memories WHERE id = ? AND user_id = ?").get(id, userId) as Row | undefined;
   if (!cur) return null;
   const m = toMemory(cur);
   const next = MemorySchema.parse({ ...m, ...patch });
@@ -47,12 +47,12 @@ export function updateMemory(id: number, patch: { content?: string; kind?: Memor
   return toMemory(db().prepare("SELECT * FROM jarvis_memories WHERE id = ?").get(id) as Row);
 }
 
-export function deleteMemory(id: number): boolean {
-  return db().prepare("DELETE FROM jarvis_memories WHERE id = ?").run(id).changes > 0;
+export function deleteMemory(userId: number, id: number): boolean {
+  return db().prepare("DELETE FROM jarvis_memories WHERE id = ? AND user_id = ?").run(id, userId).changes > 0;
 }
 
-export function resetMemories(): number {
-  return Number(db().prepare("DELETE FROM jarvis_memories").run().changes);
+export function resetMemories(userId: number): number {
+  return Number(db().prepare("DELETE FROM jarvis_memories WHERE user_id = ?").run(userId).changes);
 }
 
 // ---------- conversations ----------
@@ -64,32 +64,33 @@ export interface Conversation {
   messageCount: number;
 }
 
-export function listConversations(): Conversation[] {
+export function listConversations(userId: number): Conversation[] {
   const rows = db()
     .prepare(
       `SELECT c.id, c.title, c.created_at, COUNT(m.id) AS n
        FROM jarvis_conversations c LEFT JOIN jarvis_messages m ON m.conversation_id = c.id
+       WHERE c.user_id = ?
        GROUP BY c.id ORDER BY c.id DESC`,
     )
-    .all() as Row[];
+    .all(userId) as Row[];
   return rows.map((r) => ({ id: r.id as number, title: r.title as string, createdAt: r.created_at as string, messageCount: r.n as number }));
 }
 
-export function createConversation(title: string): number {
-  const res = db().prepare("INSERT INTO jarvis_conversations (title, created_at) VALUES (?, ?)").run(title.slice(0, 80), now());
+export function createConversation(userId: number, title: string): number {
+  const res = db().prepare("INSERT INTO jarvis_conversations (user_id, title, created_at) VALUES (?, ?, ?)").run(userId, title.slice(0, 80), now());
   return Number(res.lastInsertRowid);
 }
 
-export function conversationExists(id: number): boolean {
-  return Boolean(db().prepare("SELECT 1 FROM jarvis_conversations WHERE id = ?").get(id));
+export function conversationExists(userId: number, id: number): boolean {
+  return Boolean(db().prepare("SELECT 1 FROM jarvis_conversations WHERE id = ? AND user_id = ?").get(id, userId));
 }
 
-export function deleteConversation(id: number): boolean {
-  return db().prepare("DELETE FROM jarvis_conversations WHERE id = ?").run(id).changes > 0;
+export function deleteConversation(userId: number, id: number): boolean {
+  return db().prepare("DELETE FROM jarvis_conversations WHERE id = ? AND user_id = ?").run(id, userId).changes > 0;
 }
 
-export function deleteAllConversations(): number {
-  return Number(db().prepare("DELETE FROM jarvis_conversations").run().changes);
+export function deleteAllConversations(userId: number): number {
+  return Number(db().prepare("DELETE FROM jarvis_conversations WHERE user_id = ?").run(userId).changes);
 }
 
 function toMessage(r: Row): ChatMessage {

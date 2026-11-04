@@ -1,13 +1,14 @@
 import "server-only";
 import { DatabaseSync } from "node:sqlite";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, unlinkSync } from "node:fs";
 import path from "node:path";
+import { migrateToJournalModel, JOURNAL_MODEL_SQL } from "./migrations/journal-model";
 
 /**
  * Local SQLite store (Node's built-in node:sqlite).
  * Schema changes are append-only migrations; `schema_migrations` records which ran.
  */
-const MIGRATIONS: { version: number; name: string; sql: string }[] = [
+export const MIGRATIONS: { version: number; name: string; sql: string; run?: (db: DatabaseSync) => void }[] = [
   {
     version: 1,
     name: "initial schema",
@@ -95,12 +96,22 @@ const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       );
     `,
   },
+  { version: 2, name: "journal model: users, executions, instruments, MT5, imports, attachments", sql: JOURNAL_MODEL_SQL, run: migrateToJournalModel },
 ];
 
 const globalForDb = globalThis as unknown as { __kestrelDb?: DatabaseSync };
 
+const dbFile = () => process.env.KESTREL_DB_PATH || path.join(process.cwd(), "data", "kestrel.db");
+
+/** A folder beside the database, for files that don't belong in it. */
+export function dataPath(folder: string): string {
+  const dir = path.join(path.dirname(dbFile()), folder);
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
 function open(): DatabaseSync {
-  const file = process.env.KESTREL_DB_PATH || path.join(process.cwd(), "data", "kestrel.db");
+  const file = dbFile();
   mkdirSync(path.dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
   db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 3000;");
@@ -111,7 +122,16 @@ function open(): DatabaseSync {
 
 /** Deleted trades stay for undo, then go for good, notes included. */
 export function purgeDeletedTrades(conn: DatabaseSync) {
-  conn.exec("DELETE FROM trades WHERE deleted_at < strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-30 days')");
+  const expired = "SELECT id FROM trades WHERE deleted_at < strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-30 days')";
+  const files = conn.prepare(`SELECT stored_name FROM attachments WHERE trade_id IN (${expired})`).all() as { stored_name: string }[];
+  conn.exec(`DELETE FROM trades WHERE id IN (${expired})`);
+  for (const f of files) {
+    try {
+      unlinkSync(path.join(dataPath("attachments"), f.stored_name));
+    } catch {
+      // Already gone: the row was what the app read.
+    }
+  }
 }
 
 function migrate(db: DatabaseSync) {
@@ -123,6 +143,7 @@ function migrate(db: DatabaseSync) {
     if (applied.has(m.version)) continue;
     transaction(db, () => {
       db.exec(m.sql);
+      m.run?.(db);
       db.prepare("INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)").run(
         m.version,
         m.name,

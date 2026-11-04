@@ -25,12 +25,12 @@ describe("profit", () => {
   test("long, short, fees and multiplier", () => {
     assert.equal(computePnl(trade({})), 20);
     assert.equal(computePnl(trade({ side: "short" })), -20);
-    assert.equal(computePnl(trade({ fees: 3 })), 17);
+    assert.equal(computePnl(trade({ commission: 3 })), 17);
     assert.equal(computePnl(trade({ multiplier: 100 })), 2000);
   });
 
   test("a negative fee is a credit", () => {
-    assert.equal(computePnl(trade({ fees: -5 })), 25);
+    assert.equal(computePnl(trade({ swap: -5 })), 25);
   });
 
   test("an open trade has no profit", () => {
@@ -129,16 +129,17 @@ describe("CSV dates", () => {
 
 describe("CSV fees and swap", () => {
   const fees = (commission: string, swap: string) =>
-    importRow(`${BASE},commission,swap`, `EURUSD,buy,${OPEN},${CLOSE},1.08,1.09,1000,${commission},${swap}`).trade?.fees;
+    importRow(`${BASE},commission,swap`, `EURUSD,buy,${OPEN},${CLOSE},1.08,1.09,1000,${commission},${swap}`).trade!;
+  const cost = (commission: string, swap: string) => { const t = fees(commission, swap); return t.commission + t.swap; };
 
   test("commission counts as a cost whichever way the broker signs it", () => {
-    assert.equal(fees("7", "0"), 7);
-    assert.equal(fees("-7", "0"), 7);
+    assert.equal(cost("7", "0"), 7);
+    assert.equal(cost("-7", "0"), 7);
   });
 
   test("swap keeps its sign: a credit lowers fees, a charge raises them", () => {
-    assert.equal(fees("7", "12"), -5);
-    assert.equal(fees("7", "-12"), 19);
+    assert.equal(cost("7", "12"), -5);
+    assert.equal(cost("7", "-12"), 19);
   });
 });
 
@@ -190,7 +191,7 @@ describe("partial updates", () => {
 describe("reporting and currencies", () => {
   const account = (id: number, currency: string, archived = false) => ({ id, currency, archived }) as Account;
   const closed = (id: number, accountId: number, pnl: number, day: number) =>
-    ({ id, accountId, pnl, openedAt: `2026-10-0${day}T09:00:00.000Z`, closedAt: `2026-10-0${day}T10:00:00.000Z`, rMultiple: null, followedPlan: null }) as Trade;
+    ({ id, accountId, pnl, status: "closed", pnlStatus: "ok", commission: 0, swap: 0, otherFees: 0, openedAt: `2026-10-0${day}T09:00:00.000Z`, closedAt: `2026-10-0${day}T10:00:00.000Z`, rMultiple: null, followedPlan: null }) as Trade;
 
   test("only currencies that have trades are offered", () => {
     const { currencies, primary } = reportingCurrencies([account(1, "USD"), account(2, "EUR"), account(3, "GBP")], [closed(1, 1, 10, 1), closed(2, 2, 10, 1)]);

@@ -1,4 +1,4 @@
-import { dynamic } from "@/lib/server/http";
+import { requireOwner } from "@/lib/server/auth";
 import { tradbot } from "@/lib/server/tradbot/bridge";
 
 /**
@@ -6,7 +6,8 @@ import { tradbot } from "@/lib/server/tradbot/bridge";
  *   snapshot → {status, events}; event → one TradBot event; status → link/session state; reset.
  */
 export async function GET(req: Request) {
-  await dynamic();
+  const user = await requireOwner();
+  if (user instanceof Response) return user;
   const bridge = tradbot();
   const encoder = new TextEncoder();
   let cleanup = () => {};

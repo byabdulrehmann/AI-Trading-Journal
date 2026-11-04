@@ -1,0 +1,336 @@
+{
+  "tradeCases": [
+    {
+      "name": "EURUSD long winner",
+      "side": "long", "contractSize": 100000, "accountCurrency": "USD", "symbol": "EURUSD", "fxRate": null,
+      "entries": [{"price": 1.085, "qty": 1}], "exits": [{"price": 1.09, "qty": 1}],
+      "commission": 7, "swap": 0, "otherFees": 0, "stopPrice": 1.08,
+      "expected": {"grossPnl": 500, "netPnl": 493, "initialRisk": 500, "rMultiple": 0.99, "remainingQty": 0, "avgEntry": 1.085, "avgExit": 1.09},
+      "working": "0.005 x 1 x 100000 = 500; 500 - 7 = 493; risk 0.005 x 100000 = 500; 493/500 = 0.986 -> 0.99"
+    },
+    {
+      "name": "EURUSD short winner with swap cost",
+      "side": "short", "contractSize": 100000, "accountCurrency": "USD", "symbol": "EURUSD", "fxRate": null,
+      "entries": [{"price": 1.092, "qty": 0.5}], "exits": [{"price": 1.088, "qty": 0.5}],
+      "commission": 3.5, "swap": 1.2, "otherFees": 0, "stopPrice": 1.095,
+      "expected": {"grossPnl": 200, "netPnl": 195.3, "initialRisk": 150, "rMultiple": 1.3, "remainingQty": 0, "avgEntry": 1.092, "avgExit": 1.088},
+      "working": "(1.088-1.092) x -1 x 0.5 x 100000 = 200; 200 - 3.5 - 1.2 = 195.3; risk 0.003 x 50000 = 150; 195.3/150 = 1.302 -> 1.30"
+    },
+    {
+      "name": "EURUSD long stopped out at the stop",
+      "side": "long", "contractSize": 100000, "accountCurrency": "USD", "symbol": "EURUSD", "fxRate": null,
+      "entries": [{"price": 1.1, "qty": 0.2}], "exits": [{"price": 1.0975, "qty": 0.2}],
+      "commission": 1.4, "swap": 0, "otherFees": 0, "stopPrice": 1.0975,
+      "expected": {"grossPnl": -50, "netPnl": -51.4, "initialRisk": 50, "rMultiple": -1.03, "remainingQty": 0, "avgEntry": 1.1, "avgExit": 1.0975},
+      "working": "-0.0025 x 20000 = -50; -50 - 1.4 = -51.4; risk 0.0025 x 20000 = 50; -51.4/50 = -1.028 -> -1.03"
+    },
+    {
+      "name": "EURUSD short loser stopped out",
+      "side": "short", "contractSize": 100000, "accountCurrency": "USD", "symbol": "EURUSD", "fxRate": null,
+      "entries": [{"price": 1.05, "qty": 1}], "exits": [{"price": 1.053, "qty": 1}],
+      "commission": 7, "swap": 0.85, "otherFees": 0, "stopPrice": 1.053,
+      "expected": {"grossPnl": -300, "netPnl": -307.85, "initialRisk": 300, "rMultiple": -1.03, "remainingQty": 0, "avgEntry": 1.05, "avgExit": 1.053},
+      "working": "(1.053-1.05) x -1 x 100000 = -300; -300 - 7 - 0.85 = -307.85; risk 300; -307.85/300 = -1.02617 -> -1.03"
+    },
+    {
+      "name": "USDJPY long in USD account with fxRate",
+      "side": "long", "contractSize": 100000, "accountCurrency": "USD", "symbol": "USDJPY", "fxRate": 0.0066,
+      "entries": [{"price": 150, "qty": 1}], "exits": [{"price": 150.5, "qty": 1}],
+      "commission": 7, "swap": 0, "otherFees": 0, "stopPrice": 149.75,
+      "expected": {"grossPnl": 330, "netPnl": 323, "initialRisk": 165, "rMultiple": 1.96, "remainingQty": 0, "avgEntry": 150, "avgExit": 150.5},
+      "working": "0.5 x 100000 = 50000 JPY x 0.0066 = 330; 330 - 7 = 323; risk 0.25 x 100000 x 0.0066 = 165; 323/165 = 1.95758 -> 1.96"
+    },
+    {
+      "name": "USDJPY short loser with swap credit and fxRate",
+      "side": "short", "contractSize": 100000, "accountCurrency": "USD", "symbol": "USDJPY", "fxRate": 0.00625,
+      "entries": [{"price": 160, "qty": 0.1}], "exits": [{"price": 160.8, "qty": 0.1}],
+      "commission": 0.7, "swap": -0.3, "otherFees": 0, "stopPrice": 161,
+      "expected": {"grossPnl": -50, "netPnl": -50.4, "initialRisk": 62.5, "rMultiple": -0.81, "remainingQty": 0, "avgEntry": 160, "avgExit": 160.8},
+      "working": "0.8 x -1 x 10000 = -8000 JPY x 0.00625 = -50; -50 - 0.7 + 0.3 = -50.4; risk 1 x 10000 x 0.00625 = 62.5; -50.4/62.5 = -0.8064 -> -0.81"
+    },
+    {
+      "name": "EURUSD long in EUR account: fxRate on P&L and risk, costs already in account currency",
+      "side": "long", "contractSize": 100000, "accountCurrency": "EUR", "symbol": "EURUSD", "fxRate": 0.92,
+      "entries": [{"price": 1.085, "qty": 1}], "exits": [{"price": 1.09, "qty": 1}],
+      "commission": 6, "swap": 0, "otherFees": 0, "stopPrice": 1.08,
+      "expected": {"grossPnl": 460, "netPnl": 454, "initialRisk": 460, "rMultiple": 0.99, "remainingQty": 0, "avgEntry": 1.085, "avgExit": 1.09},
+      "working": "500 USD x 0.92 = 460; 460 - 6 = 454 (commission is not converted); risk 500 x 0.92 = 460; 454/460 = 0.98696 -> 0.99"
+    },
+    {
+      "name": "XAUUSD long, broker with contract size 100",
+      "side": "long", "contractSize": 100, "accountCurrency": "USD", "symbol": "XAUUSD", "fxRate": null,
+      "entries": [{"price": 2000.5, "qty": 0.5}], "exits": [{"price": 2010.75, "qty": 0.5}],
+      "commission": 5, "swap": 2.5, "otherFees": 0, "stopPrice": 1995.5,
+      "expected": {"grossPnl": 512.5, "netPnl": 505, "initialRisk": 250, "rMultiple": 2.02, "remainingQty": 0, "avgEntry": 2000.5, "avgExit": 2010.75},
+      "working": "10.25 x 0.5 x 100 = 512.5; 512.5 - 5 - 2.5 = 505; risk 5 x 0.5 x 100 = 250; 505/250 = 2.02"
+    },
+    {
+      "name": "XAUUSD long, same prices, broker with 1 lot = 10 oz",
+      "side": "long", "contractSize": 10, "accountCurrency": "USD", "symbol": "XAUUSD", "fxRate": null,
+      "entries": [{"price": 2000.5, "qty": 0.5}], "exits": [{"price": 2010.75, "qty": 0.5}],
+      "commission": 5, "swap": 2.5, "otherFees": 0, "stopPrice": 1995.5,
+      "expected": {"grossPnl": 51.25, "netPnl": 43.75, "initialRisk": 25, "rMultiple": 1.75, "remainingQty": 0, "avgEntry": 2000.5, "avgExit": 2010.75},
+      "working": "10.25 x 0.5 x 10 = 51.25; 51.25 - 5 - 2.5 = 43.75; risk 5 x 0.5 x 10 = 25; 43.75/25 = 1.75"
+    },
+    {
+      "name": "XAUUSD short with other fee",
+      "side": "short", "contractSize": 100, "accountCurrency": "USD", "symbol": "XAUUSD", "fxRate": null,
+      "entries": [{"price": 2350.4, "qty": 0.1}], "exits": [{"price": 2345.15, "qty": 0.1}],
+      "commission": 0, "swap": 0, "otherFees": 0.5, "stopPrice": 2353.4,
+      "expected": {"grossPnl": 52.5, "netPnl": 52, "initialRisk": 30, "rMultiple": 1.73, "remainingQty": 0, "avgEntry": 2350.4, "avgExit": 2345.15},
+      "working": "5.25 x 0.1 x 100 = 52.5; 52.5 - 0.5 = 52; risk 3 x 10 = 30; 52/30 = 1.7333 -> 1.73"
+    },
+    {
+      "name": "Index CFD US100 long, contract size 1",
+      "side": "long", "contractSize": 1, "accountCurrency": "USD", "symbol": "US100", "fxRate": null,
+      "entries": [{"price": 18500.5, "qty": 2}], "exits": [{"price": 18575.25, "qty": 2}],
+      "commission": 0, "swap": 1.75, "otherFees": 0.25, "stopPrice": 18460.5,
+      "expected": {"grossPnl": 149.5, "netPnl": 147.5, "initialRisk": 80, "rMultiple": 1.84, "remainingQty": 0, "avgEntry": 18500.5, "avgExit": 18575.25},
+      "working": "74.75 x 2 x 1 = 149.5; 149.5 - 1.75 - 0.25 = 147.5; risk 40 x 2 = 80; 147.5/80 = 1.84375 -> 1.84"
+    },
+    {
+      "name": "Index CFD DE40 short, EUR profit in USD account",
+      "side": "short", "contractSize": 1, "accountCurrency": "USD", "symbol": "DE40", "fxRate": 1.08,
+      "entries": [{"price": 18000, "qty": 1}], "exits": [{"price": 17950, "qty": 1}],
+      "commission": 1, "swap": 0, "otherFees": 0, "stopPrice": 18025,
+      "expected": {"grossPnl": 54, "netPnl": 53, "initialRisk": 27, "rMultiple": 1.96, "remainingQty": 0, "avgEntry": 18000, "avgExit": 17950},
+      "working": "50 EUR x 1.08 = 54; 54 - 1 = 53; risk 25 x 1.08 = 27; 53/27 = 1.96296 -> 1.96"
+    },
+    {
+      "name": "Stock long, contract size 1",
+      "side": "long", "contractSize": 1, "accountCurrency": "USD", "symbol": "AAPL", "fxRate": null,
+      "entries": [{"price": 190.25, "qty": 100}], "exits": [{"price": 192.5, "qty": 100}],
+      "commission": 1, "swap": 0, "otherFees": 0.02, "stopPrice": 189.25,
+      "expected": {"grossPnl": 225, "netPnl": 223.98, "initialRisk": 100, "rMultiple": 2.24, "remainingQty": 0, "avgEntry": 190.25, "avgExit": 192.5},
+      "working": "2.25 x 100 = 225; 225 - 1 - 0.02 = 223.98; risk 1 x 100 = 100; 223.98/100 = 2.2398 -> 2.24"
+    },
+    {
+      "name": "Partial exits at two prices, fully closed",
+      "side": "long", "contractSize": 100000, "accountCurrency": "USD", "symbol": "EURUSD", "fxRate": null,
+      "entries": [{"price": 1.1, "qty": 1}], "exits": [{"price": 1.105, "qty": 0.5}, {"price": 1.11, "qty": 0.5}],
+      "commission": 7, "swap": 0, "otherFees": 0, "stopPrice": 1.095,
+      "expected": {"grossPnl": 750, "netPnl": 743, "initialRisk": 500, "rMultiple": 1.49, "remainingQty": 0, "avgEntry": 1.1, "avgExit": 1.1075},
+      "working": "0.005 x 50000 + 0.01 x 50000 = 250 + 500 = 750; 750 - 7 = 743; risk 0.005 x 100000 = 500; 743/500 = 1.486 -> 1.49"
+    },
+    {
+      "name": "Short with three partial exits, one at a loss, lots sum 0.3 x 3",
+      "side": "short", "contractSize": 100000, "accountCurrency": "USD", "symbol": "GBPUSD", "fxRate": null,
+      "entries": [{"price": 1.27, "qty": 0.9}], "exits": [{"price": 1.265, "qty": 0.3}, {"price": 1.26, "qty": 0.3}, {"price": 1.273, "qty": 0.3}],
+      "commission": 6.3, "swap": -1.5, "otherFees": 0, "stopPrice": 1.275,
+      "expected": {"grossPnl": 360, "netPnl": 355.2, "initialRisk": 450, "rMultiple": 0.79, "remainingQty": 0, "avgEntry": 1.27, "avgExit": 1.266},
+      "working": "150 + 300 - 90 = 360 (per 30000 units); 360 - 6.3 + 1.5 = 355.2; risk 0.005 x 90000 = 450; 355.2/450 = 0.78933 -> 0.79"
+    },
+    {
+      "name": "Scaling in with three unequal entries",
+      "side": "long", "contractSize": 100000, "accountCurrency": "USD", "symbol": "EURUSD", "fxRate": null,
+      "entries": [{"price": 1.08, "qty": 1}, {"price": 1.084, "qty": 1}, {"price": 1.09, "qty": 2}], "exits": [{"price": 1.095, "qty": 4}],
+      "commission": 28, "swap": 0, "otherFees": 0, "stopPrice": 1.08,
+      "expected": {"grossPnl": 3600, "netPnl": 3572, "initialRisk": 2400, "rMultiple": 1.49, "remainingQty": 0, "avgEntry": 1.086, "avgExit": 1.095},
+      "working": "avg (1.08 + 1.084 + 2.18)/4 = 1.086; 0.009 x 400000 = 3600; 3600 - 28 = 3572; risk 0.006 x 400000 = 2400; 3572/2400 = 1.48833 -> 1.49"
+    },
+    {
+      "name": "XAUUSD short scaling in",
+      "side": "short", "contractSize": 100, "accountCurrency": "USD", "symbol": "XAUUSD", "fxRate": null,
+      "entries": [{"price": 2400, "qty": 0.1}, {"price": 2410, "qty": 0.3}], "exits": [{"price": 2390, "qty": 0.4}],
+      "commission": 2.8, "swap": 0, "otherFees": 0, "stopPrice": 2420,
+      "expected": {"grossPnl": 700, "netPnl": 697.2, "initialRisk": 500, "rMultiple": 1.39, "remainingQty": 0, "avgEntry": 2407.5, "avgExit": 2390},
+      "working": "avg (240 + 723)/0.4 = 2407.5; 17.5 x 0.4 x 100 = 700; 700 - 2.8 = 697.2; risk 12.5 x 40 = 500; 697.2/500 = 1.3944 -> 1.39"
+    },
+    {
+      "name": "Scaling in and partial exits with fxRate",
+      "side": "long", "contractSize": 100000, "accountCurrency": "USD", "symbol": "USDCAD", "fxRate": 0.73,
+      "entries": [{"price": 1.35, "qty": 1}, {"price": 1.36, "qty": 1}], "exits": [{"price": 1.37, "qty": 1}, {"price": 1.38, "qty": 1}],
+      "commission": 14, "swap": 0, "otherFees": 0, "stopPrice": 1.345,
+      "expected": {"grossPnl": 2920, "netPnl": 2906, "initialRisk": 1460, "rMultiple": 1.99, "remainingQty": 0, "avgEntry": 1.355, "avgExit": 1.375},
+      "working": "(0.015 + 0.025) x 100000 = 4000 CAD x 0.73 = 2920; 2920 - 14 = 2906; risk 0.01 x 200000 x 0.73 = 1460; 2906/1460 = 1.99041 -> 1.99"
+    },
+    {
+      "name": "Partly closed long: gross only on closed part, risk on full entered qty",
+      "side": "long", "contractSize": 100000, "accountCurrency": "USD", "symbol": "EURUSD", "fxRate": null,
+      "entries": [{"price": 1.1, "qty": 1}], "exits": [{"price": 1.11, "qty": 0.4}],
+      "commission": 7, "swap": 0, "otherFees": 0, "stopPrice": 1.09,
+      "expected": {"grossPnl": 400, "netPnl": 393, "initialRisk": 1000, "rMultiple": 0.39, "remainingQty": 0.6, "avgEntry": 1.1, "avgExit": 1.11},
+      "working": "0.01 x 0.4 x 100000 = 400; 400 - 7 = 393; risk 0.01 x 1 x 100000 = 1000; 393/1000 = 0.393 -> 0.39; remaining 1 - 0.4 = 0.6"
+    },
+    {
+      "name": "Partly closed XAUUSD short after scaling in",
+      "side": "short", "contractSize": 100, "accountCurrency": "USD", "symbol": "XAUUSD", "fxRate": null,
+      "entries": [{"price": 2000, "qty": 0.2}, {"price": 2005, "qty": 0.2}], "exits": [{"price": 1992.5, "qty": 0.1}],
+      "commission": 1.4, "swap": 0, "otherFees": 0, "stopPrice": 2012.5,
+      "expected": {"grossPnl": 100, "netPnl": 98.6, "initialRisk": 400, "rMultiple": 0.25, "remainingQty": 0.3, "avgEntry": 2002.5, "avgExit": 1992.5},
+      "working": "avg 2002.5; 10 x 0.1 x 100 = 100; 100 - 1.4 = 98.6; risk 10 x 0.4 x 100 = 400; 98.6/400 = 0.2465 -> 0.25; remaining 0.4 - 0.1 = 0.3"
+    },
+    {
+      "name": "Open position with no exits: empty sum gross, avgExit null",
+      "side": "long", "contractSize": 100000, "accountCurrency": "USD", "symbol": "EURUSD", "fxRate": null,
+      "entries": [{"price": 1.1, "qty": 1}], "exits": [],
+      "commission": 7, "swap": 0, "otherFees": 0, "stopPrice": 1.095,
+      "expected": {"grossPnl": 0, "netPnl": -7, "initialRisk": 500, "rMultiple": -0.01, "remainingQty": 1, "avgEntry": 1.1, "avgExit": null},
+      "working": "no exits so gross 0; 0 - 7 = -7; risk 0.005 x 100000 = 500; -7/500 = -0.014 -> -0.01; remaining 1"
+    },
+    {
+      "name": "Negative swap is a credit that adds to net",
+      "side": "long", "contractSize": 100000, "accountCurrency": "USD", "symbol": "AUDUSD", "fxRate": null,
+      "entries": [{"price": 0.65, "qty": 1}], "exits": [{"price": 0.66, "qty": 1}],
+      "commission": 7, "swap": -12.5, "otherFees": 0, "stopPrice": 0.64,
+      "expected": {"grossPnl": 1000, "netPnl": 1005.5, "initialRisk": 1000, "rMultiple": 1.01, "remainingQty": 0, "avgEntry": 0.65, "avgExit": 0.66},
+      "working": "0.01 x 100000 = 1000; 1000 - 7 + 12.5 = 1005.5; risk 1000; 1005.5/1000 = 1.0055 -> 1.01"
+    },
+    {
+      "name": "Commission rebate and swap credit shrink a loss",
+      "side": "long", "contractSize": 100000, "accountCurrency": "USD", "symbol": "EURUSD", "fxRate": null,
+      "entries": [{"price": 1.1, "qty": 1}], "exits": [{"price": 1.099, "qty": 1}],
+      "commission": -2, "swap": -3, "otherFees": 0, "stopPrice": 1.095,
+      "expected": {"grossPnl": -100, "netPnl": -95, "initialRisk": 500, "rMultiple": -0.19, "remainingQty": 0, "avgEntry": 1.1, "avgExit": 1.099},
+      "working": "-0.001 x 100000 = -100; -100 + 2 + 3 = -95; risk 500; -95/500 = -0.19"
+    },
+    {
+      "name": "Missing stop: risk and R are null, P&L still computed",
+      "side": "long", "contractSize": 100000, "accountCurrency": "USD", "symbol": "EURUSD", "fxRate": null,
+      "entries": [{"price": 1.2, "qty": 0.1}], "exits": [{"price": 1.21, "qty": 0.1}],
+      "commission": 0.7, "swap": 0, "otherFees": 0, "stopPrice": null,
+      "expected": {"grossPnl": 100, "netPnl": 99.3, "initialRisk": null, "rMultiple": null, "remainingQty": 0, "avgEntry": 1.2, "avgExit": 1.21},
+      "working": "0.01 x 10000 = 100; 100 - 0.7 = 99.3; no stop so risk null and R null"
+    },
+    {
+      "name": "Zero risk: stop equal to entry",
+      "side": "long", "contractSize": 100, "accountCurrency": "USD", "symbol": "XAUUSD", "fxRate": null,
+      "entries": [{"price": 2000, "qty": 0.1}], "exits": [{"price": 2010, "qty": 0.1}],
+      "commission": 2, "swap": 0, "otherFees": 0, "stopPrice": 2000,
+      "expected": {"grossPnl": 100, "netPnl": 98, "initialRisk": null, "rMultiple": null, "remainingQty": 0, "avgEntry": 2000, "avgExit": 2010},
+      "working": "10 x 0.1 x 100 = 100; 100 - 2 = 98; |2000 - 2000| = 0 so risk null and R null"
+    },
+    {
+      "name": "Zero risk: stop equal to weighted average entry (float residue must not become tiny risk)",
+      "side": "short", "contractSize": 100000, "accountCurrency": "USD", "symbol": "EURUSD", "fxRate": null,
+      "entries": [{"price": 1.1, "qty": 1}, {"price": 1.2, "qty": 1}], "exits": [{"price": 1.14, "qty": 2}],
+      "commission": 14, "swap": 0, "otherFees": 0, "stopPrice": 1.15,
+      "expected": {"grossPnl": 2000, "netPnl": 1986, "initialRisk": null, "rMultiple": null, "remainingQty": 0, "avgEntry": 1.15, "avgExit": 1.14},
+      "working": "avg (1.1 + 1.2)/2 = 1.15; 0.01 x 200000 = 2000; 2000 - 14 = 1986; |1.15 - 1.15| = 0 so risk null and R null"
+    },
+    {
+      "name": "Float trap: prices 0.1 + 0.2",
+      "side": "long", "contractSize": 1, "accountCurrency": "USD", "symbol": "PENNY", "fxRate": null,
+      "entries": [{"price": 0.1, "qty": 1000}, {"price": 0.2, "qty": 1000}], "exits": [{"price": 0.3, "qty": 2000}],
+      "commission": 0, "swap": 0, "otherFees": 0, "stopPrice": 0.05,
+      "expected": {"grossPnl": 300, "netPnl": 300, "initialRisk": 200, "rMultiple": 1.5, "remainingQty": 0, "avgEntry": 0.15, "avgExit": 0.3},
+      "working": "avg (100 + 200)/2000 = 0.15; 0.15 x 2000 = 300; net 300; risk 0.1 x 2000 = 200; 300/200 = 1.5"
+    },
+    {
+      "name": "Float trap: lots 0.1 + 0.2 - 0.3 must leave remainingQty exactly 0",
+      "side": "long", "contractSize": 100000, "accountCurrency": "USD", "symbol": "EURUSD", "fxRate": null,
+      "entries": [{"price": 1.1, "qty": 0.1}, {"price": 1.1, "qty": 0.2}], "exits": [{"price": 1.101, "qty": 0.3}],
+      "commission": 2.4, "swap": 0, "otherFees": 0, "stopPrice": 1.098,
+      "expected": {"grossPnl": 30, "netPnl": 27.6, "initialRisk": 60, "rMultiple": 0.46, "remainingQty": 0, "avgEntry": 1.1, "avgExit": 1.101},
+      "working": "0.001 x 0.3 x 100000 = 30; 30 - 2.4 = 27.6; risk 0.002 x 30000 = 60; 27.6/60 = 0.46; remaining 0.3 - 0.3 = 0"
+    },
+    {
+      "name": "Rounding tie: exact 1.005 rounds half up to 1.01",
+      "side": "long", "contractSize": 1, "accountCurrency": "USD", "symbol": "PENNY", "fxRate": null,
+      "entries": [{"price": 1, "qty": 1}], "exits": [{"price": 2.005, "qty": 1}],
+      "commission": 0, "swap": 0, "otherFees": 0, "stopPrice": 0.5,
+      "expected": {"grossPnl": 1.01, "netPnl": 1.01, "initialRisk": 0.5, "rMultiple": 2.01, "remainingQty": 0, "avgEntry": 1, "avgExit": 2.005},
+      "working": "2.005 - 1 = 1.005 -> 1.01 half up; risk 0.5 x 1 = 0.5; unrounded 1.005/0.5 = 2.01"
+    },
+    {
+      "name": "Round at the end only: rounding parts first would give net 8.99",
+      "side": "long", "contractSize": 100000, "accountCurrency": "USD", "symbol": "EURGBP", "fxRate": 1.0004,
+      "entries": [{"price": 0.85, "qty": 0.01}], "exits": [{"price": 0.86, "qty": 0.01}],
+      "commission": 1.006, "swap": 0, "otherFees": 0, "stopPrice": 0.84,
+      "expected": {"grossPnl": 10, "netPnl": 9, "initialRisk": 10, "rMultiple": 0.9, "remainingQty": 0, "avgEntry": 0.85, "avgExit": 0.86},
+      "working": "0.01 x 1000 = 10 x 1.0004 = 10.004 -> 10.00; 10.004 - 1.006 = 8.998 -> 9.00; risk 10.004 -> 10.00; 8.998/10.004 = 0.89944 -> 0.90"
+    },
+    {
+      "name": "Breakeven after costs: net must be exactly 0, not -0 or a tiny residue",
+      "side": "long", "contractSize": 100000, "accountCurrency": "USD", "symbol": "EURUSD", "fxRate": null,
+      "entries": [{"price": 1.085, "qty": 1}], "exits": [{"price": 1.08507, "qty": 1}],
+      "commission": 7, "swap": 0, "otherFees": 0, "stopPrice": 1.08,
+      "expected": {"grossPnl": 7, "netPnl": 0, "initialRisk": 500, "rMultiple": 0, "remainingQty": 0, "avgEntry": 1.085, "avgExit": 1.08507},
+      "working": "0.00007 x 100000 = 7; 7 - 7 = 0; risk 500; 0/500 = 0"
+    },
+    {
+      "name": "Short scratch at entry price: gross 0 (not -0) and costs make it a loss",
+      "side": "short", "contractSize": 100000, "accountCurrency": "USD", "symbol": "EURUSD", "fxRate": null,
+      "entries": [{"price": 1.1, "qty": 1}], "exits": [{"price": 1.1, "qty": 1}],
+      "commission": 7, "swap": 0, "otherFees": 0, "stopPrice": 1.105,
+      "expected": {"grossPnl": 0, "netPnl": -7, "initialRisk": 500, "rMultiple": -0.01, "remainingQty": 0, "avgEntry": 1.1, "avgExit": 1.1},
+      "working": "0 x -1 x 100000 = 0; 0 - 7 = -7; risk 0.005 x 100000 = 500; -7/500 = -0.014 -> -0.01"
+    },
+    {
+      "name": "Micro lot gold, two-cent move",
+      "side": "long", "contractSize": 100, "accountCurrency": "USD", "symbol": "XAUUSD", "fxRate": null,
+      "entries": [{"price": 1999.99, "qty": 0.01}], "exits": [{"price": 2000.01, "qty": 0.01}],
+      "commission": 0, "swap": 0, "otherFees": 0, "stopPrice": 1999.49,
+      "expected": {"grossPnl": 0.02, "netPnl": 0.02, "initialRisk": 0.5, "rMultiple": 0.04, "remainingQty": 0, "avgEntry": 1999.99, "avgExit": 2000.01},
+      "working": "0.02 x 0.01 x 100 = 0.02; net 0.02; risk 0.5 x 1 = 0.5; 0.02/0.5 = 0.04"
+    }
+  ],
+  "statCases": [
+    {
+      "name": "Mixed with one breakeven",
+      "netPnls": [100, -40, 0, 60],
+      "expected": {"winRate": 50, "profitFactor": 4, "expectancy": 30, "avgWin": 80, "avgLoss": -40, "maxDrawdown": 40, "maxConsecutiveWins": 1, "maxConsecutiveLosses": 1, "wins": 2, "losses": 1, "breakeven": 1},
+      "working": "2/4 = 50%; 160/40 = 4; 120/4 = 30; cum 100,60,60,120 so drawdown 100 - 60 = 40; breakeven splits the wins"
+    },
+    {
+      "name": "Empty",
+      "netPnls": [],
+      "expected": {"winRate": null, "profitFactor": null, "expectancy": null, "avgWin": null, "avgLoss": null, "maxDrawdown": 0, "maxConsecutiveWins": 0, "maxConsecutiveLosses": 0, "wins": 0, "losses": 0, "breakeven": 0},
+      "working": "no trades: every ratio divides by zero so null; counts and drawdown 0"
+    },
+    {
+      "name": "All wins",
+      "netPnls": [50, 100, 25.5],
+      "expected": {"winRate": 100, "profitFactor": null, "expectancy": 58.5, "avgWin": 58.5, "avgLoss": null, "maxDrawdown": 0, "maxConsecutiveWins": 3, "maxConsecutiveLosses": 0, "wins": 3, "losses": 0, "breakeven": 0},
+      "working": "3/3 = 100%; no losers so PF null; 175.5/3 = 58.5; cum only rises so drawdown 0"
+    },
+    {
+      "name": "All losses, drawdown measured from starting peak of 0",
+      "netPnls": [-10, -20, -30.5],
+      "expected": {"winRate": 0, "profitFactor": 0, "expectancy": -20.17, "avgWin": null, "avgLoss": -20.17, "maxDrawdown": 60.5, "maxConsecutiveWins": 0, "maxConsecutiveLosses": 3, "wins": 0, "losses": 3, "breakeven": 0},
+      "working": "0/3 = 0%; 0/60.5 = 0; -60.5/3 = -20.1667 -> -20.17; cum -10,-30,-60.5 from peak 0 so drawdown 60.5"
+    },
+    {
+      "name": "All breakeven",
+      "netPnls": [0, 0, 0],
+      "expected": {"winRate": 0, "profitFactor": null, "expectancy": 0, "avgWin": null, "avgLoss": null, "maxDrawdown": 0, "maxConsecutiveWins": 0, "maxConsecutiveLosses": 0, "wins": 0, "losses": 0, "breakeven": 3},
+      "working": "0/3 = 0%; no losers so PF null; 0/3 = 0; no wins or losses so averages null; cum flat"
+    },
+    {
+      "name": "Single loss",
+      "netPnls": [-25],
+      "expected": {"winRate": 0, "profitFactor": 0, "expectancy": -25, "avgWin": null, "avgLoss": -25, "maxDrawdown": 25, "maxConsecutiveWins": 0, "maxConsecutiveLosses": 1, "wins": 0, "losses": 1, "breakeven": 0},
+      "working": "0/1 = 0%; 0/25 = 0; -25/1 = -25; peak 0 to -25 so drawdown 25"
+    },
+    {
+      "name": "First trade loses: drawdown from peak 0 is the max",
+      "netPnls": [-100, 50, -30, 200, -60],
+      "expected": {"winRate": 40, "profitFactor": 1.32, "expectancy": 12, "avgWin": 125, "avgLoss": -63.33, "maxDrawdown": 100, "maxConsecutiveWins": 1, "maxConsecutiveLosses": 1, "wins": 2, "losses": 3, "breakeven": 0},
+      "working": "2/5 = 40%; 250/190 = 1.3158 -> 1.32; 60/5 = 12; 250/2 = 125; -190/3 = -63.33; cum -100,-50,-80,120,60 so max drawdown 100"
+    },
+    {
+      "name": "Max drawdown from a later peak, not the first",
+      "netPnls": [100, 200, -50, -100, -75, 300, -400, 51],
+      "expected": {"winRate": 50, "profitFactor": 1.04, "expectancy": 3.25, "avgWin": 162.75, "avgLoss": -156.25, "maxDrawdown": 400, "maxConsecutiveWins": 2, "maxConsecutiveLosses": 3, "wins": 4, "losses": 4, "breakeven": 0},
+      "working": "4/8 = 50%; 651/625 = 1.0416 -> 1.04; 26/8 = 3.25; 651/4 = 162.75; -625/4 = -156.25; cum 100,300,250,150,75,375,-25,26 so 375 - (-25) = 400"
+    },
+    {
+      "name": "Breakeven breaks both win and loss streaks",
+      "netPnls": [10, 10, 0, 10, 10, 10, -5, 0, -5, -5],
+      "expected": {"winRate": 50, "profitFactor": 3.33, "expectancy": 3.5, "avgWin": 10, "avgLoss": -5, "maxDrawdown": 15, "maxConsecutiveWins": 3, "maxConsecutiveLosses": 2, "wins": 5, "losses": 3, "breakeven": 2},
+      "working": "5/10 = 50%; 50/15 = 3.33; 35/10 = 3.5; cum 10,20,20,30,40,50,45,45,40,35 so 50 - 35 = 15; streaks 2 then 3 wins, 1 then 2 losses"
+    },
+    {
+      "name": "Breakeven counts in the denominator, repeating win rate",
+      "netPnls": [10, -10, 0],
+      "expected": {"winRate": 33.33, "profitFactor": 1, "expectancy": 0, "avgWin": 10, "avgLoss": -10, "maxDrawdown": 10, "maxConsecutiveWins": 1, "maxConsecutiveLosses": 1, "wins": 1, "losses": 1, "breakeven": 1},
+      "working": "1/3 = 33.33%; 10/10 = 1; 0/3 = 0; cum 10,0,0 so drawdown 10"
+    },
+    {
+      "name": "Float trap: 0.1 + 0.2 - 0.3",
+      "netPnls": [0.1, 0.2, -0.3],
+      "expected": {"winRate": 66.67, "profitFactor": 1, "expectancy": 0, "avgWin": 0.15, "avgLoss": -0.3, "maxDrawdown": 0.3, "maxConsecutiveWins": 2, "maxConsecutiveLosses": 1, "wins": 2, "losses": 1, "breakeven": 0},
+      "working": "2/3 = 66.67%; 0.3/0.3 = 1; 0/3 = 0; 0.3/2 = 0.15; cum 0.1,0.3,0 so drawdown 0.3"
+    }
+  ]
+}

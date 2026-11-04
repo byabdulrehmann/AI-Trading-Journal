@@ -69,10 +69,12 @@ function toContextTrade(t: Trade, currency: string, withNotes: boolean): Context
   };
 }
 
-export function buildContext(settings: Settings, focusTradeId?: number | null): JarvisContext {
+export function buildContext(userId: number, settings: Settings, focusTradeId?: number | null): JarvisContext {
   const { sharing, memoryEnabled, behaviouralInsights, coachingStyle } = settings.jarvis;
-  const trades = listTrades();
-  const accounts = listAccounts();
+  const accounts = listAccounts(userId);
+  // Sample trades count only while they're all there is, and the record says so.
+  const real = listTrades(userId);
+  const trades = real.length ? real : listTrades(userId, { includeSample: true });
   const { currencies, primary } = reportingCurrencies(accounts, trades);
   const currency = primary ?? settings.baseCurrency;
   const reported = tradesInCurrency(trades, accounts, currency);
@@ -84,8 +86,8 @@ export function buildContext(settings: Settings, focusTradeId?: number | null): 
   const patterns = behaviouralInsights
     ? detectPatterns(reported).filter((p) => !settings.dismissedPatterns.includes(p.id))
     : [];
-  const memories = memoryEnabled ? listMemories(true).map(({ id, kind, content }) => ({ id, kind, content })) : [];
-  const focus = focusTradeId ? getTrade(focusTradeId) : null;
+  const memories = memoryEnabled ? listMemories(userId, true).map(({ id, kind, content }) => ({ id, kind, content })) : [];
+  const focus = focusTradeId ? getTrade(userId, focusTradeId) : null;
 
   const disclosure = [
     `Summary metrics (counts, P&L totals, win rate, R statistics)${otherCurrencies.length ? ` for your ${currency} accounts only` : ""}`,

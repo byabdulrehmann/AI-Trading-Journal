@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start -H 127.0.0.1",
     "lint": "eslint",
-    "test": "node --no-warnings --import ./scripts/ts-resolve.mjs --test src/lib/domain/domain.test.ts"
+    "test": "node --no-warnings --import ./scripts/ts-resolve.mjs --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",
