@@ -1,0 +1,178 @@
+@import "tailwindcss";
+
+/*
+ * Kestrel design tokens.
+ * Dark "night desk" is the default; a paper-toned light theme follows the OS or
+ * the user's explicit choice (html[data-theme]).
+ */
+:root {
+  --canvas: #0c0f13;
+  --surface: #12161c;
+  --raised: #181d25;
+  --sunken: #0a0d10;
+  --line: #242b35;
+  --line-strong: #323b48;
+  --ink: #e7e9ec;
+  --ink-soft: #b4bac3;
+  --muted: #858e9b;
+  --accent: #d9a54a;
+  --accent-ink: #1a1306;
+  --accent-soft: rgb(217 165 74 / 0.14);
+  --profit: #5cbf94;
+  --profit-soft: rgb(92 191 148 / 0.14);
+  --loss: #e3735e;
+  --loss-soft: rgb(227 115 94 / 0.14);
+  --info: #7aa7e0;
+  --info-soft: rgb(122 167 224 / 0.14);
+  --focus: #f0c06a;
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --canvas: #f4f1ea;
+  --surface: #fbfaf6;
+  --raised: #ffffff;
+  --sunken: #ece8df;
+  --line: #ddd7cb;
+  --line-strong: #c8c0b1;
+  --ink: #1d2228;
+  --ink-soft: #3d444d;
+  --muted: #6a7280;
+  --accent: #9a6a12;
+  --accent-ink: #fffaf0;
+  --accent-soft: rgb(154 106 18 / 0.12);
+  --profit: #1f7a52;
+  --profit-soft: rgb(31 122 82 / 0.1);
+  --loss: #b8442f;
+  --loss-soft: rgb(184 68 47 / 0.1);
+  --info: #2f5f9e;
+  --info-soft: rgb(47 95 158 / 0.1);
+  --focus: #9a6a12;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --canvas: #f4f1ea;
+    --surface: #fbfaf6;
+    --raised: #ffffff;
+    --sunken: #ece8df;
+    --line: #ddd7cb;
+    --line-strong: #c8c0b1;
+    --ink: #1d2228;
+    --ink-soft: #3d444d;
+    --muted: #6a7280;
+    --accent: #9a6a12;
+    --accent-ink: #fffaf0;
+    --accent-soft: rgb(154 106 18 / 0.12);
+    --profit: #1f7a52;
+    --profit-soft: rgb(31 122 82 / 0.1);
+    --loss: #b8442f;
+    --loss-soft: rgb(184 68 47 / 0.1);
+    --info: #2f5f9e;
+    --info-soft: rgb(47 95 158 / 0.1);
+    --focus: #9a6a12;
+    color-scheme: light;
+  }
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-sunken: var(--sunken);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-profit: var(--profit);
+  --color-profit-soft: var(--profit-soft);
+  --color-loss: var(--loss);
+  --color-loss-soft: var(--loss-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --font-sans: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
+}
+
+html,
+body {
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-plex-sans), system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.num {
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -40px;
+  z-index: 100;
+  padding: 8px 12px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: 6px;
+}
+.skip-link:focus {
+  top: 12px;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-rise {
+  animation: rise 180ms ease-out both;
+}
+
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}
+.typing-caret::after {
+  content: "▍";
+  margin-left: 2px;
+  color: var(--accent);
+  animation: caret 1s steps(1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
