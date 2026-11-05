@@ -475,7 +475,7 @@ function TradeFormBody({ trade }: { trade: Trade | null }) {
         <div className="min-w-0">
           <section aria-label="Basic" className={grid}>
             <Field label="Instrument" error={err("symbol")}>
-              {(p) => <input {...p} autoFocus={!locked} list="trade-symbols" className={cx(inputClass, "uppercase")} value={form.symbol} disabled={locked} onChange={(e) => set("symbol", e.target.value)} placeholder="EURUSD" autoComplete="off" autoFocus={!trade} />}
+              {(p) => <input {...p} data-autofocus={!locked || undefined} list="trade-symbols" className={cx(inputClass, "uppercase")} value={form.symbol} disabled={locked} onChange={(e) => set("symbol", e.target.value)} placeholder="EURUSD" autoComplete="off" />}
             </Field>
             <div className="flex flex-col gap-1">
               <span className="text-[13px] text-ink-soft">Direction</span>

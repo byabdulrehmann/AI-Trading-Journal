@@ -97,7 +97,7 @@ export function CommandPalette() {
     <Dialog open={open} onClose={close} title="Go to">
       <input
         ref={input}
-        autoFocus
+        data-autofocus
         aria-label="Search screens and trades"
         placeholder="A screen, a symbol, a note, or #id"
         className={inputClass}
