@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client/api";
 import { useApp } from "@/lib/client/app-state";
-import { Badge, Button, Spinner, cx, inputClass } from "../ui";
+import { Button, Notice, Spinner, cx, inputClass } from "../ui";
 import { useTradBot, useTradBotMic, type MicState, type TradBotEvent, type TradBotStatus } from "./useTradBot";
 
 const WAIT_MS = 45_000;
@@ -74,9 +74,7 @@ export function TradBotConsole({ compact }: { compact?: boolean }) {
         <>
           <div ref={listRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4" aria-live="polite">
             {status.link !== "connected" && (
-              <p className="rounded-md border border-accent/40 bg-accent-soft px-3 py-2 text-[13px]">
-                {status.link === "connecting" ? "Connecting to TradBot-I…" : `TradBot-I isn't answering at ${status.url}. Jarvis will reconnect when it's back.`}
-              </p>
+              <Notice>{status.link === "connecting" ? "Connecting to TradBot-I…" : <>TradBot-I isn&apos;t answering at <code className="num">{status.url}</code>. Jarvis will reconnect when it&apos;s back.</>}</Notice>
             )}
             {feed.length === 0 && status.link === "connected" && (
               <p className="text-[14px] text-ink-soft">
@@ -91,7 +89,7 @@ export function TradBotConsole({ compact }: { compact?: boolean }) {
 
           <div className="border-t border-line p-3">
             {micError && (
-              <p role="alert" className="mb-2 rounded-md border border-loss/50 bg-loss-soft px-3 py-2 text-[12.5px]">
+              <p role="alert" className="mb-2 border-l-2 border-loss bg-loss-soft px-3 py-2 text-[12.5px]">
                 {micError}
               </p>
             )}
@@ -147,24 +145,21 @@ export function TradBotConsole({ compact }: { compact?: boolean }) {
 }
 
 function StatusBar({ status, streamError, mic }: { status: TradBotStatus; streamError: boolean; mic: MicState }) {
-  const [tone, label] = !status.reachable && !status.paired
-    ? (["loss", "Not running"] as const)
+  const label = !status.reachable && !status.paired
+    ? "Not running"
     : !status.paired
-      ? (["accent", "Not paired"] as const)
+      ? "Not paired"
       : status.link === "connected"
         ? status.session === "reconnecting"
-          ? (["accent", "TradBot-I reconnecting to Gemini"] as const)
-          : (["profit", "Connected"] as const)
+          ? "TradBot-I reconnecting to Gemini"
+          : "Connected"
         : status.link === "connecting"
-          ? (["accent", "Connecting"] as const)
-          : (["loss", "Disconnected"] as const);
+          ? "Connecting"
+          : "Disconnected";
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2.5">
-      <Badge tone={tone}>
-        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" />
-        TradBot-I · {label}
-      </Badge>
-      {mic === "live" && <Badge tone="loss">● Mic live</Badge>}
+      <span className="text-[13px] text-ink-soft">TradBot-I: <span className="font-medium text-ink">{label}</span></span>
+      {mic === "live" && <span className="text-[13px] font-medium text-ink">Mic live</span>}
       <span className="num ml-auto truncate text-[11.5px] text-muted">{status.url.replace(/^https?:\/\//, "")}</span>
       {streamError && <span className="w-full text-[12px] text-loss">Lost the live feed from the Jarvis server; retrying…</span>}
     </div>
@@ -175,13 +170,13 @@ function FeedItem({ e }: { e: TradBotEvent }) {
   if (e.type === "log" && e.speaker === "user")
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-lg rounded-br-sm bg-raised px-3.5 py-2 text-[14px] whitespace-pre-wrap ring-1 ring-line">{e.text}</div>
+        <div className="max-w-[85%] bg-raised px-3 py-2 text-[14px] whitespace-pre-wrap">{e.text}</div>
       </div>
     );
   if (e.type === "log")
     return (
       <div className="animate-rise">
-        <p className="mb-0.5 text-[11.5px] font-semibold text-accent">TradBot-I</p>
+        <p className="mb-0.5 text-[12px] font-medium text-ink-soft">TradBot-I</p>
         <p className="text-[14px] leading-relaxed whitespace-pre-wrap text-ink">{e.text}</p>
       </div>
     );
@@ -200,27 +195,27 @@ function MicButton({ state, level, disabled, onStart, onStop }: { state: MicStat
       aria-label={live ? "Stop microphone" : "Start microphone"}
       title={live ? "Stop microphone" : "Talk to TradBot-I"}
       className={cx(
-        "relative grid h-10 w-10 shrink-0 place-items-center rounded-md border transition-colors disabled:opacity-50",
-        live ? "border-loss bg-loss-soft text-loss" : "border-line-strong bg-raised text-ink-soft hover:text-ink",
+        "relative grid h-10 w-10 shrink-0 place-items-center border transition-colors disabled:cursor-not-allowed disabled:opacity-50 pointer-coarse:h-11 pointer-coarse:w-11",
+        live ? "border-accent bg-accent-soft text-ink" : "border-line-strong text-ink-soft hover:bg-raised hover:text-ink",
       )}
     >
       {state === "requesting" ? (
         <span aria-hidden className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-line-strong border-t-accent" />
       ) : (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
-          {live ? <rect x="7" y="7" width="10" height="10" rx="1.5" /> : <path d="M12 3a3 3 0 013 3v6a3 3 0 01-6 0V6a3 3 0 013-3zM5 11a7 7 0 0014 0M12 18v3" />}
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+          {live ? <rect x="7" y="7" width="10" height="10" /> : <path d="M12 3a3 3 0 013 3v6a3 3 0 01-6 0V6a3 3 0 013-3zM5 11a7 7 0 0014 0M12 18v3" />}
         </svg>
       )}
-      {live && <span aria-hidden className="absolute inset-x-1 bottom-0.5 h-0.5 origin-left rounded bg-loss transition-transform" style={{ transform: `scaleX(${Math.max(0.08, level)})` }} />}
+      {live && <span aria-hidden className="absolute inset-x-1 bottom-0.5 h-0.5 origin-left bg-accent transition-transform" style={{ transform: `scaleX(${Math.max(0.08, level)})` }} />}
     </button>
   );
 }
 
 function MicHelp({ state }: { state: MicState }) {
   if (state === "denied")
-    return <p className="mb-2 text-[12.5px] text-loss">Microphone blocked. Allow it from the site settings next to the address bar, then try again.</p>;
+    return <p className="mb-2 text-[12.5px] text-warn">Microphone blocked. Allow it from the site settings next to the address bar, then try again.</p>;
   if (state === "unsupported")
-    return <p className="mb-2 text-[12.5px] text-loss">This browser can&apos;t capture audio here. Use a current Chrome, Edge or Firefox on http://localhost.</p>;
+    return <p className="mb-2 text-[12.5px] text-warn">This browser can&apos;t capture audio here. Use a current Chrome, Edge or Firefox on http://localhost.</p>;
   if (state === "live")
     return <p className="mb-2 text-[12.5px] text-muted">Listening. TradBot-I ignores mic audio while it is speaking, so wait for it to finish.</p>;
   return null;
@@ -246,15 +241,15 @@ function PairForm({ onPaired, error }: { onPaired: () => void; error: string | n
     <div className="space-y-3 p-4 text-[14px]">
       <p className="font-medium">TradBot-I is running. Pair Jarvis with it:</p>
       <ol className="list-decimal space-y-1 pl-5 text-ink-soft">
-        <li>In the TradBot-I window, press <strong>Remote Control</strong>.</li>
+        <li>In the TradBot-I window, press <span className="font-medium text-ink">Remote Control</span>.</li>
         <li>Type the 6-character key it shows (it expires after 10 minutes and works once).</li>
       </ol>
-      {error && <p className="rounded-md border border-accent/40 bg-accent-soft px-3 py-2 text-[13px]">{error}</p>}
+      {error && <Notice>{error}</Notice>}
       <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); void submit(); }}>
         <label htmlFor="tradbot-pin" className="sr-only">Remote Control key</label>
         <input
           id="tradbot-pin"
-          className={cx(inputClass, "num w-36 tracking-[0.3em] uppercase")}
+          className={cx(inputClass, "num w-36")}
           value={pin}
           onChange={(e) => setPin(e.target.value.replace(/[^a-z0-9]/gi, "").slice(0, 6))}
           placeholder="ABC123"
@@ -276,7 +271,7 @@ function NotRunning({ status, onRetry }: { status: TradBotStatus; onRetry: () =>
         Jarvis couldn&apos;t reach TradBot-I&apos;s remote dashboard at <code className="num">{status.url}</code>. Everything else in Jarvis keeps working, including the AI Coach.
       </p>
       <p className="text-ink-soft">Start it in its own folder:</p>
-      <pre className="num overflow-x-auto rounded-md bg-sunken p-3 text-[12.5px]">{`cd TradBot-I-main
+      <pre className="num overflow-x-auto bg-sunken p-3 text-[12.5px]">{`cd TradBot-I-main
 .venv\\Scripts\\activate
 python main.py`}</pre>
       <p className="text-[12.5px] text-muted">TradBot-I needs its Gemini key set up, a microphone and speakers on that computer. Its dashboard needs fastapi and uvicorn, which its setup installs.</p>

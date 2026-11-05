@@ -9,7 +9,7 @@ import { MEMORY_KINDS, type Memory } from "@/lib/domain/types";
 import { JarvisChat } from "@/components/jarvis/JarvisChat";
 import { useJarvisChat } from "@/components/jarvis/useJarvisChat";
 import { TradBotConsole } from "@/components/tradbot/TradBotConsole";
-import { Badge, Button, Card, CardHeader, EmptyState, PageHeader, Segmented, Spinner, cx, inputClass } from "@/components/ui";
+import { Badge, Button, EmptyState, Notice, PageHeader, Segmented, Spinner, cx, inputClass } from "@/components/ui";
 
 interface Conversation { id: number; title: string; createdAt: string; messageCount: number }
 interface ProviderInfo {
@@ -53,39 +53,39 @@ export default function JarvisPage() {
       />
 
       {tab === "tradbot" && (
-        <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
-          <Card className="h-[calc(100dvh-13rem)] min-h-[480px] overflow-hidden">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-x-8 gap-y-5 border-t border-line lg:grid-cols-[minmax(0,1fr)_17.5rem]">
+          <section aria-label="TradBot-I console" className="h-[calc(100dvh-13rem)] min-h-[480px] overflow-hidden">
             <TradBotConsole />
-          </Card>
-          <Card className="self-start p-4 text-[13px] text-ink-soft">
-            <h2 className="mb-2 text-[14px] font-semibold text-ink">Your TradBot-I assistant</h2>
+          </section>
+          <aside className="self-start text-[13px] text-ink-soft lg:pt-3">
+            <h2 className="mb-2 text-[14px] font-medium text-ink">Your TradBot-I assistant</h2>
             <p>This is the same assistant as the TradBot-I desktop app: its personality, tools, memory, trading monitor and Gemini Live voice. Jarvis is a remote control for it.</p>
             <ul className="mt-2 list-disc space-y-1 pl-4">
               <li>Replies are spoken on the computer running TradBot-I, in the voice chosen in its HUD (Charon, Puck, Kore, Fenrir or Aoede).</li>
-              <li>Change voice, audio devices, push-to-talk and trading settings in TradBot-I&apos;s ⚙ drawer.</li>
+              <li>Change voice, audio devices, push-to-talk and trading settings in TradBot-I&apos;s settings drawer.</li>
               <li>It doesn&apos;t see this journal. Its own journal lives in TradBot-I.</li>
               <li>Actions that need confirmation (shutdown, restart, Wi-Fi) still wait for the button in the TradBot-I window.</li>
             </ul>
-          </Card>
+          </aside>
         </div>
       )}
 
       {tab === "chat" && (
-        <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
-          <Card className="self-start">
-            <div className="flex items-center justify-between border-b border-line px-3 py-2.5">
-              <h2 className="text-[13px] font-semibold text-ink-soft">Conversations</h2>
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-x-6 gap-y-5 border-t border-line lg:grid-cols-[15rem_minmax(0,1fr)]">
+          <section aria-label="Conversations" className="self-start">
+            <div className="flex items-center justify-between border-b border-line py-1.5">
+              <h2 className="text-[13px] font-medium text-ink-soft">Conversations</h2>
               <Button size="sm" variant="ghost" onClick={() => void chat.load(null)}>New</Button>
             </div>
-            <ul className="max-h-[50vh] overflow-y-auto py-1">
+            <ul className="max-h-[50vh] overflow-y-auto">
               {conversations.length === 0 && <li className="px-3 py-2 text-[13px] text-muted">None yet</li>}
               {conversations.map((c) => (
-                <li key={c.id} className="group flex items-center">
+                <li key={c.id} className="flex items-center border-b border-line">
                   <button
                     type="button"
                     onClick={() => void chat.load(c.id)}
                     aria-current={chat.conversationId === c.id}
-                    className={cx("min-w-0 flex-1 truncate px-3 py-2 text-left text-[13px]", chat.conversationId === c.id ? "bg-raised text-ink" : "text-ink-soft hover:text-ink")}
+                    className={cx("min-w-0 flex-1 truncate px-2 py-2 text-left text-[13px] pointer-coarse:py-3", chat.conversationId === c.id ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--accent)]" : "text-ink-soft hover:bg-raised hover:text-ink")}
                     title={c.title}
                   >
                     {c.title}
@@ -93,22 +93,22 @@ export default function JarvisPage() {
                   <button
                     type="button"
                     aria-label={`Delete conversation ${c.title}`}
-                    className="px-2 text-muted opacity-60 hover:text-loss group-hover:opacity-100"
+                    className="grid h-8 w-8 shrink-0 place-items-center text-muted hover:bg-raised hover:text-ink pointer-coarse:h-11 pointer-coarse:w-11"
                     onClick={async () => {
                       await api(`/api/jarvis/conversations/${c.id}`, { method: "DELETE" });
                       if (chat.conversationId === c.id) await chat.load(null);
                       await loadConversations();
                     }}
                   >
-                    ✕
+                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden><path d="M2 2l10 10M12 2L2 12" /></svg>
                   </button>
                 </li>
               ))}
             </ul>
-          </Card>
-          <Card className="h-[calc(100dvh-13rem)] min-h-[480px] overflow-hidden">
+          </section>
+          <section aria-label="Chat" className="h-[calc(100dvh-13rem)] min-h-[480px] overflow-hidden lg:border-l lg:border-line">
             <JarvisChat key={modelVersion} chat={chat} onModelSwitched={() => void loadConversations()} />
-          </Card>
+          </section>
         </div>
       )}
       {tab === "memory" && <MemoryManager />}
@@ -142,27 +142,27 @@ function ModelPicker({ onSwitched }: { onSwitched: () => void }) {
 
   if (!data) return <Spinner label="Asking providers which models are available" />;
   return (
-    <div className="space-y-4">
-      <Card className="p-5">
+    <div>
+      <section aria-label="Active model" className="border-t border-line py-4">
         <p className="text-[13px] text-muted">Active now</p>
-        <p className="mt-1 text-[16px] font-semibold">{data.active.label}, <span className="num">{data.active.model}</span></p>
-        {data.active.fallbackReason && <p className="mt-2 text-[13px] text-accent">Demo mode is standing in: {data.active.fallbackReason}</p>}
+        <p className="mt-1 text-[16px] font-medium">{data.active.label}, <span className="num">{data.active.model}</span></p>
+        {data.active.fallbackReason && <div className="mt-2"><Notice>Demo mode is standing in: {data.active.fallbackReason}</Notice></div>}
         <p className="mt-2 text-[13px] text-muted">You can also type <code className="num">/models</code> or &quot;switch to sonnet&quot; in the chat.</p>
-      </Card>
+      </section>
       {data.providers.map((p) => (
-        <Card key={p.id}>
-          <CardHeader
-            title={p.label}
-            subtitle={p.external ? "Sends the shared context to this provider over the internet." : "Runs on this computer. No network calls."}
-            action={p.configured ? <Badge tone="profit">Configured</Badge> : <Badge tone="loss">Not configured</Badge>}
-          />
-          <div className="p-5">
+        <section key={p.id} className="grid grid-cols-[minmax(0,1fr)] gap-x-10 gap-y-3 border-t border-line py-4 lg:grid-cols-[17rem_minmax(0,1fr)]">
+          <div>
+            <h2 className="text-[15px] font-medium text-ink">{p.label}</h2>
+            <p className="mt-0.5 text-[13px] text-muted">{p.external ? "Sends the shared context to this provider over the internet." : "Runs on this computer. No network calls."}</p>
+            <p className="mt-1 text-[13px] text-ink-soft">{p.configured ? "Configured" : "Not configured"}</p>
+          </div>
+          <div className="min-w-0">
             {!p.configured ? (
               <p className="text-[13.5px] text-ink-soft">{p.reason} See the README for setup. Keys stay on the server and are never sent to the browser.</p>
             ) : p.modelError ? (
-              <p className="text-[13.5px] text-loss">{p.modelError}</p>
+              <Notice tone="loss">{p.modelError}</Notice>
             ) : (
-              <ul className="grid gap-2 sm:grid-cols-2">
+              <ul className="divide-y divide-line border-y border-line">
                 {p.models.map((m) => {
                   const isActive = data.active.provider === p.id && data.active.model === m.id;
                   return (
@@ -171,10 +171,11 @@ function ModelPicker({ onSwitched }: { onSwitched: () => void }) {
                         type="button"
                         disabled={busy || isActive}
                         onClick={() => void choose(p.id, m.id)}
-                        className={cx("w-full rounded-lg border px-3 py-2.5 text-left transition-colors disabled:cursor-default", isActive ? "border-accent bg-accent-soft" : "border-line hover:border-line-strong")}
+                        aria-current={isActive || undefined}
+                        className={cx("flex w-full items-center gap-3 px-2 py-2 text-left transition-colors disabled:cursor-default", isActive ? "bg-raised shadow-[inset_2px_0_0_var(--accent)]" : "hover:bg-raised")}
                       >
-                        <span className="block text-[14px] font-medium">{m.displayName}</span>
-                        <span className="num block text-[12px] text-muted">{m.id}{m.id === p.defaultModel ? ", default" : ""}</span>
+                        <span className="min-w-0 flex-1 text-[14px] font-medium">{m.displayName}</span>
+                        <span className="min-w-0 truncate text-[12.5px] text-muted"><code className="num">{m.id}</code>{m.id === p.defaultModel ? ", default" : ""}</span>
                       </button>
                     </li>
                   );
@@ -182,7 +183,7 @@ function ModelPicker({ onSwitched }: { onSwitched: () => void }) {
               </ul>
             )}
           </div>
-        </Card>
+        </section>
       ))}
     </div>
   );
@@ -232,7 +233,7 @@ function MemoryManager() {
 
   return (
     <div className="space-y-4">
-      <Card className="flex flex-wrap items-center gap-3 p-4">
+      <section aria-label="Memory controls" className="flex flex-wrap items-center gap-3 border-t border-line pt-3">
         <div className="min-w-0 flex-1 text-[13.5px] text-ink-soft">
           The coach only remembers what you save here. Active memories are included with each message; paused ones are kept but not sent.
         </div>
@@ -251,11 +252,11 @@ function MemoryManager() {
         >
           Reset
         </Button>
-      </Card>
-      {!memoryOn && <p className="rounded-md border border-accent/40 bg-accent-soft px-3 py-2 text-[13px]">Memory is paused. Nothing below is sent to the coach.</p>}
+      </section>
+      {!memoryOn && <Notice>Memory is paused. Nothing below is sent to the coach.</Notice>}
 
-      <Card className="p-4">
-        <h2 className="mb-2 text-[14px] font-semibold">Add a memory</h2>
+      <section className="border-t border-line pt-3">
+        <h2 className="mb-2 text-[14px] font-medium">Add a memory</h2>
         <div className="flex flex-col gap-2 sm:flex-row">
           <select aria-label="Memory type" className={cx(inputClass, "sm:w-40")} value={newKind} onChange={(e) => setNewKind(e.target.value as Memory["kind"])}>
             {MEMORY_KINDS.map((k) => <option key={k}>{k}</option>)}
@@ -264,22 +265,22 @@ function MemoryManager() {
           <input id="new-memory" className={inputClass} placeholder="e.g. My rule: no new trades after two losses in a day" value={newText} onChange={(e) => setNewText(e.target.value)} maxLength={500} />
           <Button variant="primary" onClick={add} disabled={newText.trim().length < 3}>Save</Button>
         </div>
-      </Card>
+      </section>
 
       {!memories ? (
         <Spinner />
       ) : memories.length === 0 ? (
         <EmptyState title="No memories" body="Save goals, rules or preferences you want the coach to keep in mind, or use “Remember something from this” under a reply." />
       ) : (
-        <ul className="space-y-2">
+        <ul className="border-b border-line">
           {memories.map((m) => (
-            <li key={m.id}>
-              <Card className={cx("p-4", !m.active && "opacity-60")}>
+            <li key={m.id} className="border-t border-line py-3">
+              <div className={cx(!m.active && "opacity-60")}>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone="accent">{m.kind}</Badge>
+                  <Badge>{m.kind}</Badge>
                   {!m.active && <Badge>paused</Badge>}
-                  <span className="text-[12px] text-muted">Saved {dateTime(m.createdAt)}</span>
-                  {m.evidenceTradeIds.length > 0 && <span className="text-[12px] text-muted">Linked trades {m.evidenceTradeIds.map((i) => `#${i}`).join(" ")}</span>}
+                  <span className="text-[12px] text-muted">Saved <span className="num">{dateTime(m.createdAt)}</span>, local time</span>
+                  {m.evidenceTradeIds.length > 0 && <span className="text-[12px] text-muted">Linked trades <span className="num">{m.evidenceTradeIds.map((i) => `#${i}`).join(" ")}</span></span>}
                 </div>
                 {editing === m.id ? (
                   <div className="mt-2 flex flex-col gap-2 sm:flex-row">
@@ -297,7 +298,6 @@ function MemoryManager() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="text-loss"
                     onClick={async () => {
                       await api(`/api/jarvis/memories/${m.id}`, { method: "DELETE" });
                       await load();
@@ -306,7 +306,7 @@ function MemoryManager() {
                     Delete
                   </Button>
                 </div>
-              </Card>
+              </div>
             </li>
           ))}
         </ul>

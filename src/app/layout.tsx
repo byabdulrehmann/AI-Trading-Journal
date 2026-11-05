@@ -1,11 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Hanken_Grotesk, IBM_Plex_Mono } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppStateProvider } from "@/lib/client/app-state";
 import { Shell } from "@/components/Shell";
 
-const sans = Hanken_Grotesk({ variable: "--font-ui", subsets: ["latin"], weight: ["400", "500", "600"] });
-const mono = IBM_Plex_Mono({ variable: "--font-figures", subsets: ["latin"], weight: ["400", "500"] });
+const sans = Geist({ variable: "--font-ui", subsets: ["latin"], weight: ["400", "500"] });
+const mono = Geist_Mono({ variable: "--font-figures", subsets: ["latin"], weight: ["400", "500"] });
 
 export const metadata: Metadata = {
   title: "Jarvis",
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b0d0e",
+  themeColor: "#0a0908",
 };
 
 // Applies the saved theme before first paint. Dark unless the user chose otherwise; "kestrel-theme" is the old key.

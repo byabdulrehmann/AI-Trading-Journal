@@ -222,6 +222,12 @@ export interface TradeFilters {
   source?: TradeSource;
   outcome?: "win" | "loss" | "breakeven" | "open" | "pending";
   /** Close-time window, for a calendar day. `from` and `to` are open-time. */
+  side?: "long" | "short";
+  /** Local to this computer, of the open time. Sunday is 0. */
+  weekday?: number;
+  hour?: number;
+  /** The trades analytics counts: closed, with a known result. */
+  closedOnly?: boolean;
   closedFrom?: string;
   closedTo?: string;
   plan?: "on" | "off" | "unanswered";
@@ -248,6 +254,10 @@ function whereClause(userId: number, f: TradeFilters): { sql: string; args: (str
   if (f.source) add("t.source = ?", f.source);
   else if (!f.includeSample && !f.accountId) add("t.source != 'sample'");
   if (f.session) add("t.session = ?", f.session);
+  if (f.side) add("t.side = ?", f.side);
+  if (f.weekday !== undefined) add("CAST(strftime('%w', t.opened_at, 'localtime') AS INTEGER) = ?", f.weekday);
+  if (f.hour !== undefined) add("CAST(strftime('%H', t.opened_at, 'localtime') AS INTEGER) = ?", f.hour);
+  if (f.closedOnly) add("t.status = 'closed' AND t.pnl_status = 'ok'");
   if (f.currency) add("t.account_id IN (SELECT id FROM accounts WHERE user_id = ? AND currency = ?)", userId, f.currency);
   if (f.outcome === "win") add("t.status = 'closed' AND t.net_pnl > 0");
   if (f.outcome === "loss") add("t.status = 'closed' AND t.net_pnl < 0");

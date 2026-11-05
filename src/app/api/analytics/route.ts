@@ -48,7 +48,7 @@ export async function GET(req: Request) {
       strategy: by((t) => t.strategy || "(no strategy)"),
       side: by((t) => t.side),
       session: by((t) => t.session ?? "(unknown)"),
-      weekday: by((t) => WEEKDAYS[new Date(t.closedAt ?? t.openedAt).getDay()]),
+      weekday: by((t) => WEEKDAYS[new Date(t.openedAt).getDay()]),
       hour: by((t) => hour(t.openedAt)),
       account: by((t) => accounts.find((a) => a.id === t.accountId)?.name ?? "(unknown)"),
       setup: by((t) => t.setup || "(no setup)"),

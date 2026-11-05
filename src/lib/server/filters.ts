@@ -15,6 +15,10 @@ const FilterQuery = z.object({
   closedTo: z.iso.datetime().optional(),
   plan: z.enum(["on", "off", "unanswered"]).optional(),
   session: z.string().trim().max(30).optional(),
+  side: z.enum(["long", "short"]).optional(),
+  weekday: z.coerce.number().int().min(0).max(6).optional(),
+  hour: z.coerce.number().int().min(0).max(23).optional(),
+  closedOnly: z.enum(["1"]).optional(),
   tag: z.string().trim().max(30).optional(),
   q: z.string().trim().max(100).optional(),
   currency: z.string().trim().length(3).optional(),
@@ -26,6 +30,6 @@ export function filtersFrom(params: URLSearchParams): TradeFilters | Response {
   const raw = Object.fromEntries([...params].filter(([k, v]) => v !== "" && k in FilterQuery.shape));
   const parsed = FilterQuery.safeParse(raw);
   if (!parsed.success) return fail("Invalid filters.", 400, parsed.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })));
-  const { includeSample, ...rest } = parsed.data;
-  return { ...rest, includeSample: includeSample === "1" };
+  const { includeSample, closedOnly, ...rest } = parsed.data;
+  return { ...rest, includeSample: includeSample === "1", closedOnly: closedOnly === "1" };
 }

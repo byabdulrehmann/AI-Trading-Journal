@@ -11,7 +11,7 @@ import { PATTERN_RULES, type PatternFinding } from "@/lib/domain/patterns";
 import { CurrencyPicker } from "@/components/CurrencyPicker";
 import { Suspended } from "@/components/Suspended";
 import { TradeFilters } from "@/components/TradeFilters";
-import { Badge, Button, Card, EmptyState, PageHeader, Spinner } from "@/components/ui";
+import { Button, EmptyState, PageHeader, Spinner } from "@/components/ui";
 
 export default function PatternsPage() {
   return (
@@ -39,7 +39,7 @@ function Patterns() {
       </>
     );
   if (error && !data) return <EmptyState title="Couldn't load patterns" body={error} action={<Button onClick={reload}>Try again</Button>} />;
-  if (!data) return <Spinner />;
+  if (!data) return <Spinner label="Checking your records" />;
 
   const cur = data.currency;
   const dismissed = settings?.dismissedPatterns ?? [];
@@ -68,27 +68,27 @@ function Patterns() {
       <TradeFilters filters={filters} />
 
       {showRules && (
-        <Card className="mb-section p-card">
-          <ul className="grid gap-x-8 gap-y-3 text-[13.5px] sm:grid-cols-2">
+        <section aria-label="The rules" className="mb-section border-t border-line py-3">
+          <ul className="grid gap-x-8 sm:grid-cols-2">
             {Object.entries(PATTERN_RULES).map(([id, r]) => (
-              <li key={id}>
+              <li key={id} className="border-b border-line py-2 text-[13.5px]">
                 <p className="font-medium text-ink">{r.title}</p>
                 <p className="mt-0.5 text-ink-soft">{r.rule}</p>
                 <p className="mt-0.5 text-[12.5px] text-muted">Needs at least {r.minSample}.</p>
               </li>
             ))}
           </ul>
-        </Card>
+        </section>
       )}
 
       {active.length > 0 && totalCost < 0 && (
-        <Card className="mb-section flex flex-wrap items-center gap-x-6 gap-y-2 p-card">
+        <section aria-label="Combined P&L" className="mb-section flex flex-wrap items-end gap-x-8 gap-y-2 border-t border-line pt-3">
           <div>
-            <p className="text-[13px] text-muted">Combined P&amp;L of the trades behind these patterns</p>
-            <p className={`num text-[22px] ${toneOf(totalCost)}`}>{money(totalCost, cur, true)}</p>
+            <p className={`figure ${toneOf(totalCost)}`}>{money(totalCost, cur, true)}</p>
+            <p className="mt-1 text-[13px] text-muted">Combined P&amp;L of the trades behind these patterns</p>
           </div>
           <p className="max-w-md text-[13px] text-muted">Patterns can share trades, so this is a rough size of what&apos;s at stake, not a precise cost.</p>
-        </Card>
+        </section>
       )}
 
       {active.length === 0 ? (
@@ -98,48 +98,45 @@ function Patterns() {
           action={filters.active ? <Button onClick={filters.clear}>Clear filters</Button> : undefined}
         />
       ) : (
-        <div className="space-y-4">
+        <ol className="border-b border-line">
           {active.map((p) => (
-            <Card key={p.id} className="p-card">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="text-[16px] font-semibold">{p.title}</h2>
-                  <div className="mt-1 flex flex-wrap gap-1.5">
-                    <Badge tone={p.confidence === "medium" ? "accent" : "neutral"}>{p.confidence} confidence</Badge>
-                    <Badge>{p.occurrences} trades</Badge>
-                  </div>
+            <li key={p.id} className="grid gap-x-8 gap-y-2 border-t border-line py-4 md:grid-cols-[15rem_minmax(0,1fr)]">
+              <div className="min-w-0">
+                <h2 className="text-[16px] font-medium">{p.title}</h2>
+                <p className="mt-1 text-[12.5px] text-muted">{p.confidence[0].toUpperCase() + p.confidence.slice(1)} confidence, <span className="num">{p.occurrences}</span> trades</p>
+                {p.cost !== null && <p className={`num mt-2 text-[18px] ${toneOf(p.cost)}`}>{money(p.cost, cur, true)}</p>}
+              </div>
+              <div className="min-w-0">
+                <dl className="max-w-3xl space-y-1.5 text-[14px]">
+                  <div><dt className="inline font-medium text-ink">Recorded: </dt><dd className="inline text-ink-soft">{p.observation}</dd></div>
+                  <div><dt className="inline font-medium text-ink">Possible reading: </dt><dd className="inline text-ink-soft">{p.interpretation}</dd></div>
+                  <div><dt className="inline font-medium text-ink">Something to try: </dt><dd className="inline text-ink-soft">{p.suggestion}</dd></div>
+                </dl>
+                <details className="mt-3 text-[13px]">
+                  <summary className="cursor-pointer text-muted hover:text-ink">Evidence and rule</summary>
+                  <p className="mt-2 text-muted">{p.rule}</p>
+                  <ul className="mt-2 flex flex-wrap gap-1.5">
+                    {p.evidenceTradeIds.map((id) => (
+                      <li key={id}>
+                        <button type="button" className="num border border-line-strong px-1.5 py-0.5 text-[12px] hover:bg-raised pointer-coarse:px-3 pointer-coarse:py-3" onClick={() => openTrade(id)}>#{id}</button>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {settings?.jarvis.enabled && <Button size="sm" onClick={() => askJarvis(`Help me think through the pattern "${p.title}". Is it a problem for me?`)}>Discuss with the AI Coach</Button>}
+                  <Button size="sm" variant="ghost" onClick={() => void dismiss(p)}>Doesn&apos;t apply to me, hide</Button>
                 </div>
-                {p.cost !== null && <span className={`num text-[18px] ${toneOf(p.cost)}`}>{money(p.cost, cur, true)}</span>}
               </div>
-              <dl className="mt-3 space-y-1.5 text-[14px]">
-                <div><dt className="inline font-medium text-ink">Recorded: </dt><dd className="inline text-ink-soft">{p.observation}</dd></div>
-                <div><dt className="inline font-medium text-ink">Possible reading: </dt><dd className="inline text-ink-soft">{p.interpretation}</dd></div>
-                <div><dt className="inline font-medium text-ink">Something to try: </dt><dd className="inline text-ink-soft">{p.suggestion}</dd></div>
-              </dl>
-              <details className="mt-3 text-[13px]">
-                <summary className="cursor-pointer text-muted hover:text-ink">Evidence and rule</summary>
-                <p className="mt-2 text-muted">{p.rule}</p>
-                <ul className="mt-2 flex flex-wrap gap-1.5">
-                  {p.evidenceTradeIds.map((id) => (
-                    <li key={id}>
-                      <button type="button" className="num rounded-control border border-line px-1.5 py-0.5 text-[12px] hover:border-accent" onClick={() => openTrade(id)}>#{id}</button>
-                    </li>
-                  ))}
-                </ul>
-              </details>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {settings?.jarvis.enabled && <Button size="sm" onClick={() => askJarvis(`Help me think through the pattern "${p.title}". Is it a problem for me?`)}>Discuss with the AI Coach</Button>}
-                <Button size="sm" variant="ghost" onClick={() => void dismiss(p)}>Doesn&apos;t apply to me, hide</Button>
-              </div>
-            </Card>
+            </li>
           ))}
-        </div>
+        </ol>
       )}
 
       {hidden.length > 0 && (
         <p className="mt-5 text-[13px] text-muted">
-          {hidden.length} hidden pattern{hidden.length > 1 ? "s" : ""}.{" "}
-          <button type="button" className="text-accent underline" onClick={() => void saveSettings({ dismissedPatterns: [] })}>Show again</button>
+          <span className="num">{hidden.length}</span> hidden pattern{hidden.length > 1 ? "s" : ""}.{" "}
+          <button type="button" className="text-ink underline underline-offset-2" onClick={() => void saveSettings({ dismissedPatterns: [] })}>Show again</button>
         </p>
       )}
       <p className="mt-5 text-[12.5px] text-muted">

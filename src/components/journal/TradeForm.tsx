@@ -10,7 +10,9 @@ import { ASSET_CLASSES, SESSIONS, classifySymbol, normalizeSymbol, parsePair, re
 import { computePosition, type PositionResult } from "@/lib/domain/engine/position";
 import { EMOTIONS, GRADES, MISTAKES, TradeInput, type Attachment, type Trade } from "@/lib/domain/types";
 import type { InstrumentSpec } from "@/lib/server/repo/journal";
+import { decimalsOf } from "@/lib/client/ladder";
 import { Button, Dialog, Field, Notice, Segmented, Spinner, cx, inputClass } from "../ui";
+import { PriceLadder } from "./PriceLadder";
 
 interface FillRow {
   key: number;
@@ -254,12 +256,12 @@ function Section({ title, summary, defaultOpen, force, children }: { title: stri
   const [open, setOpen] = useState(Boolean(defaultOpen));
   const shown = open || force;
   return (
-    <section className="border-t border-line first:border-t-0">
+    <section className="border-b border-line">
       <h3>
-        <button type="button" aria-expanded={shown} onClick={() => setOpen(!shown)} className="flex w-full items-center gap-2 py-2.5 text-left text-[14px] font-semibold hover:text-accent">
+        <button type="button" aria-expanded={shown} onClick={() => setOpen(!shown)} className="flex w-full items-center gap-2 py-1.5 text-left text-[14px] font-medium hover:bg-raised pointer-coarse:py-3">
           <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden className={cx("shrink-0 text-muted transition-transform", shown && "rotate-90")} fill="currentColor"><path d="M3 1l5 4-5 4z" /></svg>
-          {title}
-          {summary && <span className="truncate font-normal text-[12.5px] text-muted">{summary}</span>}
+          <span className="shrink-0">{title}</span>
+          {summary && <span className="min-w-0 truncate font-normal text-[12.5px] text-muted">{summary}</span>}
         </button>
       </h3>
       {shown && <div className="pb-4">{children}</div>}
@@ -279,7 +281,7 @@ function Rating({ label, value, onChange }: { label: string; value: string; onCh
             role="radio"
             aria-checked={value === String(v)}
             onClick={() => onChange(value === String(v) ? "" : String(v))}
-            className={cx("num h-7 w-7 rounded-control border text-[13px]", value === String(v) ? "border-accent bg-accent-soft text-ink" : "border-line-strong text-muted hover:text-ink")}
+            className={cx("num h-8 w-8 border text-[13px] pointer-coarse:h-11 pointer-coarse:w-11", value === String(v) ? "border-accent bg-accent-soft text-ink" : "border-line-strong text-muted hover:text-ink")}
           >
             {v}
           </button>
@@ -289,7 +291,7 @@ function Rating({ label, value, onChange }: { label: string; value: string; onCh
   );
 }
 
-const grid = "grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-4";
+const grid = "grid grid-cols-2 gap-x-3 gap-y-2 md:grid-cols-3";
 const area = cx(inputClass, "h-auto py-1.5");
 
 function TradeFormBody({ trade }: { trade: Trade | null }) {
@@ -447,6 +449,13 @@ function TradeFormBody({ trade }: { trade: Trade | null }) {
   const fillsAreSimple = (preview?.status !== "partial") && form.fills.filter((x) => x.role === "entry").length <= 1 && form.fills.filter((x) => x.role === "exit").length <= 1;
   const wrongDirectionBadge = preview?.pnlStatus === "over_closed" ? "The exits add up to more than the entries." : null;
 
+  // The ladder reads the same parsed values as the preview. Fills feed it their averages, and those can't be dragged.
+  const usable = (s: string) => (good(n(s)) ? n(s) : null);
+  const ladderEntry = form.useFills ? (preview?.avgEntry ?? null) : usable(form.entryPrice);
+  const ladderExit = form.useFills ? (preview?.avgExit ?? null) : usable(form.exitPrice);
+  const entryText = form.useFills ? (form.fills.find((x) => x.role === "entry")?.price ?? "") : form.entryPrice;
+  const ladderDecimals = decimalsOf(entryText) ?? Math.max(decimalsOf(form.stopPrice) ?? 0, decimalsOf(form.targetPrice) ?? 0, decimalsOf(form.exitPrice) ?? 0, 2);
+
   return (
     <form ref={formRef} onSubmit={submit} noValidate className="-mt-1">
       {locked && (
@@ -462,298 +471,315 @@ function TradeFormBody({ trade }: { trade: Trade | null }) {
       <datalist id="trade-symbols">{facets?.symbols.map((s) => <option key={s} value={s} />)}</datalist>
       <datalist id="trade-strategies">{facets?.strategies.map((s) => <option key={s} value={s} />)}</datalist>
 
-      <Section title="Basic" defaultOpen force={hasErr("accountId", "symbol", "openedAt", "closedAt")}>
-        <div className={grid}>
-          <Field label="Instrument" error={err("symbol")}>
-            {(p) => <input {...p} list="trade-symbols" className={cx(inputClass, "uppercase")} value={form.symbol} disabled={locked} onChange={(e) => set("symbol", e.target.value)} placeholder="EURUSD" autoComplete="off" autoFocus={!trade} />}
-          </Field>
-          <div className="flex flex-col gap-1">
-            <span className="text-[13px] text-ink-soft">Direction</span>
-            {locked ? <p className="flex h-9 items-center text-[14px] capitalize">{form.side}</p> : <Segmented label="Direction" value={form.side} onChange={(v) => set("side", v)} options={[{ value: "long", label: "Long" }, { value: "short", label: "Short" }]} />}
-          </div>
-          <Field label="Account" error={err("accountId")}>
-            {(p) => (
-              <select {...p} className={inputClass} value={form.accountId} disabled={locked} onChange={(e) => setForm((f) => ({ ...f, accountId: e.target.value, multiplier: trade ? f.multiplier : null }))}>
-                {selectable.length === 0 && <option value="">No accounts yet</option>}
-                {selectable.map((a) => <option key={a.id} value={a.id}>{a.name}{a.isSample ? " (sample)" : ""}</option>)}
-              </select>
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-x-6 md:grid-cols-[minmax(0,1fr)_15rem]">
+        <div className="min-w-0">
+          <section aria-label="Basic" className={grid}>
+            <Field label="Instrument" error={err("symbol")}>
+              {(p) => <input {...p} autoFocus={!locked} list="trade-symbols" className={cx(inputClass, "uppercase")} value={form.symbol} disabled={locked} onChange={(e) => set("symbol", e.target.value)} placeholder="EURUSD" autoComplete="off" autoFocus={!trade} />}
+            </Field>
+            <div className="flex flex-col gap-1">
+              <span className="text-[13px] text-ink-soft">Direction</span>
+              {locked ? <p className="flex h-9 items-center text-[14px] capitalize">{form.side}</p> : <Segmented label="Direction" value={form.side} onChange={(v) => set("side", v)} options={[{ value: "long", label: "Long" }, { value: "short", label: "Short" }]} />}
+            </div>
+            <Field label="Account" error={err("accountId")}>
+              {(p) => (
+                <select {...p} className={inputClass} value={form.accountId} disabled={locked} onChange={(e) => setForm((f) => ({ ...f, accountId: e.target.value, multiplier: trade ? f.multiplier : null }))}>
+                  {selectable.length === 0 && <option value="">No accounts yet</option>}
+                  {selectable.map((a) => <option key={a.id} value={a.id}>{a.name}{a.isSample ? " (sample)" : ""}</option>)}
+                </select>
+              )}
+            </Field>
+            <Field label="Strategy" error={err("strategy")} hint="A new name is created on save.">
+              {(p) => <input {...p} list="trade-strategies" className={inputClass} value={form.strategy} maxLength={60} onChange={(e) => set("strategy", e.target.value)} autoComplete="off" />}
+            </Field>
+            {!form.useFills && (
+              <>
+                <Field label="Entry date and time" error={err("openedAt")} className="col-span-2 md:col-span-1">
+                  {(p) => <input {...p} type="datetime-local" className={cx(inputClass, "num text-[13px]")} value={form.openedAt} disabled={locked} onChange={(e) => set("openedAt", e.target.value)} />}
+                </Field>
+                <Field label="Exit date and time" error={err("closedAt")} className="col-span-2 md:col-span-1" hint={form.exitPrice.trim() ? undefined : "Used once there is an exit price."}>
+                  {(p) => <input {...p} type="datetime-local" className={cx(inputClass, "num text-[13px]")} value={form.closedAt} disabled={locked} onChange={(e) => set("closedAt", e.target.value)} />}
+                </Field>
+              </>
             )}
-          </Field>
-          <Field label="Strategy" error={err("strategy")} hint="A new name is created on save.">
-            {(p) => <input {...p} list="trade-strategies" className={inputClass} value={form.strategy} maxLength={60} onChange={(e) => set("strategy", e.target.value)} autoComplete="off" />}
-          </Field>
-          {!form.useFills && (
-            <>
-              <Field label="Entry date and time" error={err("openedAt")} className="col-span-2 sm:col-span-1">
-                {(p) => <input {...p} type="datetime-local" className={inputClass} value={form.openedAt} disabled={locked} onChange={(e) => set("openedAt", e.target.value)} />}
-              </Field>
-              <Field label="Exit date and time" error={err("closedAt")} className="col-span-2 sm:col-span-1" hint={form.exitPrice.trim() ? undefined : "Used once there is an exit price."}>
-                {(p) => <input {...p} type="datetime-local" className={inputClass} value={form.closedAt} disabled={locked} onChange={(e) => set("closedAt", e.target.value)} />}
-              </Field>
-            </>
-          )}
-          <Field label="Asset class" error={err("assetClass")}>
-            {(p) => (
-              <select {...p} className={cx(inputClass, "capitalize")} value={form.assetClass} disabled={locked} onChange={(e) => set("assetClass", e.target.value)}>
-                <option value="">Auto: {assetClass}</option>
-                {ASSET_CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            )}
-          </Field>
-          <Field label="Session" error={err("session")}>
-            {(p) => (
-              <select {...p} className={inputClass} value={form.session} disabled={locked} onChange={(e) => set("session", e.target.value)}>
-                <option value="">Suggested: {suggestedSession ? SESSION_LABELS[suggestedSession] : "none"}</option>
-                {SESSIONS.map((s) => <option key={s} value={s}>{SESSION_LABELS[s]}</option>)}
-              </select>
-            )}
-          </Field>
-        </div>
-      </Section>
+          </section>
 
-      <Section title="Execution" defaultOpen force={hasErr("entryPrice", "exitPrice", "quantity", "multiplier", "stopPrice", "targetPrice", "commission", "swap", "otherFees", "fxRate")}>
-        <div className={grid}>
-          {form.useFills ? (
-            <p className="col-span-2 self-center text-[13px] text-muted sm:col-span-2">Entry, exit and size come from the fills below.</p>
+          <section aria-label="Execution" className={cx(grid, "mt-3 border-t border-line pt-3")}>
+            {form.useFills ? (
+              <p className="col-span-2 self-center text-[13px] text-muted md:col-span-3">Entry, exit and size come from the fills below.</p>
+            ) : (
+              <>
+                <Field label="Entry" error={err("entryPrice")}>
+                  {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="decimal" value={form.entryPrice} disabled={locked} onChange={(e) => set("entryPrice", e.target.value)} />}
+                </Field>
+                <Field label="Exit" error={err("exitPrice")} hint="Blank while open.">
+                  {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="decimal" value={form.exitPrice} disabled={locked} onChange={(e) => set("exitPrice", e.target.value)} />}
+                </Field>
+                <Field label="Quantity" error={err("quantity")} hint="Lots, units or contracts.">
+                  {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="decimal" value={form.quantity} disabled={locked} onChange={(e) => set("quantity", e.target.value)} />}
+                </Field>
+              </>
+            )}
+            <Field label="Stop" error={err("stopPrice")}>
+              {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="decimal" value={form.stopPrice} onChange={(e) => set("stopPrice", e.target.value)} />}
+            </Field>
+            <Field label="Target" error={err("targetPrice")}>
+              {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="decimal" value={form.targetPrice} onChange={(e) => set("targetPrice", e.target.value)} />}
+            </Field>
+            <Field
+              label="Contract multiplier"
+              error={err("multiplier")}
+              hint={form.multiplier === null && spec?.contractSize != null ? (spec.source === "mt5" ? "From the broker's MT5 spec." : "Last entered for this account.") : "Units per 1 of quantity."}
+            >
+              {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="decimal" value={multiplier} disabled={locked} onChange={(e) => set("multiplier", e.target.value)} />}
+            </Field>
+            <Field label="Commission" error={err("commission")}>
+              {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="text" value={form.commission} disabled={locked} placeholder="0" onChange={(e) => set("commission", e.target.value)} />}
+            </Field>
+            <Field label="Swap" error={err("swap")} hint="Negative for a credit.">
+              {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="text" value={form.swap} disabled={locked} placeholder="0" onChange={(e) => set("swap", e.target.value)} />}
+            </Field>
+            <Field label="Other fees" error={err("otherFees")}>
+              {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="text" value={form.otherFees} disabled={locked} placeholder="0" onChange={(e) => set("otherFees", e.target.value)} />}
+            </Field>
+            {(rateNeeded || (form.fxRate !== "" && !locked)) && (
+              <Field label={`Rate, ${profitCurrency ?? "profit currency"} to ${currency}`} error={err("fxRate")} hint="Without it, P&L stays pending." className="col-span-2 md:col-span-1">
+                {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="decimal" value={form.fxRate} onChange={(e) => set("fxRate", e.target.value)} />}
+              </Field>
+            )}
+          </section>
+          {preview && lotsLike && mult === 1 && !locked && (
+            <div className="mt-2">
+              <Notice>
+                A quantity of <span className="num">{qty}</span> with a multiplier of 1 on {symbol} means <span className="num">{qty}</span> units, notional <span className="num">{notionalText}</span>. If you mean lots, enter your broker&apos;s contract size as the multiplier. It differs between brokers, so Jarvis won&apos;t assume one.
+              </Notice>
+            </div>
+          )}
+        </div>
+
+        <PriceLadder
+          className="mt-4 h-80 md:mt-0 md:h-auto"
+          side={form.side}
+          entry={ladderEntry}
+          stop={usable(form.stopPrice)}
+          target={usable(form.targetPrice)}
+          exit={ladderExit}
+          decimals={ladderDecimals}
+          lockedExit={locked ? "mt5" : form.useFills ? "fills" : null}
+          preview={preview}
+          currency={currency}
+          onChange={(field, text) => set(field, text)}
+          note={preview && qty > 0 && !lotsLike ? `Position ${(qty * mult).toLocaleString("en-US", { maximumFractionDigits: 4 })} units = ${qty} × ${mult}, notional ${notionalText}` : null}
+        />
+      </div>
+
+      <div className="mt-3 border-t border-line">
+        <Section title="Asset class and session" summary={`${form.assetClass || `Auto: ${assetClass}`}, ${form.session ? SESSION_LABELS[form.session] : `suggested: ${suggestedSession ? SESSION_LABELS[suggestedSession] : "none"}`}`} force={hasErr("assetClass", "session")}>
+          <div className={grid}>
+            <Field label="Asset class" error={err("assetClass")}>
+              {(p) => (
+                <select {...p} className={cx(inputClass, "capitalize")} value={form.assetClass} disabled={locked} onChange={(e) => set("assetClass", e.target.value)}>
+                  <option value="">Auto: {assetClass}</option>
+                  {ASSET_CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              )}
+            </Field>
+            <Field label="Session" error={err("session")}>
+              {(p) => (
+                <select {...p} className={inputClass} value={form.session} disabled={locked} onChange={(e) => set("session", e.target.value)}>
+                  <option value="">Suggested: {suggestedSession ? SESSION_LABELS[suggestedSession] : "none"}</option>
+                  {SESSIONS.map((s) => <option key={s} value={s}>{SESSION_LABELS[s]}</option>)}
+                </select>
+              )}
+            </Field>
+          </div>
+        </Section>
+
+        <Section title="Partial fills" summary={form.useFills ? `${form.fills.length} fills` : "Scaling in or out"} force={form.useFills || hasErr("executions", "fills")}>
+          {!form.useFills ? (
+            <Button size="sm" onClick={startFills}>Enter separate fills</Button>
           ) : (
             <>
-              <Field label="Entry" error={err("entryPrice")}>
-                {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="decimal" value={form.entryPrice} disabled={locked} onChange={(e) => set("entryPrice", e.target.value)} />}
-              </Field>
-              <Field label="Exit" error={err("exitPrice")} hint="Blank while open.">
-                {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="decimal" value={form.exitPrice} disabled={locked} onChange={(e) => set("exitPrice", e.target.value)} />}
-              </Field>
-              <Field label="Quantity" error={err("quantity")} hint="Lots, units or contracts.">
-                {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="decimal" value={form.quantity} disabled={locked} onChange={(e) => set("quantity", e.target.value)} />}
-              </Field>
+              {err("fills") && <p className="mb-2 text-[12.5px] text-loss">{err("fills")}</p>}
+              <ul className="space-y-2">
+                {form.fills.map((x, i) => (
+                  <li key={x.key} className="grid grid-cols-2 items-start gap-2 sm:grid-cols-[6.5rem_1fr_1fr_1.4fr_auto]">
+                    <Field label="Side">
+                      {(p) => (
+                        <select {...p} className={inputClass} value={x.role} disabled={locked} onChange={(e) => setFill(x.key, { role: e.target.value as FillRow["role"] })}>
+                          <option value="entry">Entry</option>
+                          <option value="exit">Exit</option>
+                        </select>
+                      )}
+                    </Field>
+                    <Field label="Price" error={err(`executions.${i}.price`)}>
+                      {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="decimal" value={x.price} disabled={locked} onChange={(e) => setFill(x.key, { price: e.target.value })} />}
+                    </Field>
+                    <Field label="Size" error={err(`executions.${i}.quantity`)}>
+                      {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="decimal" value={x.quantity} disabled={locked} onChange={(e) => setFill(x.key, { quantity: e.target.value })} />}
+                    </Field>
+                    <Field label="Time" className="col-span-2 sm:col-span-1" error={err(`executions.${i}.executedAt`)}>
+                      {(p) => <input {...p} type="datetime-local" className={cx(inputClass, "num text-[13px]")} value={x.at} disabled={locked} onChange={(e) => setFill(x.key, { at: e.target.value })} />}
+                    </Field>
+                    {!locked && <Button size="sm" variant="ghost" className="self-end" onClick={() => set("fills", form.fills.filter((y) => y.key !== x.key))} aria-label={`Remove fill ${i + 1}`}>Remove</Button>}
+                  </li>
+                ))}
+              </ul>
+              {!locked && (
+                <div className="mt-2.5 flex flex-wrap gap-2">
+                  <Button size="sm" onClick={() => addFill("entry")}>Add entry</Button>
+                  <Button size="sm" onClick={() => addFill("exit")}>Add exit</Button>
+                  <Button size="sm" variant="ghost" disabled={!fillsAreSimple} title={fillsAreSimple ? undefined : "Only a single entry and a full exit fit the simple form."} onClick={stopFills}>Back to one entry and exit</Button>
+                </div>
+              )}
+              <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-[13px]">
+                <div className="flex gap-2"><dt className="text-muted">Avg entry</dt><dd className="num">{preview ? preview.avgEntry : "—"}</dd></div>
+                <div className="flex gap-2"><dt className="text-muted">Avg exit</dt><dd className="num">{preview?.avgExit ?? "—"}</dd></div>
+                <div className="flex gap-2"><dt className="text-muted">Remaining</dt><dd className="num">{preview ? preview.remainingQty : "—"}</dd></div>
+              </dl>
+              {wrongDirectionBadge && <p className="mt-1 text-[12.5px] text-loss">{wrongDirectionBadge}</p>}
             </>
           )}
-          <Field
-            label="Contract multiplier"
-            error={err("multiplier")}
-            hint={form.multiplier === null && spec?.contractSize != null ? (spec.source === "mt5" ? "From the broker's MT5 spec." : "As you last entered it for this account.") : "Units per 1 of quantity."}
-          >
-            {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="decimal" value={multiplier} disabled={locked} onChange={(e) => set("multiplier", e.target.value)} />}
-          </Field>
-          <Field label="Stop" error={err("stopPrice")}>
-            {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="decimal" value={form.stopPrice} onChange={(e) => set("stopPrice", e.target.value)} />}
-          </Field>
-          <Field label="Target" error={err("targetPrice")}>
-            {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="decimal" value={form.targetPrice} onChange={(e) => set("targetPrice", e.target.value)} />}
-          </Field>
-          <Field label="Commission" error={err("commission")}>
-            {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="text" value={form.commission} disabled={locked} placeholder="0" onChange={(e) => set("commission", e.target.value)} />}
-          </Field>
-          <Field label="Swap" error={err("swap")} hint="Negative for a credit.">
-            {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="text" value={form.swap} disabled={locked} placeholder="0" onChange={(e) => set("swap", e.target.value)} />}
-          </Field>
-          <Field label="Other fees" error={err("otherFees")}>
-            {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="text" value={form.otherFees} disabled={locked} placeholder="0" onChange={(e) => set("otherFees", e.target.value)} />}
-          </Field>
-          {(rateNeeded || (form.fxRate !== "" && !locked)) && (
-            <Field label={`Rate, ${profitCurrency ?? "profit currency"} to ${currency}`} error={err("fxRate")} hint="Without it, P&L stays pending.">
-              {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="decimal" value={form.fxRate} onChange={(e) => set("fxRate", e.target.value)} />}
-            </Field>
-          )}
-        </div>
-        {preview && qty > 0 && !lotsLike && (
-          <p className="num mt-2.5 text-[12.5px] text-muted">
-            Position {(qty * mult).toLocaleString("en-US", { maximumFractionDigits: 4 })} units = {qty} × {mult}, notional {notionalText}
-          </p>
-        )}
-        {preview && lotsLike && mult === 1 && !locked && (
-          <div className="mt-2.5">
-            <Notice>
-              A quantity of <span className="num">{qty}</span> with a multiplier of 1 on {symbol} means <span className="num">{qty}</span> units, notional <span className="num">{notionalText}</span>. If you mean lots, enter your broker&apos;s contract size as the multiplier. It differs between brokers, so Jarvis won&apos;t assume one.
-            </Notice>
-          </div>
-        )}
-      </Section>
+        </Section>
 
-      <Section title="Partial fills" summary={form.useFills ? `${form.fills.length} fills` : "Scaling in or out"} force={form.useFills || hasErr("executions", "fills")}>
-        {!form.useFills ? (
-          <Button size="sm" onClick={startFills}>Enter separate fills</Button>
-        ) : (
-          <>
-            {err("fills") && <p className="mb-2 text-[12.5px] text-loss">{err("fills")}</p>}
-            <ul className="space-y-2">
-              {form.fills.map((x, i) => (
-                <li key={x.key} className="grid grid-cols-2 items-start gap-2 sm:grid-cols-[6.5rem_1fr_1fr_1.4fr_auto]">
-                  <Field label="Side">
-                    {(p) => (
-                      <select {...p} className={inputClass} value={x.role} disabled={locked} onChange={(e) => setFill(x.key, { role: e.target.value as FillRow["role"] })}>
-                        <option value="entry">Entry</option>
-                        <option value="exit">Exit</option>
-                      </select>
-                    )}
-                  </Field>
-                  <Field label="Price" error={err(`executions.${i}.price`)}>
-                    {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="decimal" value={x.price} disabled={locked} onChange={(e) => setFill(x.key, { price: e.target.value })} />}
-                  </Field>
-                  <Field label="Size" error={err(`executions.${i}.quantity`)}>
-                    {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="decimal" value={x.quantity} disabled={locked} onChange={(e) => setFill(x.key, { quantity: e.target.value })} />}
-                  </Field>
-                  <Field label="Time" className="col-span-2 sm:col-span-1" error={err(`executions.${i}.executedAt`)}>
-                    {(p) => <input {...p} type="datetime-local" className={inputClass} value={x.at} disabled={locked} onChange={(e) => setFill(x.key, { at: e.target.value })} />}
-                  </Field>
-                  {!locked && <Button size="sm" variant="ghost" className="self-end" onClick={() => set("fills", form.fills.filter((y) => y.key !== x.key))} aria-label={`Remove fill ${i + 1}`}>Remove</Button>}
+        <Section title="Analysis" summary="Reasons, emotions, mistakes, lessons, tags" force={hasErr("setup", "planNotes", "entryReason", "exitReason", "notes", "lessons", "tags", "strategyTags")} defaultOpen={Boolean(trade && (trade.setup || trade.notes || trade.planNotes))}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Setup name" error={err("setup")} hint="Short, so trades can be grouped by it.">
+              {(p) => <input {...p} className={inputClass} value={form.setup} maxLength={60} onChange={(e) => set("setup", e.target.value)} />}
+            </Field>
+            <Field label="Setup description" error={err("planNotes")}>
+              {(p) => <textarea {...p} rows={2} className={area} value={form.planNotes} onChange={(e) => set("planNotes", e.target.value)} />}
+            </Field>
+            <Field label="Entry reason" error={err("entryReason")}>
+              {(p) => <textarea {...p} rows={2} className={area} value={form.entryReason} onChange={(e) => set("entryReason", e.target.value)} />}
+            </Field>
+            <Field label="Exit reason" error={err("exitReason")}>
+              {(p) => <textarea {...p} rows={2} className={area} value={form.exitReason} onChange={(e) => set("exitReason", e.target.value)} />}
+            </Field>
+            <Field label="Notes" error={err("notes")}>
+              {(p) => <textarea {...p} rows={2} className={area} value={form.notes} onChange={(e) => set("notes", e.target.value)} />}
+            </Field>
+            <Field label="Lessons" error={err("lessons")}>
+              {(p) => <textarea {...p} rows={2} className={area} value={form.lessons} onChange={(e) => set("lessons", e.target.value)} />}
+            </Field>
+            <Field label="Feeling before" error={err("emotionBefore")}>
+              {(p) => (
+                <select {...p} className={cx(inputClass, "capitalize")} value={form.emotionBefore} onChange={(e) => set("emotionBefore", e.target.value)}>
+                  <option value="">Not recorded</option>
+                  {EMOTIONS.map((x) => <option key={x}>{x}</option>)}
+                </select>
+              )}
+            </Field>
+            <Field label="Feeling after" error={err("emotionAfter")}>
+              {(p) => (
+                <select {...p} className={cx(inputClass, "capitalize")} value={form.emotionAfter} onChange={(e) => set("emotionAfter", e.target.value)}>
+                  <option value="">Not recorded</option>
+                  {EMOTIONS.map((x) => <option key={x}>{x}</option>)}
+                </select>
+              )}
+            </Field>
+            <div className="sm:col-span-2">
+              <span className="text-[13px] text-ink-soft" id="mistakes-label">Mistakes</span>
+              <div role="group" aria-labelledby="mistakes-label" className="mt-1 flex flex-wrap gap-1.5">
+                {MISTAKES.map((m) => {
+                  const on = form.mistakes.includes(m);
+                  return (
+                    <button key={m} type="button" aria-pressed={on} onClick={() => set("mistakes", on ? form.mistakes.filter((x) => x !== m) : [...form.mistakes, m])} className={cx("border px-2 py-1 text-[13px] pointer-coarse:py-2.5", on ? "border-accent bg-accent-soft text-ink" : "border-line-strong text-muted hover:text-ink")}>
+                      {nice(m)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <Field label="Strategy tags" error={err("strategyTags")} hint="Comma-separated.">
+              {(p) => <input {...p} className={inputClass} value={form.strategyTags} onChange={(e) => set("strategyTags", e.target.value)} />}
+            </Field>
+            <Field label="Custom tags" error={err("tags")} hint="Comma-separated.">
+              {(p) => <input {...p} className={inputClass} value={form.tags} onChange={(e) => set("tags", e.target.value)} />}
+            </Field>
+          </div>
+        </Section>
+
+        <Section title="Psychology" summary="Ratings, behaviour flags, plan, grade" force={hasErr("ruleViolations")}>
+          <div className="grid gap-x-8 gap-y-2 sm:grid-cols-2">
+            {RATINGS.map((r) => <Rating key={r} label={r} value={form[r]} onChange={(v) => set(r, v)} />)}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+            {FLAGS.map(([k, label]) => (
+              <label key={k} className="flex items-center gap-2 text-[13.5px]">
+                <input type="checkbox" className="accent-[var(--accent)]" checked={form[k]} onChange={(e) => set(k, e.target.checked)} />
+                {label}
+              </label>
+            ))}
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_10rem_6rem]">
+            <Field label="Rule violations" error={err("ruleViolations")}>
+              {(p) => <input {...p} className={inputClass} value={form.ruleViolations} onChange={(e) => set("ruleViolations", e.target.value)} />}
+            </Field>
+            <Field label="Followed plan?">
+              {(p) => (
+                <select {...p} className={inputClass} value={form.followedPlan} onChange={(e) => set("followedPlan", e.target.value)}>
+                  <option value="">Not answered</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+              )}
+            </Field>
+            <Field label="Grade">
+              {(p) => (
+                <select {...p} className={inputClass} value={form.grade} onChange={(e) => set("grade", e.target.value)}>
+                  <option value="">None</option>
+                  {GRADES.map((g) => <option key={g}>{g}</option>)}
+                </select>
+              )}
+            </Field>
+          </div>
+        </Section>
+
+        <Section title="Attachments" summary={attachments.length + pending.length ? `${attachments.length + pending.length} ${attachments.length + pending.length === 1 ? "file" : "files"}` : "Screenshots and documents"} defaultOpen={attachments.length > 0}>
+          <div className="flex flex-wrap items-center gap-2">
+            <select aria-label="Attachment kind" className={cx(inputClass, "!w-auto")} value={attachKind} onChange={(e) => setAttachKind(e.target.value as Attachment["kind"])}>
+              {ATTACH_KINDS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+            <label className="inline-flex h-9 cursor-pointer items-center border border-line-strong px-3 text-[13px] font-medium hover:bg-raised focus-within:outline-2 focus-within:outline-[var(--focus)]">
+              Choose files
+              <input
+                type="file"
+                multiple
+                accept=".png,.jpg,.jpeg,.webp,.pdf"
+                className="sr-only"
+                onChange={(e) => {
+                  const chosen = [...(e.target.files ?? [])];
+                  setPending((xs) => [...xs, ...chosen.map((file) => ({ file, kind: attachKind }))]);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            <span className="text-[12.5px] text-muted">PNG, JPEG, WEBP or PDF, up to 10 MB each. Files upload when you save.</span>
+          </div>
+          {(attachments.length > 0 || pending.length > 0) && (
+            <ul className="mt-2.5 divide-y divide-line text-[13.5px]">
+              {attachments.map((a) => (
+                <li key={a.id} className="flex items-center gap-3 py-1.5">
+                  <a href={`/api/attachments/${a.id}`} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate underline-offset-2 hover:underline">{a.filename}</a>
+                  <span className="text-[12.5px] text-muted">{a.kind}, <span className="num">{fileSize(a.size)}</span></span>
+                  <Button size="sm" variant="ghost" onClick={() => void removeAttachment(a)}>Remove</Button>
+                </li>
+              ))}
+              {pending.map((p, i) => (
+                <li key={`${p.file.name}${i}`} className="flex items-center gap-3 py-1.5">
+                  <span className="min-w-0 flex-1 truncate">{p.file.name}</span>
+                  <span className="text-[12.5px] text-muted">{p.kind}, <span className="num">{fileSize(p.file.size)}</span>, not saved yet</span>
+                  <Button size="sm" variant="ghost" onClick={() => setPending((xs) => xs.filter((_, j) => j !== i))}>Remove</Button>
                 </li>
               ))}
             </ul>
-            {!locked && (
-              <div className="mt-2.5 flex flex-wrap gap-2">
-                <Button size="sm" onClick={() => addFill("entry")}>Add entry</Button>
-                <Button size="sm" onClick={() => addFill("exit")}>Add exit</Button>
-                <Button size="sm" variant="ghost" disabled={!fillsAreSimple} title={fillsAreSimple ? undefined : "Only a single entry and a full exit fit the simple form."} onClick={stopFills}>Back to one entry and exit</Button>
-              </div>
-            )}
-            <dl className="num mt-3 flex flex-wrap gap-x-6 gap-y-1 text-[13px]">
-              <div className="flex gap-2"><dt className="text-muted">Avg entry</dt><dd>{preview ? preview.avgEntry : "—"}</dd></div>
-              <div className="flex gap-2"><dt className="text-muted">Avg exit</dt><dd>{preview?.avgExit ?? "—"}</dd></div>
-              <div className="flex gap-2"><dt className="text-muted">Remaining</dt><dd>{preview ? preview.remainingQty : "—"}</dd></div>
-            </dl>
-            {wrongDirectionBadge && <p className="mt-1 text-[12.5px] text-loss">{wrongDirectionBadge}</p>}
-          </>
-        )}
-      </Section>
-
-      <Section title="Analysis" summary="Reasons, emotions, mistakes, lessons, tags" force={hasErr("setup", "planNotes", "entryReason", "exitReason", "notes", "lessons", "tags", "strategyTags")} defaultOpen={Boolean(trade && (trade.setup || trade.notes || trade.planNotes))}>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Setup name" error={err("setup")} hint="Short, so trades can be grouped by it.">
-            {(p) => <input {...p} className={inputClass} value={form.setup} maxLength={60} onChange={(e) => set("setup", e.target.value)} />}
-          </Field>
-          <Field label="Setup description" error={err("planNotes")}>
-            {(p) => <textarea {...p} rows={2} className={area} value={form.planNotes} onChange={(e) => set("planNotes", e.target.value)} />}
-          </Field>
-          <Field label="Entry reason" error={err("entryReason")}>
-            {(p) => <textarea {...p} rows={2} className={area} value={form.entryReason} onChange={(e) => set("entryReason", e.target.value)} />}
-          </Field>
-          <Field label="Exit reason" error={err("exitReason")}>
-            {(p) => <textarea {...p} rows={2} className={area} value={form.exitReason} onChange={(e) => set("exitReason", e.target.value)} />}
-          </Field>
-          <Field label="Notes" error={err("notes")}>
-            {(p) => <textarea {...p} rows={2} className={area} value={form.notes} onChange={(e) => set("notes", e.target.value)} />}
-          </Field>
-          <Field label="Lessons" error={err("lessons")}>
-            {(p) => <textarea {...p} rows={2} className={area} value={form.lessons} onChange={(e) => set("lessons", e.target.value)} />}
-          </Field>
-          <Field label="Feeling before" error={err("emotionBefore")}>
-            {(p) => (
-              <select {...p} className={cx(inputClass, "capitalize")} value={form.emotionBefore} onChange={(e) => set("emotionBefore", e.target.value)}>
-                <option value="">Not recorded</option>
-                {EMOTIONS.map((x) => <option key={x}>{x}</option>)}
-              </select>
-            )}
-          </Field>
-          <Field label="Feeling after" error={err("emotionAfter")}>
-            {(p) => (
-              <select {...p} className={cx(inputClass, "capitalize")} value={form.emotionAfter} onChange={(e) => set("emotionAfter", e.target.value)}>
-                <option value="">Not recorded</option>
-                {EMOTIONS.map((x) => <option key={x}>{x}</option>)}
-              </select>
-            )}
-          </Field>
-          <div className="sm:col-span-2">
-            <span className="text-[13px] text-ink-soft" id="mistakes-label">Mistakes</span>
-            <div role="group" aria-labelledby="mistakes-label" className="mt-1 flex flex-wrap gap-1.5">
-              {MISTAKES.map((m) => {
-                const on = form.mistakes.includes(m);
-                return (
-                  <button key={m} type="button" aria-pressed={on} onClick={() => set("mistakes", on ? form.mistakes.filter((x) => x !== m) : [...form.mistakes, m])} className={cx("rounded-control border px-2 py-1 text-[13px]", on ? "border-accent bg-accent-soft text-ink" : "border-line-strong text-muted hover:text-ink")}>
-                    {nice(m)}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          <Field label="Strategy tags" error={err("strategyTags")} hint="Comma-separated.">
-            {(p) => <input {...p} className={inputClass} value={form.strategyTags} onChange={(e) => set("strategyTags", e.target.value)} />}
-          </Field>
-          <Field label="Custom tags" error={err("tags")} hint="Comma-separated.">
-            {(p) => <input {...p} className={inputClass} value={form.tags} onChange={(e) => set("tags", e.target.value)} />}
-          </Field>
-        </div>
-      </Section>
-
-      <Section title="Psychology" summary="Ratings, behaviour flags, plan, grade" force={hasErr("ruleViolations")}>
-        <div className="grid gap-x-8 gap-y-2 sm:grid-cols-2">
-          {RATINGS.map((r) => <Rating key={r} label={r} value={form[r]} onChange={(v) => set(r, v)} />)}
-        </div>
-        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
-          {FLAGS.map(([k, label]) => (
-            <label key={k} className="flex items-center gap-2 text-[13.5px]">
-              <input type="checkbox" className="accent-[var(--accent)]" checked={form[k]} onChange={(e) => set(k, e.target.checked)} />
-              {label}
-            </label>
-          ))}
-        </div>
-        <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_10rem_6rem]">
-          <Field label="Rule violations" error={err("ruleViolations")}>
-            {(p) => <input {...p} className={inputClass} value={form.ruleViolations} onChange={(e) => set("ruleViolations", e.target.value)} />}
-          </Field>
-          <Field label="Followed plan?">
-            {(p) => (
-              <select {...p} className={inputClass} value={form.followedPlan} onChange={(e) => set("followedPlan", e.target.value)}>
-                <option value="">Not answered</option>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-              </select>
-            )}
-          </Field>
-          <Field label="Grade">
-            {(p) => (
-              <select {...p} className={inputClass} value={form.grade} onChange={(e) => set("grade", e.target.value)}>
-                <option value="">None</option>
-                {GRADES.map((g) => <option key={g}>{g}</option>)}
-              </select>
-            )}
-          </Field>
-        </div>
-      </Section>
-
-      <Section title="Attachments" summary={attachments.length + pending.length ? `${attachments.length + pending.length} files` : "Screenshots and documents"} defaultOpen={attachments.length > 0}>
-        <div className="flex flex-wrap items-center gap-2">
-          <select aria-label="Attachment kind" className={cx(inputClass, "w-auto")} value={attachKind} onChange={(e) => setAttachKind(e.target.value as Attachment["kind"])}>
-            {ATTACH_KINDS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
-          <label className="inline-flex h-8 cursor-pointer items-center rounded-control border border-line-strong bg-raised px-3 text-[13px] font-medium hover:border-muted focus-within:outline-2 focus-within:outline-[var(--focus)]">
-            Choose files
-            <input
-              type="file"
-              multiple
-              accept=".png,.jpg,.jpeg,.webp,.pdf"
-              className="sr-only"
-              onChange={(e) => {
-                const chosen = [...(e.target.files ?? [])];
-                setPending((xs) => [...xs, ...chosen.map((file) => ({ file, kind: attachKind }))]);
-                e.target.value = "";
-              }}
-            />
-          </label>
-          <span className="text-[12.5px] text-muted">PNG, JPEG, WEBP or PDF, up to 10 MB each. Files upload when you save.</span>
-        </div>
-        {(attachments.length > 0 || pending.length > 0) && (
-          <ul className="mt-2.5 divide-y divide-line text-[13.5px]">
-            {attachments.map((a) => (
-              <li key={a.id} className="flex items-center gap-3 py-1.5">
-                <a href={`/api/attachments/${a.id}`} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate underline-offset-2 hover:underline">{a.filename}</a>
-                <span className="text-[12.5px] text-muted">{a.kind}, {fileSize(a.size)}</span>
-                <Button size="sm" variant="ghost" onClick={() => void removeAttachment(a)}>Remove</Button>
-              </li>
-            ))}
-            {pending.map((p, i) => (
-              <li key={`${p.file.name}${i}`} className="flex items-center gap-3 py-1.5">
-                <span className="min-w-0 flex-1 truncate">{p.file.name}</span>
-                <span className="text-[12.5px] text-muted">{p.kind}, {fileSize(p.file.size)}, not saved yet</span>
-                <Button size="sm" variant="ghost" onClick={() => setPending((xs) => xs.filter((_, j) => j !== i))}>Remove</Button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
+          )}
+        </Section>
+      </div>
 
       <div className="sticky -bottom-4 z-10 -mx-card -mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-line bg-surface px-card py-2.5">
-        <dl className="num flex flex-wrap gap-x-4 gap-y-0.5 text-[12.5px]" aria-live="polite">
+        <dl className="flex flex-wrap gap-x-4 gap-y-0.5 text-[12.5px]" aria-live="polite">
           {preview ? (
             <>
               <PreviewItem label="Gross" value={preview.pnlStatus === "needs_rate" ? "needs rate" : money(preview.grossPnl, currency, true)} />
@@ -763,7 +789,7 @@ function TradeFormBody({ trade }: { trade: Trade | null }) {
               <PreviewItem label="Planned" value={preview.plannedR === null ? "—" : `${preview.plannedR}R`} />
             </>
           ) : (
-            <span className="font-sans text-muted">Enter entry and quantity to preview the result.</span>
+            <span className="text-muted">Enter entry and quantity to preview the result.</span>
           )}
         </dl>
         <div className="ml-auto flex gap-2">
@@ -779,7 +805,7 @@ function PreviewItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex gap-1.5">
       <dt className="text-muted">{label}</dt>
-      <dd className="text-ink">{value}</dd>
+      <dd className="num text-ink">{value}</dd>
     </div>
   );
 }

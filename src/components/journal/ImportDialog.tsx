@@ -41,17 +41,17 @@ function downloadInvalidRows(name: string, rows: InvalidRow[]) {
   URL.revokeObjectURL(url);
 }
 
-const sectionTitle = "mb-2 text-[13px] font-semibold text-ink-soft";
+const sectionTitle = "mb-2 text-[13px] font-medium text-ink-soft pointer-coarse:py-2";
 
 function ErrorList({ rows, fileName }: { rows: InvalidRow[]; fileName: string }) {
   if (rows.length === 0) return null;
   return (
     <section aria-label="Rows with problems">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-[13px] font-semibold text-ink-soft">{rows.length} {rows.length === 1 ? "row" : "rows"} won&apos;t be imported</h3>
+        <h3 className="text-[13px] font-medium text-ink-soft">{rows.length} {rows.length === 1 ? "row" : "rows"} won&apos;t be imported</h3>
         <Button variant="ghost" size="sm" onClick={() => downloadInvalidRows(fileName, rows)}>Download as CSV</Button>
       </div>
-      <div className="max-h-40 overflow-y-auto rounded-md border border-line p-3 text-[13px]" tabIndex={0}>
+      <div className="max-h-40 overflow-y-auto border-y border-line py-2 text-[13px]" tabIndex={0}>
         {rows.slice(0, 200).map((r) => (
           <p key={r.line} className="text-ink-soft"><span className="num text-muted">Line {r.line}:</span> {r.errors.join("; ")}</p>
         ))}
@@ -64,28 +64,37 @@ function ErrorList({ rows, fileName }: { rows: InvalidRow[]; fileName: string })
 function PreviewTable({ rows, currency }: { rows: RowResult[]; currency?: string }) {
   if (rows.length === 0) return null;
   return (
-    <div className="overflow-x-auto rounded-md border border-line">
+    <div className="overflow-x-auto border-t border-line">
       <table className="w-full text-[13px]">
         <caption className="sr-only">Rows that will be imported</caption>
-        <thead className="bg-sunken text-left text-muted">
-          <tr>{["Line", "Symbol", "Side", "Opened", "Entry", "Exit", "Size", "Net P&L", "Check"].map((h) => <th key={h} scope="col" className="px-3 py-2 font-medium">{h}</th>)}</tr>
+        <thead className="text-left text-[12.5px] text-muted">
+          <tr className="border-b border-line">{["Line", "Symbol", "Side", "Opened", "Entry", "Exit", "Size", "Net P&L", "Check"].map((h) => <th key={h} scope="col" className={cx("py-1.5 pr-3 font-normal whitespace-nowrap", ["Line", "Entry", "Exit", "Size", "Net P&L"].includes(h) && "text-right")}>{h}</th>)}</tr>
         </thead>
-        <tbody className="num divide-y divide-line">
+        <tbody className="divide-y divide-line border-b border-line">
           {rows.map((r) => (
             <tr key={r.line} className={r.mismatch ? "bg-loss-soft" : undefined}>
-              <td className="px-3 py-1.5 text-muted">{r.line}</td>
-              <td className="px-3 py-1.5">{r.trade!.symbol}</td>
-              <td className="px-3 py-1.5">{r.trade!.side}</td>
-              <td className="whitespace-nowrap px-3 py-1.5">{new Date(r.trade!.openedAt).toLocaleString()}</td>
-              <td className="px-3 py-1.5">{r.trade!.entryPrice}</td>
-              <td className="px-3 py-1.5">{r.trade!.exitPrice ?? "open"}</td>
-              <td className="px-3 py-1.5">{r.trade!.quantity}</td>
-              <td className={cx("px-3 py-1.5", toneOf(computePnl(r.trade!)))}>{r.trade!.exitPrice === null ? "open" : money(computePnl(r.trade!), currency, true)}</td>
-              <td className="px-3 py-1.5 font-sans text-[12.5px] text-ink-soft">{r.warnings?.join("; ")}</td>
+              <td className="num py-1.5 pr-3 text-right text-muted">{r.line}</td>
+              <td className="py-1.5 pr-3">{r.trade!.symbol}</td>
+              <td className="py-1.5 pr-3">{r.trade!.side}</td>
+              <td className="num py-1.5 pr-3 whitespace-nowrap">{new Date(r.trade!.openedAt).toLocaleString()}</td>
+              <td className="num py-1.5 pr-3 text-right">{r.trade!.entryPrice}</td>
+              <td className="num py-1.5 pr-3 text-right">{r.trade!.exitPrice ?? "open"}</td>
+              <td className="num py-1.5 pr-3 text-right">{r.trade!.quantity}</td>
+              <td className={cx("num py-1.5 pr-3 text-right whitespace-nowrap", toneOf(computePnl(r.trade!)))}>{r.trade!.exitPrice === null ? "open" : money(computePnl(r.trade!), currency, true)}</td>
+              <td className="py-1.5 text-[12.5px] text-ink-soft">{r.warnings?.join("; ")}</td>
             </tr>
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function Count({ label, value }: { label: string; value: number }) {
+  return (
+    <div>
+      <dt className="text-[12.5px] text-muted">{label}</dt>
+      <dd className="num text-[17px] text-ink">{value}</dd>
     </div>
   );
 }
@@ -95,13 +104,13 @@ function History({ batches, onUndo, busy }: { batches: Batch[]; onUndo: (id: str
   return (
     <section aria-label="Import history">
       <h3 className={sectionTitle}>Earlier imports</h3>
-      <ul className="max-h-44 divide-y divide-line overflow-y-auto rounded-md border border-line text-[13px]">
+      <ul className="max-h-44 divide-y divide-line overflow-y-auto border-y border-line text-[13px]">
         {batches.map((b) => (
-          <li key={b.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1.5">
+          <li key={b.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5">
             <span className="min-w-0 flex-1 truncate" title={b.filename}>{b.filename}</span>
             <span className="num text-muted">{new Date(b.created_at).toLocaleDateString()}</span>
-            <span className="num text-muted">{b.imported} imported · {b.duplicates} duplicate · {b.invalid} invalid</span>
-            {b.invalid > 0 && <a className="text-accent hover:underline" href={`/api/imports/${b.id}/errors`} aria-label={`Download invalid rows of ${b.filename}`}>Errors</a>}
+            <span className="text-muted"><span className="num">{b.imported}</span> imported, <span className="num">{b.duplicates}</span> duplicate, <span className="num">{b.invalid}</span> invalid</span>
+            {b.invalid > 0 && <a className="text-ink underline underline-offset-2" href={`/api/imports/${b.id}/errors`} aria-label={`Download invalid rows of ${b.filename}`}>Errors</a>}
             {b.status === "undone" ? <Badge>Undone</Badge> : <Button variant="ghost" size="sm" disabled={busy} onClick={() => onUndo(b.id)} aria-label={`Undo import of ${b.filename}`}>Undo</Button>}
           </li>
         ))}
@@ -225,7 +234,7 @@ export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => 
 
   const columnLabel = (headers: string[], h: string, i: number) => {
     const repeated = headers.indexOf(h) !== headers.lastIndexOf(h);
-    return `${h.trim() || "(no name)"}${repeated || !h.trim() ? ` · column ${i + 1}` : ""}`;
+    return `${h.trim() || "(no name)"}${repeated || !h.trim() ? `, column ${i + 1}` : ""}`;
   };
 
   const shown = preview ? [...new Map([...preview.flagged.slice(0, 50), ...preview.preview.slice(0, 8)].map((r) => [r.line, r])).values()].sort((a, b) => a.line - b.line) : [];
@@ -235,13 +244,13 @@ export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => 
       <div className="space-y-5">
         {result ? (
           <section aria-label="Import summary" className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2 text-[13.5px]" role="status">
-              <Badge tone="profit">{result.imported} imported</Badge>
-              <Badge tone="info">{result.duplicates} already imported</Badge>
-              <Badge tone={result.invalid ? "loss" : "neutral"}>{result.invalid} invalid</Badge>
-              <span className="text-muted">of {result.total} rows</span>
-              {result.mismatches > 0 && <Badge tone="loss">{result.mismatches} differ from the broker&apos;s profit</Badge>}
-            </div>
+            <dl className="flex flex-wrap gap-x-5 gap-y-2 border-y border-line py-2" role="status">
+              <Count label="Imported" value={result.imported} />
+              <Count label="Already imported" value={result.duplicates} />
+              <Count label="Invalid" value={result.invalid} />
+              <Count label="Rows in the file" value={result.total} />
+              {result.mismatches > 0 && <Count label="Differ from the broker's profit" value={result.mismatches} />}
+            </dl>
             <ErrorList rows={result.errors} fileName={file?.name ?? "import"} />
             <div className="flex justify-end gap-2">
               <Button variant="ghost" disabled={busy} onClick={() => void undo(result.batch)}>Undo this import</Button>
@@ -263,24 +272,34 @@ export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => 
                 onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
                 onDragLeave={() => setDragging(false)}
                 onDrop={(e) => { e.preventDefault(); setDragging(false); pick(e.dataTransfer.files[0]); }}
-                className={cx("rounded-md", dragging && "ring-2 ring-accent")}
+                className={cx(dragging && "outline-2 outline-offset-2 outline-[var(--accent)]")}
               >
                 <Field label="File (drop it here or browse)" hint={file?.name ?? "CSV or XLSX, up to 10 MB and 20,000 rows"}>
-                  {(p) => <input {...p} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className={cx(inputClass, "py-1.5 file:mr-3 file:rounded file:border-0 file:bg-raised file:px-2 file:py-1 file:text-ink")} onChange={(e) => pick(e.target.files?.[0])} />}
+                  {(p) => <input {...p} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className={cx(inputClass, "py-1 file:mr-3 file:border-0 file:bg-raised file:px-2 file:py-1 file:text-ink")} onChange={(e) => pick(e.target.files?.[0])} />}
                 </Field>
               </div>
             </div>
             {!preview && !file && (
-              <button type="button" className="text-[13px] text-accent hover:underline" onClick={() => pick(new File([SAMPLE_CSV], "example.csv", { type: "text/csv" }))}>
+              <button type="button" className="text-[13px] whitespace-nowrap text-ink underline underline-offset-2" onClick={() => pick(new File([SAMPLE_CSV], "example.csv", { type: "text/csv" }))}>
                 Try with a two-row example file
               </button>
             )}
           </>
         )}
-        {error && <p role="alert" className="rounded-md border border-loss/50 bg-loss-soft px-3 py-2 text-[13.5px]">{error}</p>}
+        {error && <p role="alert" className="border-l-2 border-loss bg-loss-soft px-3 py-2 text-[13.5px]">{error}</p>}
 
         {preview && !result && (
           <>
+            <dl className="flex flex-wrap gap-x-5 gap-y-2 border-y border-line py-2" role="status">
+              <Count label="Ready" value={preview.valid} />
+              <Count label="With problems" value={preview.invalid} />
+              <Count label="Already imported" value={preview.duplicates} />
+              <Count label="Rows in the file" value={preview.total} />
+              <div className="ml-auto text-right">
+                <dt className="text-[12.5px] text-muted">Net P&amp;L of ready rows</dt>
+                <dd className={cx("num text-[17px]", toneOf(preview.netPnl))}>{money(preview.netPnl, currency, true)}</dd>
+              </div>
+            </dl>
             <div className="grid gap-4 sm:grid-cols-2">
               {preview.sheets.length > 1 && (
                 <Field label="Sheet">
@@ -326,7 +345,7 @@ export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => 
                     {(p) => (
                       <select
                         {...p}
-                        className={cx(inputClass, "h-9")}
+                        className={inputClass}
                         value={preview.mapping[f] ?? ""}
                         onChange={(e) => {
                           const next = { ...preview.mapping };
@@ -353,7 +372,7 @@ export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => 
                       {(p) => (
                         <select
                           {...p}
-                          className={cx(inputClass, "h-9")}
+                          className={inputClass}
                           value={choices.sideMap?.[s.toLowerCase()] ?? ""}
                           onChange={(e) => {
                             const sideMap = { ...choices.sideMap };
@@ -375,7 +394,7 @@ export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => 
 
             {preview.symbols.length > 0 && (
               <section aria-label="Symbols">
-                <h3 className="mb-1 text-[13px] font-semibold text-ink-soft">Symbols and contract size</h3>
+                <h3 className="mb-1 text-[13px] font-medium text-ink-soft">Symbols and contract size</h3>
                 <p className="mb-2 text-[13px] text-muted">
                   Contract size is what 1 unit of size earns when the price moves by 1.00. Leave it at 1 if your file gives size in units or shares. If it gives lots or contracts, enter your broker&apos;s size (one EURUSD lot is usually 100,000), or profit will be far off. Rename a symbol to match your journal, such as EURUSD.M to EURUSD.
                 </p>
@@ -383,11 +402,11 @@ export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => 
                   {preview.symbols.map(({ symbol, contractSize }) => (
                     <div key={symbol} className="grid grid-cols-2 gap-2">
                       <Field label={`${symbol}: store as`}>
-                        {(p) => <input {...p} maxLength={20} placeholder={symbol} className={cx(inputClass, "h-9")} defaultValue={choices.symbolMap?.[symbol] ?? ""} onBlur={(e) => { if (e.target.value.trim() !== (choices.symbolMap?.[symbol] ?? "")) setSymbolEntry("symbolMap", symbol, e.target.value.trim()); }} />}
+                        {(p) => <input {...p} maxLength={20} placeholder={symbol} className={inputClass} defaultValue={choices.symbolMap?.[symbol] ?? ""} onBlur={(e) => { if (e.target.value.trim() !== (choices.symbolMap?.[symbol] ?? "")) setSymbolEntry("symbolMap", symbol, e.target.value.trim()); }} />}
                       </Field>
                       {preview.mapping.multiplier === undefined && (
                         <Field label="Contract size">
-                          {(p) => <input {...p} key={contractSize ?? "none"} type="number" min="0" step="any" placeholder="1" className={cx(inputClass, "h-9")} defaultValue={contractSize ?? ""} onBlur={(e) => { const n = Number(e.target.value); if (e.target.value !== String(contractSize ?? "")) setSymbolEntry("contractSizes", symbol, n > 0 ? n : null); }} />}
+                          {(p) => <input {...p} key={contractSize ?? "none"} type="number" min="0" step="any" placeholder="1" className={cx(inputClass, "num")} defaultValue={contractSize ?? ""} onBlur={(e) => { const n = Number(e.target.value); if (e.target.value !== String(contractSize ?? "")) setSymbolEntry("contractSizes", symbol, n > 0 ? n : null); }} />}
                         </Field>
                       )}
                     </div>
@@ -396,16 +415,8 @@ export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => 
               </section>
             )}
 
-            <div className="flex flex-wrap items-center gap-2 text-[13.5px]" role="status">
-              <Badge tone="profit">{preview.valid} ready</Badge>
-              <Badge tone={preview.invalid ? "loss" : "neutral"}>{preview.invalid} with problems</Badge>
-              <Badge tone="info">{preview.duplicates} already imported</Badge>
-              <span className="text-muted">of {preview.total} rows</span>
-              <span className="text-muted">· Net P&amp;L of ready rows:</span>
-              <span className={cx("num", toneOf(preview.netPnl))}>{money(preview.netPnl, currency, true)}</span>
-            </div>
             {preview.mismatches > 0 && (
-              <p className="rounded-md border border-loss/50 bg-loss-soft px-3 py-2 text-[13.5px]">
+              <p className="border-l-2 border-loss bg-loss-soft px-3 py-2 text-[13.5px]">
                 {preview.mismatches} {preview.mismatches === 1 ? "row differs" : "rows differ"} from the file&apos;s profit by more than 1%. This usually means a wrong contract size. They can still be imported, using the calculated figure.
               </p>
             )}
@@ -422,7 +433,7 @@ export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => 
         )}
 
         {!result && (
-          <div className="flex justify-end gap-2 border-t border-line pt-4">
+          <div className="sticky -bottom-4 z-10 -mx-card flex justify-end gap-2 border-t border-line bg-surface px-card py-2.5">
             <Button variant="ghost" onClick={() => { reset(); onClose(); }}>Cancel</Button>
             <Button variant="primary" onClick={() => void commit()} disabled={busy || !preview || preview.valid === 0}>
               {busy ? "Working…" : preview ? `Import ${preview.valid} trades` : "Import"}

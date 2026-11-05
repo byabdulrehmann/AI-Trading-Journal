@@ -59,42 +59,43 @@ function PairCard({ pair: { a, b, reason } }: { pair: DuplicatePair }) {
 
   return (
     <Card>
-      <p className="border-b border-line px-card py-2.5 text-[13.5px] text-ink-soft">{reason}</p>
-      <div className="overflow-x-auto">
-        <table className="w-full text-[13.5px]">
-          <thead>
-            <tr className="text-left">
-              <td className="px-card py-2" />
-              {[a, b].map((t) => (
-                <th key={t.id} scope="col" className="py-2 pr-card font-normal">
-                  <label className="flex flex-wrap items-center gap-2">
-                    <input type="radio" name={`keep-${a.id}-${b.id}`} className="accent-[var(--accent)]" checked={keep === t.id} onChange={() => setKeep(t.id)} aria-label={`Keep trade ${t.id}`} />
-                    <button type="button" className="font-medium underline-offset-2 hover:underline" onClick={() => openTrade(t.id)}>#{t.id}</button>
-                    <SourceBadge source={t.source} />
-                  </label>
+      <p className="py-2.5 text-[14px] text-ink">{reason}</p>
+      <table className="w-full table-fixed text-[13px]">
+        <thead>
+          <tr className="border-y border-line text-left">
+            <td className="w-[26%] sm:w-40" />
+            {[a, b].map((t) => (
+              <th key={t.id} scope="col" className={cx("px-2 py-1 font-normal", keep === t.id && "shadow-[inset_0_-2px_0_var(--accent)]")}>
+                <label className="flex min-h-11 flex-wrap items-center gap-x-2 sm:min-h-8">
+                  <input type="radio" name={`keep-${a.id}-${b.id}`} className="size-3.5 appearance-none border border-line-strong bg-sunken checked:border-accent checked:bg-accent" checked={keep === t.id} onChange={() => setKeep(t.id)} aria-label={`Keep trade ${t.id}`} />
+                  <button type="button" className="num font-medium underline-offset-2 hover:underline" onClick={() => openTrade(t.id)}>#{t.id}</button>
+                  <SourceBadge source={t.source} />
+                </label>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([label, get]) => {
+            const differs = get(a) !== get(b);
+            return (
+              <tr key={label} className="border-b border-line">
+                <th scope="row" className="py-1.5 pr-2 text-left align-baseline font-normal text-muted">
+                  {label}
+                  {differs && <span className="ml-1.5 text-warn" title="These two differ">≠<span className="sr-only"> differs</span></span>}
                 </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(([label, get]) => {
-              const differs = get(a) !== get(b);
-              return (
-                <tr key={label} className="border-t border-line">
-                  <th scope="row" className="px-card py-1.5 text-left font-normal text-muted">{label}</th>
-                  <td className={cx("num py-1.5 pr-card", differs && "text-warn")}>{get(a)}</td>
-                  <td className={cx("num py-1.5 pr-card", differs && "text-warn")}>{get(b)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-card py-3">
-        <p className="min-w-0 flex-1 basis-64 text-[12.5px] text-muted">Merge keeps the selected trade&apos;s numbers, copies notes, tags and files it lacks from the other, and deletes the other. Differences are highlighted.</p>
+                <td className={cx("num px-2 py-1.5 align-baseline break-words", differs ? "text-warn" : "text-ink-soft")}>{get(a)}</td>
+                <td className={cx("num px-2 py-1.5 align-baseline break-words", differs ? "text-warn" : "text-ink-soft")}>{get(b)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <div className="flex flex-wrap items-center justify-between gap-3 py-3">
+        <p className="min-w-0 flex-1 basis-64 text-[12.5px] text-muted">Merge keeps the selected trade&apos;s numbers, copies notes, tags and files it lacks from the other, and deletes the other. Differences are marked. Times are local time.</p>
         <div className="flex gap-2">
-          <Button size="sm" disabled={busy} onClick={() => void decide("kept_both")}>Keep both</Button>
-          <Button size="sm" variant="primary" disabled={busy} onClick={() => void decide("merged")}>Merge into #{keep}</Button>
+          <Button size="sm" className="max-sm:h-11" disabled={busy} onClick={() => void decide("kept_both")}>Keep both</Button>
+          <Button size="sm" className="max-sm:h-11" variant="primary" disabled={busy} onClick={() => void decide("merged")}>Merge into #{keep}</Button>
         </div>
       </div>
     </Card>

@@ -8,7 +8,7 @@ import { useApp } from "@/lib/client/app-state";
 import { dateTime, money } from "@/lib/client/format";
 import { useFetch } from "@/lib/client/use-fetch";
 import { COACHING_STYLES, type ActivityEvent, type SHARING_LEVELS } from "@/lib/domain/types";
-import { Badge, Button, Card, CardHeader, Field, PageHeader, Segmented, Spinner, Toggle, cx, inputClass } from "@/components/ui";
+import { Badge, Button, Field, PageHeader, Segmented, Spinner, Toggle, cx, inputClass } from "@/components/ui";
 
 const SHARING: { value: (typeof SHARING_LEVELS)[number]; label: string; detail: string }[] = [
   { value: "metrics", label: "Metrics only", detail: "Totals, win rate, R statistics and pattern summaries. No individual trades." },
@@ -18,55 +18,64 @@ const SHARING: { value: (typeof SHARING_LEVELS)[number]; label: string; detail: 
 
 const STYLE_LABEL: Record<(typeof COACHING_STYLES)[number], string> = { direct: "Direct", supportive: "Supportive", analytical: "Analytical" };
 
+/** A ruled form section: its name on the left, its fields on the right. */
+function Section({ id, title, description, children }: { id: string; title: string; description?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <section id={id} className="grid scroll-mt-20 grid-cols-[minmax(0,1fr)] gap-x-10 gap-y-3 border-t border-line py-5 lg:grid-cols-[15rem_minmax(0,1fr)]">
+      <div>
+        <h2 className="text-[15px] font-medium text-ink">{title}</h2>
+        {description && <p className="mt-0.5 text-[13px] text-muted">{description}</p>}
+      </div>
+      <div className="min-w-0">{children}</div>
+    </section>
+  );
+}
+
 export default function SettingsPage() {
   const { settings, saveSettings } = useApp();
-  if (!settings) return <Spinner />;
+  if (!settings) return <Spinner label="Loading your settings" />;
   const j = settings.jarvis;
 
   return (
     <>
       <PageHeader title="Settings" description="Preferences, privacy and your data. Everything is stored in a local database on this computer." />
-      <nav aria-label="Settings sections" className="mb-6 flex flex-wrap gap-2 text-[13px]">
+      <nav aria-label="Settings sections" className="mb-5 flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
         {[["profile", "Profile"], ["accounts", "Accounts"], ["jarvis", "AI Coach"], ["privacy", "Privacy"], ["data", "Your data"]].map(([id, l]) => (
-          <a key={id} href={`#${id}`} className="rounded-full border border-line px-3 py-1 text-ink-soft hover:border-line-strong hover:text-ink">{l}</a>
+          <a key={id} href={`#${id}`} className="py-1 text-ink-soft underline-offset-2 hover:text-ink hover:underline pointer-coarse:py-3">{l}</a>
         ))}
       </nav>
 
-      <div className="space-y-6">
-        <Card id="profile" className="scroll-mt-20">
-          <CardHeader title="Profile" />
-          <div className="grid gap-4 p-5 sm:grid-cols-3">
-            <Field label="Display name" hint="Used to greet you">
-              {(p) => <input {...p} className={inputClass} defaultValue={settings.displayName} maxLength={40} onBlur={(e) => e.target.value !== settings.displayName && void saveSettings({ displayName: e.target.value })} />}
-            </Field>
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[13px] text-ink-soft">Theme</span>
-              <Segmented label="Theme" value={settings.theme} onChange={(theme) => void saveSettings({ theme })} options={[{ value: "system", label: "System" }, { value: "dark", label: "Dark" }, { value: "light", label: "Light" }]} />
-            </div>
+      <Section id="profile" title="Profile">
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,20rem)_auto] sm:justify-start">
+          <Field label="Display name" hint="Used to greet you">
+            {(p) => <input {...p} className={inputClass} defaultValue={settings.displayName} maxLength={40} onBlur={(e) => e.target.value !== settings.displayName && void saveSettings({ displayName: e.target.value })} />}
+          </Field>
+          <div className="flex flex-col gap-1">
+            <span className="text-[13px] text-ink-soft">Theme</span>
+            <Segmented label="Theme" value={settings.theme} onChange={(theme) => void saveSettings({ theme })} options={[{ value: "system", label: "System" }, { value: "dark", label: "Dark" }, { value: "light", label: "Light" }]} />
           </div>
-        </Card>
+        </div>
+      </Section>
 
-        <Accounts />
+      <Accounts />
 
-        <Card id="jarvis" className="scroll-mt-20">
-          <CardHeader title="AI Coach" subtitle={<>Model and provider are chosen on the <Link href="/jarvis" className="text-accent underline">AI Coach</Link> page, under Model.</>} />
-          <div className="divide-y divide-line px-5">
-            <Toggle label="Enable the AI Coach" checked={j.enabled} onChange={(v) => void saveSettings({ jarvis: { enabled: v } })} description="When off, the panel is hidden and no messages are processed. Saved history is kept." />
-            <div className="flex flex-wrap items-center justify-between gap-3 py-3">
-              <div>
-                <p className="text-[14px] font-medium">Coaching style</p>
-                <p className="text-[13px] text-muted">How the coach phrases its replies.</p>
-              </div>
-              <Segmented label="Coaching style" value={j.coachingStyle} onChange={(coachingStyle) => void saveSettings({ jarvis: { coachingStyle } })} options={COACHING_STYLES.map((s) => ({ value: s, label: STYLE_LABEL[s] }))} />
+      <Section id="jarvis" title="AI Coach" description={<>Model and provider are chosen on the <Link href="/jarvis" className="text-ink underline">AI Coach</Link> page, under Model.</>}>
+        <div className="divide-y divide-line">
+          <Toggle label="Enable the AI Coach" checked={j.enabled} onChange={(v) => void saveSettings({ jarvis: { enabled: v } })} description="When off, the panel is hidden and no messages are processed. Saved history is kept." />
+          <div className="flex flex-wrap items-center justify-between gap-3 py-3">
+            <div>
+              <p className="text-[14px] font-medium">Coaching style</p>
+              <p className="text-[13px] text-muted">How the coach phrases its replies.</p>
             </div>
-            <Toggle label="Behavioural insights" checked={j.behaviouralInsights} onChange={(v) => void saveSettings({ jarvis: { behaviouralInsights: v } })} description="Detects patterns like fast re-entries after losses. Turn off to stop pattern analysis everywhere, including the AI Coach." />
-            <Toggle label="Reflection prompts" checked={j.reflectionPrompts} onChange={(v) => void saveSettings({ jarvis: { reflectionPrompts: v } })} description="A reminder on the dashboard about recent trades with no plan answer. Shown in the app only." />
+            <Segmented label="Coaching style" value={j.coachingStyle} onChange={(coachingStyle) => void saveSettings({ jarvis: { coachingStyle } })} options={COACHING_STYLES.map((s) => ({ value: s, label: STYLE_LABEL[s] }))} />
           </div>
-        </Card>
+          <Toggle label="Behavioural insights" checked={j.behaviouralInsights} onChange={(v) => void saveSettings({ jarvis: { behaviouralInsights: v } })} description="Detects patterns like fast re-entries after losses. Turn off to stop pattern analysis everywhere, including the AI Coach." />
+          <Toggle label="Reflection prompts" checked={j.reflectionPrompts} onChange={(v) => void saveSettings({ jarvis: { reflectionPrompts: v } })} description="A reminder on the dashboard about recent trades with no plan answer. Shown in the app only." />
+        </div>
+      </Section>
 
-        <Privacy />
-        <DataControls />
-      </div>
+      <Privacy />
+      <DataControls />
     </>
   );
 }
@@ -95,17 +104,16 @@ function Accounts() {
   };
 
   return (
-    <Card id="accounts" className="scroll-mt-20">
-      <CardHeader title="Trading accounts" subtitle={<>MetaTrader 5 connections are managed under <Link href="/accounts" className="text-accent underline">Accounts &amp; MT5</Link>.</>} />
-      <ul className="divide-y divide-line">
+    <Section id="accounts" title="Trading accounts" description={<>MetaTrader 5 connections are managed under <Link href="/accounts" className="text-ink underline">Accounts &amp; MT5</Link>.</>}>
+      <ul className="divide-y divide-line border-y border-line">
         {accounts.map((a) => (
-          <li key={a.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
-            <div className="min-w-0 flex-1">
+          <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
+            <div className="min-w-0 flex-1 basis-48">
               <p className="font-medium">{a.name} {a.isSample && <Badge tone="info">Sample</Badge>} {a.archived && <Badge>Archived</Badge>}</p>
-              <p className="num text-[12.5px] text-muted">{a.currency}, starting {money(a.startingBalance, a.currency)}</p>
+              <p className="text-[12.5px] text-muted"><span className="num">{a.currency}</span>, starting <span className="num">{money(a.startingBalance, a.currency)}</span></p>
             </div>
             {settings?.defaultAccountId === a.id ? (
-              <Badge tone="accent">Default</Badge>
+              <span className="flex items-center gap-1.5 px-3 text-[13px] text-ink"><span aria-hidden className="h-2 w-2 bg-accent" />Default</span>
             ) : (
               !a.archived && <Button size="sm" variant="ghost" onClick={() => void saveSettings({ defaultAccountId: a.id })}>Make default</Button>
             )}
@@ -113,13 +121,13 @@ function Accounts() {
           </li>
         ))}
       </ul>
-      <div className="grid gap-3 border-t border-line p-5 sm:grid-cols-[1fr_120px_160px_auto] sm:items-end">
+      <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_6rem_9rem_auto] sm:items-start">
         <Field label="New account name" error={errors.name}>{(p) => <input {...p} className={inputClass} value={name} onChange={(e) => setName(e.target.value)} />}</Field>
-        <Field label="Currency" error={errors.currency}>{(p) => <input {...p} className={cx(inputClass, "uppercase")} value={currency} maxLength={3} onChange={(e) => setCurrency(e.target.value)} />}</Field>
+        <Field label="Currency" error={errors.currency}>{(p) => <input {...p} className={cx(inputClass, "num uppercase")} value={currency} maxLength={3} onChange={(e) => setCurrency(e.target.value)} />}</Field>
         <Field label="Starting balance" error={errors.startingBalance}>{(p) => <input {...p} className={cx(inputClass, "num")} inputMode="decimal" value={balance} onChange={(e) => setBalance(e.target.value)} />}</Field>
-        <Button onClick={add} disabled={!name.trim()}>Add account</Button>
+        <Button className="sm:mt-[1.5rem]" onClick={add} disabled={!name.trim()}>Add account</Button>
       </div>
-    </Card>
+    </Section>
   );
 }
 
@@ -137,31 +145,29 @@ function Privacy() {
   const j = settings.jarvis;
 
   return (
-    <Card id="privacy" className="scroll-mt-20">
-      <CardHeader title="Privacy" subtitle="What the AI Coach can use, what is recorded, and what leaves this computer." />
-      <div className="space-y-6 p-5">
+    <Section id="privacy" title="Privacy" description="What the AI Coach can use, what is recorded, and what leaves this computer.">
+      <div className="space-y-5">
         <section>
-          <h3 className="text-[14px] font-semibold">Sharing with external AI providers</h3>
+          <h3 className="text-[14px] font-medium">Sharing with external AI providers</h3>
           <p className="mt-1 text-[13px] text-muted">Applies only when a provider such as Anthropic is active. Demo mode never sends anything.</p>
-          <div role="radiogroup" aria-label="Sharing level" className="mt-3 grid gap-2 sm:grid-cols-3">
-            {SHARING.map((s) => (
-              <button
-                key={s.value}
-                type="button"
-                role="radio"
-                aria-checked={j.sharing === s.value}
-                onClick={() => void saveSettings({ jarvis: { sharing: s.value } })}
-                className={cx("rounded-lg border p-3 text-left", j.sharing === s.value ? "border-accent bg-accent-soft" : "border-line hover:border-line-strong")}
-              >
-                <span className="block text-[14px] font-medium">{s.label}</span>
-                <span className="mt-1 block text-[12.5px] text-muted">{s.detail}</span>
-              </button>
-            ))}
+          <div role="radiogroup" aria-label="Sharing level" className="mt-2 divide-y divide-line border-y border-line">
+            {SHARING.map((s) => {
+              const on = j.sharing === s.value;
+              return (
+                <button key={s.value} type="button" role="radio" aria-checked={on} onClick={() => void saveSettings({ jarvis: { sharing: s.value } })} className="flex w-full items-start gap-3 py-2.5 text-left hover:bg-raised">
+                  <span aria-hidden className={cx("mt-1 h-3 w-3 shrink-0 border", on ? "border-accent bg-accent" : "border-line-strong")} />
+                  <span>
+                    <span className="block text-[14px] font-medium">{s.label}</span>
+                    <span className="block text-[13px] text-muted">{s.detail}</span>
+                  </span>
+                </button>
+              );
+            })}
           </div>
           {preview && (
-            <div className="mt-3 rounded-lg border border-line bg-sunken p-3 text-[13px]">
+            <div className="mt-3 bg-sunken p-3 text-[13px]">
               <p className="font-medium">
-                Right now, a message would go to <span className="text-accent">{preview.provider}</span>
+                Right now, a message would go to {preview.provider}
                 {preview.external ? " and include:" : ". It runs locally; nothing is sent."}
               </p>
               {preview.external && (
@@ -175,7 +181,7 @@ function Privacy() {
           )}
         </section>
 
-        <section className="divide-y divide-line border-t border-line">
+        <section className="divide-y divide-line border-y border-line">
           <Toggle label="AI Coach memory" checked={j.memoryEnabled} onChange={(v) => void saveSettings({ jarvis: { memoryEnabled: v } })} description={<>Lets the coach use the notes you&apos;ve asked it to remember. Manage them on the <Link href="/jarvis" className="underline">AI Coach</Link> page, under Memory.</>} />
           <Toggle
             label="Record app activity"
@@ -190,26 +196,26 @@ function Privacy() {
 
         {activity && (
           <section>
-            <h3 className="text-[14px] font-semibold">What activity recording captures</h3>
-            <ul className="mt-2 grid gap-1 text-[13px] text-ink-soft sm:grid-cols-2">
+            <h3 className="text-[14px] font-medium">What activity recording captures</h3>
+            <ul className="mt-2 grid gap-x-6 gap-y-1 text-[13px] text-ink-soft sm:grid-cols-2">
               {Object.entries(activity.types).map(([k, v]) => (
                 <li key={k}><code className="num text-[12px] text-muted">{k}</code>: {v}</li>
               ))}
             </ul>
             <p className="mt-2 text-[13px] text-muted">Jarvis does not record page views, clicks, keystrokes, time on page, or chat content.</p>
-            <div className="mt-4 flex items-center justify-between">
-              <h3 className="text-[14px] font-semibold">Recorded events ({activity.events.length})</h3>
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <h3 className="text-[14px] font-medium">Recorded events (<span className="num">{activity.events.length}</span>)</h3>
               <Button size="sm" variant="danger" disabled={!activity.events.length} onClick={async () => { await api("/api/activity", { method: "DELETE" }); await loadActivity(); }}>Delete log</Button>
             </div>
             {activity.events.length === 0 ? (
               <p className="mt-2 text-[13px] text-muted">Nothing recorded.</p>
             ) : (
-              <ul className="num mt-2 max-h-56 divide-y divide-line overflow-y-auto rounded-md border border-line text-[12.5px]">
+              <ul className="mt-2 max-h-56 divide-y divide-line overflow-y-auto border-y border-line text-[12.5px]" tabIndex={0} aria-label="Recorded events, local time">
                 {activity.events.map((e) => (
-                  <li key={e.id} className="flex gap-3 px-3 py-1.5">
-                    <span className="text-muted">{dateTime(e.createdAt)}</span>
-                    <span>{e.type}</span>
-                    <span className="truncate text-muted">{JSON.stringify(e.detail)}</span>
+                  <li key={e.id} className="flex gap-3 py-1.5">
+                    <span className="num whitespace-nowrap text-muted">{dateTime(e.createdAt)}</span>
+                    <code className="num">{e.type}</code>
+                    <code className="num truncate text-muted">{JSON.stringify(e.detail)}</code>
                   </li>
                 ))}
               </ul>
@@ -217,7 +223,7 @@ function Privacy() {
           </section>
         )}
       </div>
-    </Card>
+    </Section>
   );
 }
 
@@ -227,11 +233,10 @@ function DataControls() {
   const hasSample = useFetch<Facets>("/api/facets").data?.hasSample;
 
   return (
-    <Card id="data" className="scroll-mt-20">
-      <CardHeader title="Your data" subtitle="Stored in a database file inside the app's data folder." />
-      <div className="space-y-5 p-5">
+    <Section id="data" title="Your data" description="Stored in a database file inside the app's data folder.">
+      <div className="space-y-5">
         <div className="flex flex-wrap items-center gap-3">
-          <a href="/api/data" className="inline-flex h-9 items-center rounded-control border border-line-strong bg-raised px-3.5 text-sm font-medium hover:border-muted" download>
+          <a href="/api/data" className="inline-flex h-9 items-center border border-line-strong px-3.5 text-sm font-medium transition-colors hover:bg-raised" download>
             Export everything (JSON)
           </a>
           {hasSample ? (
@@ -240,9 +245,9 @@ function DataControls() {
             <Button onClick={async () => { const r = await api<{ added: number }>("/api/data/sample", { method: "POST" }); await refresh(); toast({ message: `Loaded ${r.added} sample trades.`, tone: "success" }); }}>Load sample data</Button>
           )}
         </div>
-        <div className="rounded-lg border border-loss/40 p-4">
-          <h3 className="text-[14px] font-semibold text-loss">Delete all data</h3>
-          <p className="mt-1 text-[13px] text-muted">Permanently removes trades, accounts, attachments, settings, AI Coach conversations, memories and the activity log. Your sign-in stays. Export first if you want a copy.</p>
+        <div className="border-t border-line pt-4">
+          <h3 className="text-[14px] font-medium">Delete all data</h3>
+          <p className="mt-1 max-w-2xl text-[13px] text-muted">Permanently removes trades, accounts, attachments, settings, AI Coach conversations, memories and the activity log. Your sign-in stays. Export first if you want a copy.</p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <label htmlFor="confirm-delete" className="sr-only">Type DELETE to confirm</label>
             <input id="confirm-delete" className={cx(inputClass, "sm:w-56")} placeholder="Type DELETE to confirm" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} />
@@ -261,6 +266,6 @@ function DataControls() {
           </div>
         </div>
       </div>
-    </Card>
+    </Section>
   );
 }

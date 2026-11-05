@@ -6,7 +6,7 @@ import { useApp } from "@/lib/client/app-state";
 /**
  * Minimal, safe renderer for Jarvis replies: paragraphs, bullet lists,
  * **bold**, _italic_, `code`, and [#123] trade references as buttons.
- * Builds React nodes only — no HTML injection.
+ * Builds React nodes only, with no HTML injection.
  */
 export function RichText({ text }: { text: string }) {
   const blocks = text.split(/\n{2,}/);
@@ -39,14 +39,13 @@ export function RichText({ text }: { text: string }) {
   );
 }
 
-/** Colours the Recorded / Possible pattern / Suggestion labels. */
+/** Sets the Recorded / Possible pattern / Suggestion labels apart by weight. */
 function Label({ text }: { text: string }) {
   const m = /^(Recorded|Possible pattern|Suggestion):\s*/.exec(text);
   if (!m) return <Inline text={text} />;
-  const tone = m[1] === "Recorded" ? "text-info" : m[1] === "Suggestion" ? "text-profit" : "text-accent";
   return (
     <>
-      <span className={`font-semibold ${tone}`}>{m[1]}:</span> <Inline text={text.slice(m[0].length)} />
+      <span className="font-medium text-ink">{m[1]}:</span> <Inline text={text.slice(m[0].length)} />
     </>
   );
 }
@@ -61,12 +60,12 @@ function Inline({ text }: { text: string }) {
         const trade = /^\[#(\d+)\]$/.exec(p);
         if (trade)
           return (
-            <button key={i} type="button" onClick={() => openTrade(Number(trade[1]))} className="num rounded bg-accent-soft px-1 text-[0.92em] text-accent hover:underline" title={`Open trade #${trade[1]}`}>
+            <button key={i} type="button" onClick={() => openTrade(Number(trade[1]))} className="num text-[0.92em] text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink" title={`Open trade #${trade[1]}`}>
               #{trade[1]}
             </button>
           );
-        if (p.startsWith("**") && p.endsWith("**")) return <strong key={i}>{p.slice(2, -2)}</strong>;
-        if (p.startsWith("`") && p.endsWith("`")) return <code key={i} className="num rounded bg-sunken px-1 text-[0.9em]">{p.slice(1, -1)}</code>;
+        if (p.startsWith("**") && p.endsWith("**")) return <strong key={i} className="font-medium">{p.slice(2, -2)}</strong>;
+        if (p.startsWith("`") && p.endsWith("`")) return <code key={i} className="num bg-sunken px-1 text-[0.9em]">{p.slice(1, -1)}</code>;
         if (p.startsWith("_") && p.endsWith("_") && p.length > 2) return <em key={i} className="text-muted">{p.slice(1, -1)}</em>;
         return <Fragment key={i}>{p}</Fragment>;
       })}

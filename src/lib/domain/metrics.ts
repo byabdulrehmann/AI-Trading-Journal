@@ -71,12 +71,12 @@ export const METRIC_DEFINITIONS = {
     meaning: "Mean P&L of losing trades.",
   },
   holdWinners: {
-    label: "Median hold — winners",
+    label: "Median hold, winners",
     formula: "median(close − open) of winners",
     meaning: "Typical time a winning trade stays open.",
   },
   holdLosers: {
-    label: "Median hold — losers",
+    label: "Median hold, losers",
     formula: "median(close − open) of losers",
     meaning: "Typical time a losing trade stays open.",
   },

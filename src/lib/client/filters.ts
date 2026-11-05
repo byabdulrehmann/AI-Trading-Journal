@@ -32,8 +32,8 @@ function dateWindow(range: string, from: string, to: string): { from?: string; t
   return {};
 }
 
-const API_KEYS = ["accountId", "symbol", "strategy", "source", "outcome", "plan", "includeSample", "currency", "q"];
-const FILTER_KEYS = [...API_KEYS.filter((k) => k !== "includeSample" && k !== "currency"), "range", "from", "to"];
+const API_KEYS = ["accountId", "symbol", "strategy", "source", "outcome", "plan", "includeSample", "currency", "q", "side", "session", "weekday", "hour", "closedOnly"];
+const FILTER_KEYS = [...API_KEYS.filter((k) => k !== "includeSample" && k !== "currency"), "range", "from", "to", "closedFrom", "closedTo"];
 
 export type UrlFilters = ReturnType<typeof useUrlFilters>;
 
@@ -72,6 +72,10 @@ export function useUrlFilters() {
         if (w.from) out.set("from", w.from);
         if (w.to) out.set("to", w.to);
       }
+      // Local days, turned into instants here like the open-date range.
+      const closed = dateWindow("custom", current.get("closedFrom") ?? "", current.get("closedTo") ?? "");
+      if (closed.from) out.set("closedFrom", closed.from);
+      if (closed.to) out.set("closedTo", closed.to);
       for (const [k, v] of Object.entries(opts.extra ?? {})) if (v) out.set(k, v);
       return out.toString();
     },

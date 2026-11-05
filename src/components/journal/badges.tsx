@@ -1,25 +1,22 @@
 import type { Trade } from "@/lib/domain/types";
-import { Badge } from "../ui";
 
-const SOURCE: Record<Trade["source"], { label: string; tone: "neutral" | "info" | "accent" }> = {
-  manual: { label: "Manual", tone: "neutral" },
-  csv: { label: "Imported", tone: "neutral" },
-  mt5: { label: "MT5", tone: "accent" },
-  sample: { label: "Sample", tone: "info" },
-};
+const label = "text-[12.5px] whitespace-nowrap";
 
-export const SourceBadge = ({ source }: { source: Trade["source"] }) => <Badge tone={SOURCE[source].tone}>{SOURCE[source].label}</Badge>;
+const SOURCE: Record<Trade["source"], string> = { manual: "Manual", csv: "Imported", mt5: "MT5", sample: "Sample" };
+
+/** Quiet words, not pills. Sky blue marks sample data and a position still running, the second state; green and red stay with money. */
+export const SourceBadge = ({ source }: { source: Trade["source"] }) => <span className={`${label} ${source === "sample" ? "text-info" : "text-muted"}`}>{SOURCE[source]}</span>;
 
 export function StatusBadge({ status }: { status: Trade["status"] }) {
-  if (status === "closed") return <Badge>Closed</Badge>;
-  return <Badge tone="warn">{status === "open" ? "Open" : "Partial"}</Badge>;
+  if (status === "closed") return <span className={`${label} text-muted`}>Closed</span>;
+  return <span className={`${label} text-info`}>{status === "open" ? "Open" : "Partial"}</span>;
 }
 
-export const SideBadge = ({ side }: { side: Trade["side"] }) => <Badge tone={side === "long" ? "profit" : "loss"}>{side === "long" ? "Long" : "Short"}</Badge>;
+export const SideBadge = ({ side }: { side: Trade["side"] }) => <span className={`${label} text-ink-soft`}>{side === "long" ? "Long" : "Short"}</span>;
 
 /** Why a trade has no P&L figure yet, or null when it's fine. */
 export function PnlIssue({ status }: { status: Trade["pnlStatus"] }) {
-  if (status === "needs_rate") return <span title="A conversion rate to the account currency is missing. Edit the trade to enter it."><Badge tone="warn">P&amp;L pending</Badge></span>;
-  if (status === "over_closed") return <span title="The exits add up to more than the entries. Edit the fills."><Badge tone="loss">Check fills</Badge></span>;
+  if (status === "needs_rate") return <span title="A conversion rate to the account currency is missing. Edit the trade to enter it." className={`${label} font-sans text-warn`}>P&amp;L pending</span>;
+  if (status === "over_closed") return <span title="The exits add up to more than the entries. Edit the fills." className={`${label} font-sans text-warn`}>Check fills</span>;
   return null;
 }

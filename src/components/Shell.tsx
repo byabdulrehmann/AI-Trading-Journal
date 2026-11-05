@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { PUBLIC_PAGES, useApp } from "@/lib/client/app-state";
+import { CommandPalette } from "./CommandPalette";
 import { Button, cx } from "./ui";
 import { JarvisPanel } from "./jarvis/JarvisPanel";
 import { TradeDrawer } from "./journal/TradeDrawer";
@@ -25,12 +26,11 @@ const NAV = [
 export function Logo() {
   return (
     <span className="flex items-center gap-2">
-      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden fill="none">
-        <rect x="0.75" y="0.75" width="22.5" height="22.5" rx="5" stroke="var(--line-strong)" strokeWidth="1.5" />
-        <path d="M14 5.5v9a3.5 3.5 0 0 1-7 0" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" />
-        <circle cx="18" cy="6" r="1.6" fill="var(--accent)" />
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden fill="none">
+        <path d="M1 12.5h3.5V7.5H8v6h3.5V4H15" stroke="var(--ink)" strokeWidth="1.5" />
+        <rect x="14" y="2.5" width="3" height="3" fill="var(--accent)" />
       </svg>
-      <span className="text-[16px] font-semibold tracking-tight text-ink">Jarvis</span>
+      <span className="text-[16px] font-medium tracking-tight text-ink">Jarvis</span>
     </span>
   );
 }
@@ -59,7 +59,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       <aside
         className={cx(
-          "fixed inset-y-0 left-0 z-40 w-56 flex-col border-r border-line bg-surface lg:sticky lg:top-0 lg:flex lg:h-dvh lg:shrink-0",
+          "fixed inset-y-0 left-0 z-40 w-52 flex-col border-r border-line bg-canvas lg:sticky lg:top-0 lg:flex lg:h-dvh lg:shrink-0",
           navOpen ? "flex" : "hidden",
         )}
         aria-label="Primary"
@@ -79,11 +79,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 aria-current={active ? "page" : undefined}
                 onClick={() => setNavOpen(false)}
                 className={cx(
-                  "flex items-center gap-2.5 rounded-control px-2.5 py-1.5 text-[14px] transition-colors",
-                  active ? "bg-raised text-ink" : "text-ink-soft hover:bg-raised/60 hover:text-ink",
+                  "flex items-center gap-2.5 px-2.5 py-1.5 text-[14px] transition-colors",
+                  active ? "bg-raised text-ink shadow-[inset_2px_0_0_var(--accent)]" : "text-ink-soft hover:bg-raised hover:text-ink",
                 )}
               >
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden className={active ? "text-accent" : "text-muted"}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" aria-hidden className="text-muted">
                   <path d={item.icon} />
                 </svg>
                 {item.label}
@@ -93,7 +93,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="border-t border-line p-3">
           {user && <p className="truncate px-1 text-[13px] text-ink-soft" title={user.email}>{user.name || user.email}</p>}
-          <Button variant="ghost" size="sm" className="mt-1 w-full justify-start px-1" onClick={() => void signOut()}>
+          <Button variant="ghost" size="sm" className="mt-1 w-full justify-start !px-1" onClick={() => void signOut()}>
             Sign out
           </Button>
           <p className="mt-2 px-1 text-[12px] leading-snug text-muted">A journal, not advice. Jarvis never places trades.</p>
@@ -110,6 +110,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <Logo />
           </span>
           <div className="ml-auto flex items-center gap-2">
+            <span className="hidden text-[13px] text-muted sm:inline">
+              <kbd>Ctrl</kbd> <kbd>K</kbd> to go anywhere
+            </span>
             <Button size="sm" variant="primary" onClick={() => editTrade("new")}>
               Log trade
             </Button>
@@ -122,7 +125,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </header>
         <div className="flex min-w-0 flex-1">
           <main id="main" className="min-w-0 flex-1 px-gutter py-5 sm:px-6 lg:px-8">
-            <div className="mx-auto max-w-[1200px]">{children}</div>
+            <div className="mx-auto max-w-[var(--container)]">{children}</div>
           </main>
           {coachEnabled && jarvisOpen && pathname !== "/jarvis" && <JarvisPanel onClose={() => setJarvisOpen(false)} />}
         </div>
@@ -130,6 +133,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       <TradeDrawer />
       <TradeFormDialog />
+      <CommandPalette />
       <Toasts />
     </div>
   );

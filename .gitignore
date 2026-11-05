@@ -52,3 +52,6 @@ next-env.d.ts
 /playwright-report/
 .claude/settings.local.json
 /.next-*/
+
+/.hallmark/before/
+/.hallmark/after/

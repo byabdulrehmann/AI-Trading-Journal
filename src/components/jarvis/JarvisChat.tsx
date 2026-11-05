@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client/api";
 import { useApp } from "@/lib/client/app-state";
 import { MEMORY_KINDS } from "@/lib/domain/types";
-import { Badge, Button, cx, inputClass } from "../ui";
+import { Button, cx, inputClass } from "../ui";
 import { RichText } from "./RichText";
 import { useJarvisChat, type UiMessage } from "./useJarvisChat";
 
@@ -85,18 +85,16 @@ export function JarvisChat({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2.5">
-        <Badge tone={external ? "accent" : "neutral"} className="max-w-full">
-          <span className="truncate">{active ? `${active.label} · ${active.model}` : "Checking model…"}</span>
-        </Badge>
+        <span className="min-w-0 truncate text-[13px] text-ink-soft">{active ? <>{active.label}, <span className="num">{active.model}</span></> : "Checking model…"}</span>
         {external === false && <span className="text-[12px] text-muted">Stays on this computer</span>}
         <button type="button" onClick={() => setShowShared((s) => !s)} aria-expanded={showShared} className="ml-auto text-[12.5px] text-muted underline-offset-2 hover:text-ink hover:underline">
           What&apos;s shared?
         </button>
       </div>
       {active?.fallbackReason && (
-        <p className="border-b border-line bg-accent-soft px-4 py-2 text-[12.5px] text-ink">
+        <p className="border-b border-line bg-warn-soft px-4 py-2 text-[12.5px] text-ink">
           Using demo mode: {active.fallbackReason}{" "}
-          <Link href="/settings#jarvis" className="text-accent underline">
+          <Link href="/settings#jarvis" className="underline">
             Settings
           </Link>
         </p>
@@ -117,9 +115,9 @@ export function JarvisChat({
             <p>Demo mode makes no network calls. Replies are built from your records on this computer.</p>
           )}
           <p className="mt-2">
-            Sharing level: <strong>{settings?.jarvis.sharing.replaceAll("_", " ")}</strong> ·{" "}
-            <Link href="/settings#privacy" className="text-accent underline">
-              change
+            Sharing level: <span className="font-medium text-ink">{settings?.jarvis.sharing.replaceAll("_", " ")}</span>.{" "}
+            <Link href="/settings#privacy" className="underline">
+              Change it
             </Link>
           </p>
         </div>
@@ -133,7 +131,7 @@ export function JarvisChat({
             </p>
             <div className="flex flex-wrap gap-2">
               {STARTERS.map((s) => (
-                <button key={s} type="button" onClick={() => void send(s)} className="rounded-full border border-line-strong px-3 py-1.5 text-left text-[13px] text-ink-soft hover:border-accent hover:text-ink">
+                <button key={s} type="button" onClick={() => void send(s)} className="border border-line-strong px-3 py-1.5 text-left text-[13px] text-ink-soft transition-colors hover:bg-raised hover:text-ink pointer-coarse:py-3">
                   {s}
                 </button>
               ))}
@@ -181,7 +179,7 @@ export function JarvisChat({
             </Button>
           )}
         </div>
-        <p className="mt-1.5 text-[11.5px] text-muted">Reflective, educational only — not financial or psychological advice.</p>
+        <p className="mt-1.5 text-[11.5px] text-muted">Reflective, educational only, not financial or psychological advice.</p>
       </form>
     </div>
   );
@@ -196,7 +194,7 @@ function MessageView({ m, compact }: { m: UiMessage; compact?: boolean }) {
   if (m.role === "user")
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-lg rounded-br-sm bg-raised px-3.5 py-2 text-[14px] whitespace-pre-wrap text-ink ring-1 ring-line">{m.content}</div>
+        <div className="max-w-[85%] bg-raised px-3 py-2 text-[14px] whitespace-pre-wrap text-ink">{m.content}</div>
       </div>
     );
 
@@ -215,7 +213,7 @@ function MessageView({ m, compact }: { m: UiMessage; compact?: boolean }) {
   return (
     <div className="animate-rise">
       <div className={cx("text-[14px] leading-relaxed text-ink", compact ? "" : "max-w-3xl")}>
-        {m.error && <p className="mb-2 rounded-md border border-loss/50 bg-loss-soft px-3 py-2 text-[13px]">{m.error}</p>}
+        {m.error && <p className="mb-2 border-l-2 border-loss bg-loss-soft px-3 py-2 text-[13px]">{m.error}</p>}
         {m.content ? <RichText text={m.content} /> : m.streaming ? <span className="typing-caret text-muted">Thinking</span> : null}
         {m.streaming && m.content && <span className="typing-caret" aria-hidden />}
       </div>
@@ -223,20 +221,20 @@ function MessageView({ m, compact }: { m: UiMessage; compact?: boolean }) {
         <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[12px] text-muted">
           {m.model && <span>{m.provider === "demo" ? "Demo mode" : m.model}</span>}
           {settings?.jarvis.memoryEnabled && (
-            <button type="button" className="hover:text-ink" onClick={() => setRemembering((r) => !r)} aria-expanded={remembering}>
+            <button type="button" className="whitespace-nowrap hover:text-ink" onClick={() => setRemembering((r) => !r)} aria-expanded={remembering}>
               Remember something from this
             </button>
           )}
         </div>
       )}
       {remembering && (
-        <div className="mt-2 space-y-2 rounded-lg border border-line p-3">
+        <div className="mt-2 space-y-2 border-y border-line py-3">
           <label className="block text-[12.5px] text-ink-soft" htmlFor={`mem-${m.key}`}>
             In your words, what should the coach remember? You can edit or delete it later.
           </label>
           <textarea id={`mem-${m.key}`} rows={2} className={cx(inputClass, "h-auto py-2")} value={memText} onChange={(e) => setMemText(e.target.value)} maxLength={500} />
           <div className="flex flex-wrap items-center gap-2">
-            <select aria-label="Memory type" className={cx(inputClass, "h-8 w-auto")} value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
+            <select aria-label="Memory type" className={cx(inputClass, "!w-auto")} value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
               {MEMORY_KINDS.map((k) => <option key={k}>{k}</option>)}
             </select>
             <Button size="sm" variant="primary" onClick={saveMemory} disabled={memText.trim().length < 3}>

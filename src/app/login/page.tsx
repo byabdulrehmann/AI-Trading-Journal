@@ -47,14 +47,14 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center px-gutter py-10">
+    <main className="flex min-h-dvh items-center justify-center bg-canvas px-gutter py-10">
       <div className="w-full max-w-sm">
         <Logo />
         {hasUsers === null && !formError ? (
           <div className="mt-8"><Spinner label="Checking this installation" /></div>
         ) : (
           <>
-            <h1 className="mt-8 text-[22px] leading-tight font-semibold tracking-tight">{setup ? "Create your account" : "Sign in"}</h1>
+            <h1 className="mt-6 border-t border-line pt-6 text-[22px] leading-tight font-medium">{setup ? "Create your account" : "Sign in"}</h1>
             <p className="mt-1.5 text-[14px] text-muted">
               {setup ? "This is the first account on this computer. Any trades already in the journal will belong to it." : "Your journal is stored on this computer and opens with your password."}
             </p>

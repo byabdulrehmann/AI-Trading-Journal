@@ -1,0 +1,19 @@
+/* Hallmark · base: what the Floor decides. Imported in Tailwind's base layer, so utilities still win. */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { overflow-x: clip; }
+html { scrollbar-color: var(--line-strong) var(--canvas); scroll-padding-top: var(--space-xl); }
+body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; font-feature-settings: "ss01", "cv11"; }
+::selection { background: var(--accent-soft); color: var(--ink); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 0.16em; }
+h1, h2, h3 { margin: 0; font-family: var(--font-display); font-weight: var(--display-weight); font-synthesis: none; letter-spacing: -0.015em; overflow-wrap: break-word; min-width: 0; }
+h1 { letter-spacing: var(--tracking-display); }
+h1, h2, h3 { text-wrap: balance; }
+p { margin: 0; text-wrap: pretty; }
+img, video { max-width: 100%; height: auto; display: block; }
+[hidden] { display: none !important; }
+button, input, select, textarea { font: inherit; }
+@media (max-width: 40rem) { input, select, textarea { font-size: 16px; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

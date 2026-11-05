@@ -100,7 +100,7 @@ function holdingLosers(closed: Closed[]): PatternFinding | null {
   return {
     ...base("holding-losers"),
     observation: `Your losing trades stayed open for a median of ${fmtMin(ml)}, against ${fmtMin(mw)} for winners.`,
-    interpretation: "This may mean losing positions are given more room than the plan allowed. It can also reflect your strategy — only you can tell.",
+    interpretation: "This may mean losing positions are given more room than the plan allowed. It can also reflect your strategy: only you can tell.",
     suggestion: "Before entering, write down the point where the idea is wrong, and compare it with where you actually exited.",
     occurrences: evidence.length,
     cost: totalPnl(evidence),
@@ -177,7 +177,7 @@ function earlyExit(closed: Closed[]): PatternFinding | null {
   );
   return {
     ...base("early-exit"),
-    observation: `${hits.length} winning trades closed at less than half of their planned reward:risk. Reaching the planned targets would have added roughly ${fmt(left)} — if price had got there, which these records can't confirm.`,
+    observation: `${hits.length} winning trades closed at less than half of their planned reward:risk. Reaching the planned targets would have added roughly ${fmt(left)}, if price had got there, which these records can't confirm.`,
     interpretation: "This might reflect taking profit early to lock in a win. It can also be good trade management when conditions changed.",
     suggestion: "Note why you exited each time. Over a few weeks that tells you whether early exits help or hurt.",
     occurrences: hits.length,
@@ -194,7 +194,7 @@ function lossBeyondStop(closed: Closed[]): PatternFinding | null {
   return {
     ...base("loss-beyond-stop"),
     observation: `${hits.length} losing trades finished beyond −1.2R. The part beyond the planned −1R totals ${fmt(extra)}.`,
-    interpretation: "This can come from slippage, gaps or fees — or from moving or ignoring a stop. Check each trade before drawing a conclusion.",
+    interpretation: "This can come from slippage, gaps or fees, or from moving or ignoring a stop. Check each trade before drawing a conclusion.",
     suggestion: "Record whether the stop was moved. If slippage is the cause, consider it in position sizing.",
     occurrences: hits.length,
     cost: extra,
