@@ -159,22 +159,23 @@ def run_session(login, server, password, start):
         raise SessionError("terminal_missing", "The dedicated MT5 terminal is missing. Run: node scripts/setup-mt5.mjs")
     start_terminal()
     try:
-        if not mt5.initialize(path=TERMINAL, portable=True, timeout=INIT_TIMEOUT_MS):
-            fail("no_connection", "Could not start the dedicated terminal")
+        # The login goes in here, not afterwards: a terminal with no account sits at its first-run
+        # screen, and without credentials initialize times out waiting for it.
+        if not mt5.initialize(path=TERMINAL, portable=True, login=login, password=password, server=server, timeout=INIT_TIMEOUT_MS):
+            code, message = mt5.last_error()
+            raise SessionError(login_category(code), f"Could not sign in: {message}", code)
 
         terminal = mt5.terminal_info()
         if terminal is None or not is_dedicated(terminal.path):
             raise SessionError("terminal_missing", "Reached a different terminal than the dedicated one, so no login was attempted.")
 
-        # Seen once: a fresh copy signed in to an account nobody gave it. Fail closed and read nothing.
+        # A server list copied from another terminal once signed this one in to that terminal's account.
+        # Setup no longer copies it, but fail closed and read nothing if anything like that happens again.
         current = mt5.account_info()
         if current is not None and current.login not in (login, _last_login):
             stop_terminal()
             raise SessionError("other", "The dedicated terminal signed in to another account by itself, so nothing was read.")
 
-        if not mt5.login(login, password=password, server=server, timeout=LOGIN_TIMEOUT_MS):
-            code, message = mt5.last_error()
-            raise SessionError(login_category(code), f"Login failed: {message}", code)
         _last_login = login
         return read_account(login, start, terminal)
     except SessionError as e:

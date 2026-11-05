@@ -462,10 +462,10 @@ describe("read-only and no-secret guarantees in the source", () => {
     for (const f of sources) assert.ok(!/order_send|order_check/.test(readFileSync(f, "utf8")), f);
   });
 
-  test("the service never calls initialize without the explicit dedicated path, or with credentials", () => {
+  test("the service only ever starts the dedicated terminal, by explicit path", () => {
     const service = readFileSync(path.join(ROOT, "services", "mt5", "service.py"), "utf8");
     const calls = service.match(/mt5\.initialize\([^)]*\)/g) ?? [];
-    assert.deepEqual(calls, ["mt5.initialize(path=TERMINAL, portable=True, timeout=INIT_TIMEOUT_MS)"]);
+    assert.deepEqual(calls, ["mt5.initialize(path=TERMINAL, portable=True, login=login, password=password, server=server, timeout=INIT_TIMEOUT_MS)"]);
   });
 
   test("the service binds to loopback and logs nothing", () => {
@@ -475,10 +475,11 @@ describe("read-only and no-secret guarantees in the source", () => {
     assert.equal((service.match(/print\(/g) ?? []).length, 1);
   });
 
-  test("setup never copies saved logins", () => {
+  test("setup copies nothing from the user's terminal data, since its servers.dat signs a copy in to that account", () => {
     const setup = readFileSync(path.join(ROOT, "scripts", "setup-mt5.mjs"), "utf8");
-    assert.equal((setup.match(/copyFileSync\(/g) ?? []).length, 2);
-    assert.ok(!/copyFileSync\([^)]*(accounts|common\.ini)/.test(setup));
+    assert.equal((setup.match(/copyFileSync\(/g) ?? []).length, 1);
+    assert.ok(!/copyFileSync\([^)]*(accounts|common\.ini|servers)/.test(setup));
+    assert.ok(!setup.includes("APPDATA"));
   });
 
   test("routes don't touch the cipher, and the status query names its columns", () => {

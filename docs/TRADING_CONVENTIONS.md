@@ -118,3 +118,7 @@ These are my judgment, not claims about any product.
 - [ ] Filters for symbol, session, side, setup, and hold time on every statistic
 - [ ] Per-setup expectancy, not only win rate
 - [ ] Daily loss and overtrading views
+
+## Tested on this machine: don't copy MT5 servers.dat
+
+The `servers.dat` from a terminal's data folder signed a separate copy of the terminal in to that terminal's account, with no login given (confirmed on 2026-11-06 by restoring only that file). So Jarvis's terminal starts with its own default list, gets its credentials through `mt5.initialize`, and refuses to read anything if it finds itself on another account.
