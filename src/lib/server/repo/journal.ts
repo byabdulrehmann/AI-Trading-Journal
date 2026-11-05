@@ -530,12 +530,18 @@ export function importTrades(userId: number, accountId: number, rows: { trade: T
 }
 
 export function undoImport(userId: number, batch: string): number {
-  return transaction(db(), () => {
-    const removed = Number(db().prepare("DELETE FROM trades WHERE import_batch = ? AND user_id = ?").run(batch, userId).changes);
-    db().prepare("UPDATE import_batches SET status = 'undone' WHERE id = ? AND user_id = ?").run(batch, userId);
-    audit(userId, "import.undone", "import_batch", batch, { removed });
-    return removed;
+  const conn = db();
+  const attachments = (conn.prepare("SELECT a.stored_name FROM attachments a JOIN trades t ON t.id = a.trade_id WHERE t.import_batch = ? AND t.user_id = ?").all(batch, userId) as { stored_name: string }[]).map((r) => r.stored_name);
+  const upload = conn.prepare("SELECT stored_name FROM import_batches WHERE id = ? AND user_id = ? AND stored_name IS NOT NULL").get(batch, userId) as { stored_name: string } | undefined;
+  const removed = transaction(conn, () => {
+    const n = Number(conn.prepare("DELETE FROM trades WHERE import_batch = ? AND user_id = ?").run(batch, userId).changes);
+    conn.prepare("UPDATE import_batches SET status = 'undone', stored_name = NULL WHERE id = ? AND user_id = ?").run(batch, userId);
+    audit(userId, "import.undone", "import_batch", batch, { removed: n });
+    return n;
   });
+  removeStoredFiles("attachments", attachments);
+  if (upload) removeStoredFiles("imports", [upload.stored_name]);
+  return removed;
 }
 
 export function listImports(userId: number) {
@@ -560,7 +566,7 @@ export function reconciliationCandidates(userId: number): ReconcilePair[] {
     .prepare(`SELECT a.id AS a_id, b.id AS b_id FROM trades a JOIN trades b
         ON b.account_id = a.account_id AND b.symbol = a.symbol AND b.side = a.side AND b.id > a.id AND b.source != a.source
        AND ABS(b.quantity - a.quantity) < 0.0000001 AND ABS(b.entry_price - a.entry_price) <= ABS(a.entry_price) * 0.00001
-       AND ABS(julianday(b.opened_at) - julianday(a.opened_at)) * 86400 <= 60
+       AND b.opened_at BETWEEN strftime('%Y-%m-%dT%H:%M:%fZ', a.opened_at, '-60 seconds') AND strftime('%Y-%m-%dT%H:%M:%fZ', a.opened_at, '+60 seconds')
        WHERE a.user_id = ? AND a.deleted_at IS NULL AND b.deleted_at IS NULL AND a.source != 'sample' AND b.source != 'sample'
          AND NOT EXISTS (SELECT 1 FROM reconciliations r WHERE r.trade_a = a.id AND r.trade_b = b.id)
        LIMIT 100`)
@@ -654,15 +660,20 @@ export function deleteAllData(userId: number) {
   });
   removeStoredFiles("attachments", attachments);
   removeStoredFiles("imports", uploads);
+  // Pushes the deleted rows out of the write-ahead log too.
+  conn.exec("PRAGMA wal_checkpoint(TRUNCATE)");
 }
 
 export function removeSampleData(userId: number): number {
   const conn = db();
-  return transaction(conn, () => {
+  const attachments = (conn.prepare("SELECT a.stored_name FROM attachments a JOIN trades t ON t.id = a.trade_id WHERE t.source = 'sample' AND t.user_id = ?").all(userId) as { stored_name: string }[]).map((r) => r.stored_name);
+  const removed = transaction(conn, () => {
     const n = Number(conn.prepare("DELETE FROM trades WHERE source = 'sample' AND user_id = ?").run(userId).changes);
     conn.prepare("DELETE FROM accounts WHERE is_sample = 1 AND user_id = ? AND id NOT IN (SELECT account_id FROM trades)").run(userId);
     return n;
   });
+  removeStoredFiles("attachments", attachments);
+  return removed;
 }
 
 export function hasSampleData(userId: number): boolean {

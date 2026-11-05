@@ -1,34 +1,75 @@
 import "server-only";
-import { unzipSync } from "fflate";
+import { Unzip, UnzipInflate, UnzipPassThrough, unzipSync } from "fflate";
 import { MAX_SHEET_ROWS, type Cell, type SheetRow } from "@/lib/domain/csv";
 import { UploadError } from "./errors";
 
 export const MAX_UNCOMPRESSED_BYTES = 100_000_000;
 const MAX_ZIP_ENTRIES = 2000;
 const MAX_COLUMNS = 500;
+/** Excel's own limit for one cell. */
+const MAX_CELL_CHARS = 32767;
+const INFLATE_STEP_BYTES = 64 * 1024;
 
 const CORRUPT = "This .xlsx file is damaged or incomplete. Open it in Excel, save it again and retry.";
 const NOT_WORKBOOK = "This file is a zip, but not an Excel workbook. Export your history as .xlsx or .csv.";
+const TOO_BIG = "This workbook expands to too much data to read safely.";
 const MACROS = "Macro-enabled workbooks aren't accepted. Save it as a plain .xlsx without macros.";
 
 /** Only the parts this reader uses are inflated. */
 const wanted = (name: string) =>
   ["[Content_Types].xml", "xl/workbook.xml", "xl/_rels/workbook.xml.rels", "xl/styles.xml", "xl/sharedStrings.xml"].includes(name) || /^xl\/worksheets\/[^/]+\.xml$/.test(name);
 
+/**
+ * Inflates in small steps and counts what really comes out, so a part lying about its size
+ * stops at the limit instead of decoding gigabytes while the server waits.
+ */
+function inflateWanted(bytes: Uint8Array): Record<string, Uint8Array> {
+  const parts: Record<string, Uint8Array> = {};
+  let produced = 0;
+  const reader = new Unzip((file) => {
+    if (!wanted(file.name)) return;
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    file.ondata = (err, data, final) => {
+      if (err) throw err;
+      size += data.length;
+      produced += data.length;
+      if (produced > MAX_UNCOMPRESSED_BYTES) throw new UploadError(TOO_BIG, 413);
+      if (file.originalSize !== undefined && size > file.originalSize) throw new UploadError(CORRUPT);
+      chunks.push(data);
+      if (final) {
+        const whole = new Uint8Array(size);
+        let at = 0;
+        for (const c of chunks) {
+          whole.set(c, at);
+          at += c.length;
+        }
+        parts[file.name] = whole;
+      }
+    };
+    file.start();
+  });
+  reader.register(UnzipInflate);
+  reader.register(UnzipPassThrough);
+  for (let i = 0; i < bytes.length; i += INFLATE_STEP_BYTES) reader.push(bytes.subarray(i, i + INFLATE_STEP_BYTES), i + INFLATE_STEP_BYTES >= bytes.length);
+  return parts;
+}
+
 function unzip(bytes: Uint8Array) {
   const names = new Set<string>();
   let total = 0;
   try {
     const parts = unzipSync(bytes, {
-      // Declared sizes are checked before anything inflates. If one lies low, fflate's output is cut to that size and the closing-tag checks below reject the part.
+      // Reads the declared sizes only: nothing inflates here.
       filter: (f) => {
         total += f.originalSize;
         names.add(f.name);
-        if (total > MAX_UNCOMPRESSED_BYTES || names.size > MAX_ZIP_ENTRIES) throw new UploadError("This workbook expands to too much data to read safely.", 413);
-        return wanted(f.name);
+        if (total > MAX_UNCOMPRESSED_BYTES || names.size > MAX_ZIP_ENTRIES) throw new UploadError(TOO_BIG, 413);
+        return false;
       },
     });
-    return { parts, names };
+    void parts;
+    return { parts: inflateWanted(bytes), names };
   } catch (e) {
     if (e instanceof UploadError) throw e;
     throw new UploadError(CORRUPT);
@@ -42,7 +83,7 @@ function xmlPart(parts: Record<string, Uint8Array>, name: string): string | null
   const data = parts[name];
   if (!data) return null;
   const xml = decoder.decode(data);
-  if (xml.includes("<!DOCTYPE")) throw new UploadError(CORRUPT);
+  if (/<!doctype/i.test(xml)) throw new UploadError(CORRUPT);
   return xml.replace(/<(\/?)[A-Za-z_][\w.-]*:/g, "<$1");
 }
 
@@ -89,8 +130,14 @@ function* elements(xml: string, tag: string): Generator<{ attrs: string; body: s
   }
 }
 
+/** A single huge string, repeated across rows, would otherwise exhaust memory from a tiny file. */
+function capped(text: string): string {
+  if (text.length > MAX_CELL_CHARS) throw new UploadError(CORRUPT);
+  return text;
+}
+
 function textOf(body: string): string {
-  return body.startsWith("<![CDATA[") && body.endsWith("]]>") ? body.slice(9, -3) : unescapeXml(body);
+  return capped(body.startsWith("<![CDATA[") && body.endsWith("]]>") ? body.slice(9, -3) : unescapeXml(body));
 }
 
 function firstText(body: string, tag: string): string | null {
@@ -110,7 +157,7 @@ function sharedStrings(xml: string | null): string[] {
   if (!xml) return [];
   if (!xml.trimEnd().endsWith("</sst>") && !xml.trimEnd().endsWith("/>")) throw new UploadError(CORRUPT);
   const out: string[] = [];
-  for (const si of elements(xml, "si")) out.push(joinedText(si.body));
+  for (const si of elements(xml, "si")) out.push(capped(joinedText(si.body)));
   return out;
 }
 
@@ -155,7 +202,7 @@ function columnIndex(ref: string | undefined): number | null {
 function cellValue(attrs: string, body: string, strings: string[], dates: boolean[], date1904: boolean): Cell {
   const type = attr(attrs, "t") ?? "n";
   if (type === "inlineStr") {
-    for (const is of elements(body, "is")) return joinedText(is.body);
+    for (const is of elements(body, "is")) return capped(joinedText(is.body));
     return "";
   }
   const v = firstText(body, "v");

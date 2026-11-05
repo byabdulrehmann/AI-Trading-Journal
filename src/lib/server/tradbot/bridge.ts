@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "../db";
+import { decrypt, encrypt } from "../mt5/crypto";
 
 /**
  * Adapter to a running TradBot-I (the user's own Jarvis) through the remote
@@ -65,10 +66,19 @@ class TradBotBridge {
   private getToken(): string | null {
     if (!this.tokenLoaded) {
       const row = db().prepare("SELECT value FROM settings WHERE key = ?").get(TOKEN_KEY) as { value: string } | undefined;
-      this.token = row ? (JSON.parse(row.value) as string) : null;
+      this.token = row ? this.openToken(row.value) : null;
       this.tokenLoaded = true;
     }
     return this.token;
+  }
+
+  /** Unreadable, or stored before encryption: pairing again is the safe answer. */
+  private openToken(stored: string): string | null {
+    try {
+      return decrypt(stored);
+    } catch {
+      return null;
+    }
   }
 
   private setToken(token: string | null) {
@@ -77,7 +87,7 @@ class TradBotBridge {
     if (token)
       db()
         .prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
-        .run(TOKEN_KEY, JSON.stringify(token));
+        .run(TOKEN_KEY, encrypt(token));
     else db().prepare("DELETE FROM settings WHERE key = ?").run(TOKEN_KEY);
   }
 

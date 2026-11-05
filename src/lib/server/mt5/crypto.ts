@@ -4,6 +4,12 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
+/** Outside the project, so zipping or syncing the folder doesn't carry the key along with the database. */
+function keyFolder(): string {
+  if (process.env.JARVIS_KEY_DIR) return process.env.JARVIS_KEY_DIR;
+  return process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, "Jarvis") : path.join(process.cwd(), ".secrets");
+}
+
 /** Key from JARVIS_ENCRYPTION_KEY (base64 or hex of 32 bytes), else a key file outside the database. */
 export function masterKey(): Buffer {
   const env = process.env.JARVIS_ENCRYPTION_KEY;
@@ -12,14 +18,14 @@ export function masterKey(): Buffer {
     if (key.length !== 32) throw new Error("JARVIS_ENCRYPTION_KEY must be 32 bytes, as base64 or hex.");
     return key;
   }
-  const file = path.join(process.cwd(), ".secrets", "master.key");
+  const file = path.join(keyFolder(), "master.key");
   if (!existsSync(file)) {
     mkdirSync(path.dirname(file), { recursive: true });
     writeFileSync(file, randomBytes(32).toString("base64"), { mode: 0o600, flag: "wx" });
     restrictToCurrentUser(file);
   }
   const key = Buffer.from(readFileSync(file, "utf8").trim(), "base64");
-  if (key.length !== 32) throw new Error("The key in .secrets/master.key is not 32 bytes.");
+  if (key.length !== 32) throw new Error("The key in master.key is not 32 bytes.");
   return key;
 }
 

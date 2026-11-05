@@ -235,6 +235,48 @@ describe("migration from the old schema", () => {
     });
   });
 
+  describe("deleting removes the files too", () => {
+    test("undoing an import and removing sample data delete attachment files", async () => {
+      const { saveAttachment } = await import("./attachments");
+      const { dataPath } = await import("./db");
+      const { readdirSync } = await import("node:fs");
+      const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
+      const files = () => readdirSync(dataPath("attachments")).length;
+      const before = files();
+      const { batch } = J.importTrades(owner, 1, [{ trade: trade({ symbol: "NZDUSD" }), sourceKey: "attach-1" }], { filename: "x.csv", fileSha256: "x", storedName: null, format: "csv", adapter: "generic", options: {}, totalRows: 1, duplicates: 0, invalid: 0, errors: [] });
+      const imported = J.listTrades(owner, { symbol: "NZDUSD" })[0];
+      saveAttachment(owner, imported.id, { kind: "chart", filename: "a.png", bytes: png });
+      assert.equal(files(), before + 1);
+      J.undoImport(owner, batch);
+      assert.equal(files(), before);
+      const sample = J.createTrade(owner, trade({ symbol: "AUDNZD", fxRate: 1 }), { source: "sample" });
+      saveAttachment(owner, sample.id, { kind: "chart", filename: "b.png", bytes: png });
+      J.removeSampleData(owner);
+      assert.equal(files(), before);
+    });
+    test("a download's name can't claim another type", async () => {
+      const { saveAttachment } = await import("./attachments");
+      const t = J.createTrade(owner, trade({ symbol: "CADCHF", fxRate: 1 }));
+      const a = saveAttachment(owner, t.id, { kind: "chart", filename: "setup.exe", bytes: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 9]) });
+      assert.equal(a.filename, "setup.png");
+    });
+  });
+
+  describe("password change", () => {
+    test("needs the current password, and ends every session", async () => {
+      const { changePassword, startSession } = await import("./auth");
+      void startSession;
+      const u = (await createUser("change@example.test", "first long password", "")) as { id: number };
+      db().prepare("INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES ('h', ?, '2026', '2099')").run(u.id);
+      assert.equal(await changePassword(u.id, "wrong", "second long password"), false);
+      assert.ok(await authenticate("change@example.test", "first long password"));
+      assert.equal(await changePassword(u.id, "first long password", "second long password"), true);
+      assert.equal(await authenticate("change@example.test", "first long password"), null);
+      assert.ok(await authenticate("change@example.test", "second long password"));
+      assert.equal((db().prepare("SELECT COUNT(*) AS n FROM sessions WHERE user_id = ?").get(u.id) as { n: number }).n, 0);
+    });
+  });
+
   describe("auth", () => {
     test("right password in, wrong out, unknown email out", async () => {
       assert.equal((await authenticate("owner@example.test", "correct horse battery"))?.id, owner);

@@ -57,10 +57,13 @@ docs/FEATURE_MATRIX.md feature checklist vs. the reference product
 - Settings → Your data: export everything as JSON, remove sample data, or delete all data
   (requires typing `DELETE`).
 
-There is no authentication: it's a single-user local app. So `npm run dev` and
-`npm start` listen on `127.0.0.1` only, and `src/proxy.ts` answers API requests only
-on a loopback host and refuses changes sent by other sites. Serving it on a network
-needs a login first; loosening these checks alone would expose your journal and TradBot-I.
+Jarvis has local accounts: the first one created owns the existing data, and sign-up then
+closes unless the server runs with `JARVIS_OPEN_SIGNUP=1`. `npm run dev` and `npm start`
+listen on `127.0.0.1` only, and `src/proxy.ts` answers only on a loopback host and refuses
+changes sent by other sites. It isn't built for a network: there's no HTTPS, and loosening
+these checks would expose your journal, your MT5 connection and TradBot-I. Anyone who can
+read your Windows profile can read your data; the investor password's key is kept in
+`%LOCALAPPDATA%\Jarvis`, apart from the database, so a copied project folder doesn't carry it.
 
 CSV import: choose a number format and a date format if the file needs them. Rows
 that could be read two ways (`1,085`, `03/10/2026`) stay out of the import until you

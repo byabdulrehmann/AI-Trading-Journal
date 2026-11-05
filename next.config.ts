@@ -16,6 +16,8 @@ const csp = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  // The e2e run builds into its own folder, so it can't replace the .next a running server reads from. Unset everywhere else.
+  distDir: process.env.KESTREL_DIST_DIR || ".next",
   cacheComponents: true,
   partialPrefetching: true,
   poweredByHeader: false,

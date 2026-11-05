@@ -44,6 +44,7 @@ describe("password encryption", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "jarvis-key-"));
     const cwd = process.cwd();
     process.chdir(dir);
+    process.env.JARVIS_KEY_DIR = path.join(dir, ".secrets");
     try {
       const first = masterKey();
       assert.equal(first.length, 32);
@@ -51,6 +52,7 @@ describe("password encryption", () => {
       assert.deepEqual(masterKey(), first);
       assert.equal(readFileSync(path.join(dir, ".secrets", "master.key"), "utf8"), first.toString("base64"));
     } finally {
+      delete process.env.JARVIS_KEY_DIR;
       process.chdir(cwd);
       rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }

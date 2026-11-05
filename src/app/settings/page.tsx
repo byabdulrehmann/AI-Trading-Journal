@@ -31,6 +31,46 @@ function Section({ id, title, description, children }: { id: string; title: stri
   );
 }
 
+function Password() {
+  const { toast } = useApp();
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await api("/api/auth/password", { method: "POST", json: { current, next } });
+      setCurrent("");
+      setNext("");
+      toast({ message: "Password changed. Other devices were signed out.", tone: "success" });
+    } catch (err) {
+      const fields = fieldErrors(err);
+      setError(fields.next ?? (err instanceof Error ? err.message : "Couldn't change the password."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Section id="password" title="Password" description="Changing it signs out everywhere else.">
+      <form onSubmit={submit} className="grid gap-4 sm:grid-cols-[minmax(0,16rem)_minmax(0,16rem)_auto] sm:items-end">
+        <Field label="Current password">
+          {(p) => <input {...p} type="password" autoComplete="current-password" className={inputClass} value={current} onChange={(e) => setCurrent(e.target.value)} required />}
+        </Field>
+        <Field label="New password">
+          {(p) => <input {...p} type="password" autoComplete="new-password" minLength={10} className={inputClass} value={next} onChange={(e) => setNext(e.target.value)} required />}
+        </Field>
+        <Button type="submit" disabled={busy}>{busy ? "Changing" : "Change password"}</Button>
+      </form>
+      {error && <p role="alert" className="mt-2 text-[13px] text-loss">{error}</p>}
+    </Section>
+  );
+}
+
 export default function SettingsPage() {
   const { settings, saveSettings } = useApp();
   if (!settings) return <Spinner label="Loading your settings" />;
@@ -40,7 +80,7 @@ export default function SettingsPage() {
     <>
       <PageHeader title="Settings" description="Preferences, privacy and your data. Everything is stored in a local database on this computer." />
       <nav aria-label="Settings sections" className="mb-5 flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
-        {[["profile", "Profile"], ["accounts", "Accounts"], ["jarvis", "AI Coach"], ["privacy", "Privacy"], ["data", "Your data"]].map(([id, l]) => (
+        {[["profile", "Profile"], ["password", "Password"], ["accounts", "Accounts"], ["jarvis", "AI Coach"], ["privacy", "Privacy"], ["data", "Your data"]].map(([id, l]) => (
           <a key={id} href={`#${id}`} className="py-1 text-ink-soft underline-offset-2 hover:text-ink hover:underline pointer-coarse:py-3">{l}</a>
         ))}
       </nav>
@@ -56,6 +96,8 @@ export default function SettingsPage() {
           </div>
         </div>
       </Section>
+
+      <Password />
 
       <Accounts />
 

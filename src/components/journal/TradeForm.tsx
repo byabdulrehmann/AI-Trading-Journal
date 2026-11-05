@@ -241,12 +241,13 @@ function validate(payload: ReturnType<typeof toPayload>, f: FormState): Record<s
 }
 
 export function TradeFormDialog() {
-  const { editing, editTrade } = useApp();
+  const { editing, editTrade, loading } = useApp();
   const existing = useFetch<{ trade: Trade }>(typeof editing === "number" ? `/api/trades/${editing}` : null);
   const trade = existing.data?.trade.id === editing ? existing.data!.trade : null;
   return (
     <Dialog open={editing !== null} onClose={() => editTrade(null)} title={editing === "new" ? "Log a trade" : `Edit trade #${editing}`} wide persistent>
-      {editing === "new" && <TradeFormBody key="new" trade={null} />}
+      {/* The body picks its default account once, when it mounts, so it waits for the accounts. */}
+      {editing === "new" && (loading ? <Spinner label="Loading your accounts" /> : <TradeFormBody key="new" trade={null} />)}
       {typeof editing === "number" && (trade ? <TradeFormBody key={trade.id} trade={trade} /> : existing.error ? <p className="text-[14px] text-loss">{existing.error}</p> : <Spinner label="Loading the trade" />)}
     </Dialog>
   );

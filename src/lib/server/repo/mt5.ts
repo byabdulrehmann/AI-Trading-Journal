@@ -149,6 +149,7 @@ export function clearConnection(accountId: number) {
   const conn = db();
   conn.prepare("UPDATE mt5_connections SET password_cipher = NULL, status = 'disconnected', last_error = NULL WHERE account_id = ?").run(accountId);
   conn.prepare("DELETE FROM open_positions WHERE account_id = ?").run(accountId);
+  conn.exec("PRAGMA wal_checkpoint(TRUNCATE)");
 }
 
 export function listOpenPositions(accountId: number) {

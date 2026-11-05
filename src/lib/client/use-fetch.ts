@@ -13,6 +13,8 @@ export function useFetch<T>(url: string | null) {
   const [retry, setRetry] = useState(0);
   const key = url && `${url}#${dataVersion}#${retry}`;
   const [state, setState] = useState<{ key: string | null; data?: T; error?: string }>({ key: null });
+  // Closed, then reopened on the same url, must wait for fresh data: a form would take the old result as its starting values.
+  if (!url && state.key !== null) setState({ key: null });
 
   useEffect(() => {
     if (!url) return;

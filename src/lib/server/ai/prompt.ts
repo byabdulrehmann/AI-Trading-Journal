@@ -28,7 +28,7 @@ Rules:
 - ${STYLE[ctx.coachingStyle]}
 
 <trader_record>
-${renderRecord(ctx)}
+${renderRecord(ctx).replace(/</g, "\\u003c")}
 </trader_record>`;
 }
 

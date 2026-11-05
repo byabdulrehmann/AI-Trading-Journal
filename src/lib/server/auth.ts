@@ -15,7 +15,8 @@ export interface User {
 
 export const COOKIE = "jarvis_session";
 const SESSION_DAYS = 14;
-const SCRYPT = { N: 2 ** 15, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
+const COST = 2 ** 17;
+const scryptOptions = (N: number) => ({ N, r: 8, p: 1, maxmem: 256 * 1024 * 1024 });
 
 export const Credentials = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email").max(200),
@@ -23,19 +24,19 @@ export const Credentials = z.object({
   name: z.string().trim().max(60).default(""),
 });
 
-function derive(password: string, salt: Buffer): Promise<Buffer> {
-  return new Promise((resolve, reject) => scrypt(password, salt, 32, SCRYPT, (err, key) => (err ? reject(err) : resolve(key))));
+function derive(password: string, salt: Buffer, N: number): Promise<Buffer> {
+  return new Promise((resolve, reject) => scrypt(password, salt, 32, scryptOptions(N), (err, key) => (err ? reject(err) : resolve(key))));
 }
 
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16);
-  return `scrypt$${salt.toString("base64")}$${(await derive(password, salt)).toString("base64")}`;
+  return `scrypt$${COST}$${salt.toString("base64")}$${(await derive(password, salt, COST)).toString("base64")}`;
 }
 
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
-  const [, salt, key] = stored.split("$");
+  const [, cost, salt, key] = stored.split("$");
   const expected = Buffer.from(key, "base64");
-  const actual = await derive(password, Buffer.from(salt, "base64"));
+  const actual = await derive(password, Buffer.from(salt, "base64"), Number(cost));
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
@@ -95,6 +96,19 @@ export async function startSession(userId: number) {
   });
 }
 
+/** Signs out every device, so a copied cookie stops working. The caller starts a fresh session. */
+export async function changePassword(userId: number, current: string, next: string): Promise<boolean> {
+  const row = db().prepare("SELECT password_hash FROM users WHERE id = ?").get(userId) as { password_hash: string } | undefined;
+  if (!row || !(await verifyPassword(current, row.password_hash))) return false;
+  const hash = await hashPassword(next);
+  transaction(db(), () => {
+    db().prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hash, userId);
+    db().prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
+    audit(userId, "password.changed", "user", userId);
+  });
+  return true;
+}
+
 export async function endSession() {
   const store = await cookies();
   const token = store.get(COOKIE)?.value;
@@ -131,6 +145,8 @@ const MAX_ATTEMPTS = 8;
 
 export function rateLimited(key: string): boolean {
   const t = Date.now();
+  // Keys hold whatever email was typed, so old ones must not pile up.
+  if (attempts.size > 5000) for (const [k, v] of attempts) if (v.resetAt < t) attempts.delete(k);
   const entry = attempts.get(key);
   if (!entry || entry.resetAt < t) {
     attempts.set(key, { count: 1, resetAt: t + WINDOW_MS });

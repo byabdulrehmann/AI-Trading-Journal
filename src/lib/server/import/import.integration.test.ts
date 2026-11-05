@@ -207,6 +207,12 @@ describe("rejecting bad uploads", () => {
     rejects(() => readUpload("t.xlsx", bomb), /too much data/);
   });
 
+  test("one enormous shared string is refused rather than copied row by row", () => {
+    const sheet = '<worksheet><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c></row></sheetData></worksheet>';
+    const huge = zipSync({ ...unzipAll(xlsx({ S: [] })), "xl/worksheets/sheet1.xml": strToU8(sheet), "xl/sharedStrings.xml": strToU8(`<sst><si><t>${"x".repeat(40000)}</t></si></sst>`) });
+    rejects(() => readUpload("t.xlsx", huge), /damaged/);
+  });
+
   test("a zip bomb lying about its size is cut off and rejected", () => {
     const pad = new Uint8Array(5_000_000).fill(32);
     const inner = strToU8(`<worksheet><sheetData>`);

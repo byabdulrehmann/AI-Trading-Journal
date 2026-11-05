@@ -43,7 +43,7 @@ interface Service {
   token: string;
 }
 
-const g = globalThis as unknown as { __jarvisMt5?: { service: Service | null; queue: Promise<unknown>; idle?: NodeJS.Timeout } };
+const g = globalThis as unknown as { __jarvisMt5?: { service: Service | null; queue: Promise<unknown>; idle?: NodeJS.Timeout; lastLogin?: string } };
 const state = (g.__jarvisMt5 ??= { service: null, queue: Promise.resolve() });
 
 /** The child gets only what Windows and Python need, so the encryption and AI keys stay out of it. */
@@ -100,6 +100,10 @@ export function stopService(): Promise<void> {
 }
 
 async function call(req: SessionRequest): Promise<SessionResult> {
+  // A terminal left signed in might accept the next login without checking it, so never reuse one across accounts.
+  const who = `${req.login}@${req.server}`;
+  if (state.lastLogin && state.lastLogin !== who) await stopService();
+  state.lastLogin = who;
   if (!existsSync(PYTHON) || !existsSync(TERMINAL)) return { ok: false, category: "terminal_missing" };
   clearTimeout(state.idle);
   try {

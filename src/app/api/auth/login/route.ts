@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   await connection();
   const data = await body(req, Body);
   if (data instanceof Response) return data;
-  const key = `login:${authenticateLimitKey(req)}:${data.email}`;
+  const key = `login:${authenticateLimitKey()}:${data.email}`;
   if (rateLimited(key)) return fail("Too many attempts. Try again in 15 minutes.", 429);
   const user = await authenticate(data.email, data.password);
   if (!user) {

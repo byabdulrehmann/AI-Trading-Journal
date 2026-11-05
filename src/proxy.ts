@@ -37,4 +37,4 @@ export function proxy(req: NextRequest) {
   return NextResponse.redirect(new URL("/login", req.url));
 }
 
-export const config = { matcher: "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|webp|ico|woff2?)$).*)" };
+export const config = { matcher: "/((?!_next/static|_next/image|favicon.ico|(?!api/).*\\.(?:svg|png|jpg|webp|ico|woff2?)$).*)" };

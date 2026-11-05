@@ -97,6 +97,7 @@ export const MIGRATIONS: { version: number; name: string; sql: string; run?: (db
     `,
   },
   { version: 2, name: "journal model: users, executions, instruments, MT5, imports, attachments", sql: JOURNAL_MODEL_SQL, run: migrateToJournalModel },
+  { version: 3, name: "index for finding the same trade across sources", sql: "CREATE INDEX trades_reconcile ON trades(account_id, symbol, side, opened_at);" },
 ];
 
 const globalForDb = globalThis as unknown as { __kestrelDb?: DatabaseSync };
@@ -114,7 +115,7 @@ function open(): DatabaseSync {
   const file = dbFile();
   mkdirSync(path.dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
-  db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 3000;");
+  db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 3000; PRAGMA secure_delete = ON;");
   migrate(db);
   purgeDeletedTrades(db);
   return db;

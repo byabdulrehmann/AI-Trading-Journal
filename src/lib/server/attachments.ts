@@ -34,8 +34,14 @@ export function sniffType(bytes: Buffer): { mime: string; ext: string } | null {
 /** For display and the download name only: the stored file's name is always random. */
 export function safeFilename(name: string): string {
   const base = name.split(/[\\/]/).pop() ?? "";
-  const clean = base.replace(/[\u0000-\u001f\u007f"<>:|?*;%]/g, "").replace(/^\.+/, "").trim().slice(-120);
+  const clean = base.replace(/[\u0000-\u001f\u007f"<>:|?*;%\u202a-\u202e\u2066-\u2069]/g, "").replace(/^\.+/, "").trim().slice(-120);
   return clean || "attachment";
+}
+
+/** "setup.exe" holding a PDF downloads as "setup.pdf", so the name can't promise what the bytes aren't. */
+function withExtension(name: string, ext: string): string {
+  const stem = name.replace(/\.[^.]*$/, "") || "attachment";
+  return `${stem}.${ext}`;
 }
 
 export function saveAttachment(userId: number, tradeId: number, input: { kind: Attachment["kind"]; filename: string; bytes: Buffer }): Attachment {
@@ -54,7 +60,7 @@ export function saveAttachment(userId: number, tradeId: number, input: { kind: A
   try {
     const res = conn
       .prepare("INSERT INTO attachments (trade_id, user_id, kind, filename, mime, size, stored_name, sha256, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-      .run(tradeId, userId, input.kind, safeFilename(input.filename), type.mime, input.bytes.length, storedName, createHash("sha256").update(input.bytes).digest("hex"), now());
+      .run(tradeId, userId, input.kind, withExtension(safeFilename(input.filename), type.ext), type.mime, input.bytes.length, storedName, createHash("sha256").update(input.bytes).digest("hex"), now());
     const id = Number(res.lastInsertRowid);
     audit(userId, "attachment.added", "attachment", id, { tradeId, mime: type.mime, size: input.bytes.length });
     return listAttachments(tradeId).find((a) => a.id === id)!;
