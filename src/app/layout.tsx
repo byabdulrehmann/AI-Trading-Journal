@@ -1,26 +1,23 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { Hanken_Grotesk, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { AppStateProvider } from "@/lib/client/app-state";
 import { Shell } from "@/components/Shell";
 
-const sans = IBM_Plex_Sans({ variable: "--font-plex-sans", subsets: ["latin"], weight: ["400", "500", "600"] });
-const mono = IBM_Plex_Mono({ variable: "--font-plex-mono", subsets: ["latin"], weight: ["400", "500"] });
+const sans = Hanken_Grotesk({ variable: "--font-ui", subsets: ["latin"], weight: ["400", "500", "600"] });
+const mono = IBM_Plex_Mono({ variable: "--font-figures", subsets: ["latin"], weight: ["400", "500"] });
 
 export const metadata: Metadata = {
-  title: "Kestrel — trading journal",
-  description: "A calm, precise trading journal with a reflective AI companion.",
+  title: "Jarvis",
+  description: "A precise, private trading journal that runs on your own computer.",
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#0c0f13" },
-    { media: "(prefers-color-scheme: light)", color: "#f4f1ea" },
-  ],
+  themeColor: "#0b0d0e",
 };
 
-// Applies a saved theme before first paint to avoid a flash.
-const themeScript = `try{var t=localStorage.getItem("kestrel-theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t}catch(e){}`;
+// Applies the saved theme before first paint. Dark unless the user chose otherwise; "kestrel-theme" is the old key.
+const themeScript = `try{var s=localStorage,t=s.getItem("jarvis-theme")||s.getItem("kestrel-theme")||"dark";if(t!=="system")document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme="dark"}`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

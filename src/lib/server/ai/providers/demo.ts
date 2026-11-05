@@ -10,10 +10,10 @@ import type { JarvisProvider, StreamRequest } from "../types";
 export const demoProvider: JarvisProvider = {
   id: "demo",
   label: "Demo mode (no AI model)",
-  defaultModel: "kestrel-demo",
+  defaultModel: "jarvis-demo",
   status: () => ({ configured: true, external: false }),
   async listModels() {
-    return [{ id: "kestrel-demo", displayName: "Kestrel demo responder (templated, offline)" }];
+    return [{ id: "jarvis-demo", displayName: "Jarvis demo responder (templated, offline)" }];
   },
   async *stream(req: StreamRequest) {
     const text = compose(req.messages.at(-1)?.content ?? "", req.context);
@@ -68,5 +68,5 @@ function compose(question: string, ctx: JarvisContext): string {
   const best = m.bestTradeId ? ` Best trade [#${m.bestTradeId}], worst [#${m.worstTradeId}].` : "";
   return `${intro}Recorded: across all ${m.closedTrades} closed trades in your journal (demo mode can't filter by date), net ${money(m.netPnl)} ${ctx.currency}, win rate ${pct(m.winRate)}, average ${m.avgR ?? "n/a"}R from ${m.rSample} trades with a stop.${best}\n\n${
     ctx.patterns[0] ? `Possible pattern: ${ctx.patterns[0].title.toLowerCase()} — see the Patterns page for the evidence.\n\n` : ""
-  }Suggestion: ask me about your patterns, your plan adherence, or open a trade and choose "Review with Jarvis".${sampleNote}`;
+  }Suggestion: ask me about your patterns, your plan adherence, or open a trade and choose "Review with AI Coach".${sampleNote}`;
 }

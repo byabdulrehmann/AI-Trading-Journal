@@ -39,17 +39,17 @@ export default function JarvisPage() {
   if (settings && !settings.jarvis.enabled)
     return (
       <>
-        <PageHeader title="Jarvis" />
-        <EmptyState title="Jarvis is turned off" body="No conversations are processed while Jarvis is off. Your saved conversations and memories are kept until you delete them." action={<Button variant="primary" onClick={() => void saveSettings({ jarvis: { enabled: true } })}>Turn Jarvis on</Button>} />
+        <PageHeader title="AI Coach" />
+        <EmptyState title="The AI Coach is turned off" body="No conversations are processed while it's off. Your saved conversations and memories are kept until you delete them." action={<Button variant="primary" onClick={() => void saveSettings({ jarvis: { enabled: true } })}>Turn it on</Button>} />
       </>
     );
 
   return (
     <>
       <PageHeader
-        title="Jarvis"
+        title="AI Coach"
         description="A reflective companion that works from your own records. It doesn't see markets, place trades, or tell you what to trade."
-        actions={<Segmented label="Jarvis section" value={tab} onChange={setTab} options={[{ value: "chat", label: "Coach chat" }, { value: "tradbot", label: "TradBot-I live" }, { value: "memory", label: "Memory" }, { value: "model", label: "Model" }]} />}
+        actions={<Segmented label="AI Coach section" value={tab} onChange={setTab} options={[{ value: "chat", label: "Coach chat" }, { value: "tradbot", label: "TradBot-I live" }, { value: "memory", label: "Memory" }, { value: "model", label: "Model" }]} />}
       />
 
       {tab === "tradbot" && (
@@ -58,12 +58,12 @@ export default function JarvisPage() {
             <TradBotConsole />
           </Card>
           <Card className="self-start p-4 text-[13px] text-ink-soft">
-            <h2 className="mb-2 text-[14px] font-semibold text-ink">Your TradBot-I Jarvis</h2>
-            <p>This is the same assistant as the TradBot-I desktop app: its personality, tools, memory, trading monitor and Gemini Live voice. Kestrel is a remote control for it.</p>
+            <h2 className="mb-2 text-[14px] font-semibold text-ink">Your TradBot-I assistant</h2>
+            <p>This is the same assistant as the TradBot-I desktop app: its personality, tools, memory, trading monitor and Gemini Live voice. Jarvis is a remote control for it.</p>
             <ul className="mt-2 list-disc space-y-1 pl-4">
               <li>Replies are spoken on the computer running TradBot-I, in the voice chosen in its HUD (Charon, Puck, Kore, Fenrir or Aoede).</li>
               <li>Change voice, audio devices, push-to-talk and trading settings in TradBot-I&apos;s ⚙ drawer.</li>
-              <li>It doesn&apos;t see Kestrel&apos;s journal. Its own journal lives in TradBot-I.</li>
+              <li>It doesn&apos;t see this journal. Its own journal lives in TradBot-I.</li>
               <li>Actions that need confirmation (shutdown, restart, Wi-Fi) still wait for the button in the TradBot-I window.</li>
             </ul>
           </Card>
@@ -145,7 +145,7 @@ function ModelPicker({ onSwitched }: { onSwitched: () => void }) {
     <div className="space-y-4">
       <Card className="p-5">
         <p className="text-[13px] text-muted">Active now</p>
-        <p className="mt-1 text-[16px] font-semibold">{data.active.label} · <span className="num">{data.active.model}</span></p>
+        <p className="mt-1 text-[16px] font-semibold">{data.active.label}, <span className="num">{data.active.model}</span></p>
         {data.active.fallbackReason && <p className="mt-2 text-[13px] text-accent">Demo mode is standing in: {data.active.fallbackReason}</p>}
         <p className="mt-2 text-[13px] text-muted">You can also type <code className="num">/models</code> or &quot;switch to sonnet&quot; in the chat.</p>
       </Card>
@@ -174,7 +174,7 @@ function ModelPicker({ onSwitched }: { onSwitched: () => void }) {
                         className={cx("w-full rounded-lg border px-3 py-2.5 text-left transition-colors disabled:cursor-default", isActive ? "border-accent bg-accent-soft" : "border-line hover:border-line-strong")}
                       >
                         <span className="block text-[14px] font-medium">{m.displayName}</span>
-                        <span className="num block text-[12px] text-muted">{m.id}{m.id === p.defaultModel ? " · default" : ""}</span>
+                        <span className="num block text-[12px] text-muted">{m.id}{m.id === p.defaultModel ? ", default" : ""}</span>
                       </button>
                     </li>
                   );
@@ -234,7 +234,7 @@ function MemoryManager() {
     <div className="space-y-4">
       <Card className="flex flex-wrap items-center gap-3 p-4">
         <div className="min-w-0 flex-1 text-[13.5px] text-ink-soft">
-          Jarvis only remembers what you save here. Active memories are included with each message; paused ones are kept but not sent.
+          The coach only remembers what you save here. Active memories are included with each message; paused ones are kept but not sent.
         </div>
         <Button size="sm" onClick={() => void saveSettings({ jarvis: { memoryEnabled: !memoryOn } })}>{memoryOn ? "Pause all memory" : "Resume memory"}</Button>
         <Button size="sm" onClick={exportJson} disabled={!memories?.length}>Export</Button>
@@ -243,7 +243,7 @@ function MemoryManager() {
           variant="danger"
           disabled={!memories?.length}
           onClick={async () => {
-            if (!confirm("Delete every Jarvis memory? This can't be undone.")) return;
+            if (!confirm("Delete every AI Coach memory? This can't be undone.")) return;
             await api("/api/jarvis/memories", { method: "DELETE" });
             await load();
             toast({ message: "All memories deleted." });
@@ -252,7 +252,7 @@ function MemoryManager() {
           Reset
         </Button>
       </Card>
-      {!memoryOn && <p className="rounded-md border border-accent/40 bg-accent-soft px-3 py-2 text-[13px]">Memory is paused. Nothing below is sent to Jarvis.</p>}
+      {!memoryOn && <p className="rounded-md border border-accent/40 bg-accent-soft px-3 py-2 text-[13px]">Memory is paused. Nothing below is sent to the coach.</p>}
 
       <Card className="p-4">
         <h2 className="mb-2 text-[14px] font-semibold">Add a memory</h2>
@@ -269,7 +269,7 @@ function MemoryManager() {
       {!memories ? (
         <Spinner />
       ) : memories.length === 0 ? (
-        <EmptyState title="No memories" body="Save goals, rules or preferences you want Jarvis to keep in mind, or use “Remember something from this” under a reply." />
+        <EmptyState title="No memories" body="Save goals, rules or preferences you want the coach to keep in mind, or use “Remember something from this” under a reply." />
       ) : (
         <ul className="space-y-2">
           {memories.map((m) => (
@@ -279,7 +279,7 @@ function MemoryManager() {
                   <Badge tone="accent">{m.kind}</Badge>
                   {!m.active && <Badge>paused</Badge>}
                   <span className="text-[12px] text-muted">Saved {dateTime(m.createdAt)}</span>
-                  {m.evidenceTradeIds.length > 0 && <span className="text-[12px] text-muted">· linked trades {m.evidenceTradeIds.map((i) => `#${i}`).join(" ")}</span>}
+                  {m.evidenceTradeIds.length > 0 && <span className="text-[12px] text-muted">Linked trades {m.evidenceTradeIds.map((i) => `#${i}`).join(" ")}</span>}
                 </div>
                 {editing === m.id ? (
                   <div className="mt-2 flex flex-col gap-2 sm:flex-row">
@@ -312,7 +312,7 @@ function MemoryManager() {
         </ul>
       )}
       <p className="text-[12px] text-muted">
-        See <Link href="/settings#privacy" className="underline">Settings → Privacy</Link> for what is shared with model providers.
+        See <Link href="/settings#privacy" className="underline">Privacy in Settings</Link> for what is shared with model providers.
       </p>
     </div>
   );

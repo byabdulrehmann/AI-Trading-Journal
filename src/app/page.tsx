@@ -1,168 +1,209 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { api } from "@/lib/client/api";
-import { useApp, useCurrency } from "@/lib/client/app-state";
-import { dateTime, money, pct, rFmt, toneOf } from "@/lib/client/format";
-import { computeMetrics, equityCurve, METRIC_DEFINITIONS } from "@/lib/domain/metrics";
-import { detectPatterns } from "@/lib/domain/patterns";
+import type { Analytics } from "@/lib/client/analytics";
+import { useApp } from "@/lib/client/app-state";
+import { useUrlFilters } from "@/lib/client/filters";
+import { dateTime, duration, money, pct, profitFactorText, rFmt, toneOf } from "@/lib/client/format";
+import { useFetch } from "@/lib/client/use-fetch";
+import { METRIC_DEFINITIONS as D } from "@/lib/domain/metrics";
 import type { Trade } from "@/lib/domain/types";
-import { EquityChart } from "@/components/charts";
+import { LineChart } from "@/components/charts";
 import { CurrencyPicker } from "@/components/CurrencyPicker";
-import { Badge, Button, Card, CardHeader, EmptyState, PageHeader, Segmented, Spinner, Stat } from "@/components/ui";
+import { PnlIssue, SideBadge, SourceBadge } from "@/components/journal/badges";
+import { Suspended } from "@/components/Suspended";
+import { TradeFilters } from "@/components/TradeFilters";
+import { Button, Card, CardHeader, EmptyState, Metric, Notice, PageHeader, Spinner } from "@/components/ui";
 
-type Range = "30" | "90" | "all";
-
-function inRange(t: Trade, range: Range) {
-  if (range === "all") return true;
-  return Date.parse(t.openedAt) >= Date.now() - Number(range) * 86400000;
-}
-
-/** Gentle, evidence-based prompts drawn from gaps in the user's own records. */
-function reflectionPrompts(trades: Trade[]): { text: string; href: string }[] {
-  const recent = trades.filter((t) => Date.parse(t.openedAt) >= Date.now() - 7 * 86400000);
-  const out: { text: string; href: string }[] = [];
-  const ungraded = recent.filter((t) => t.closedAt && !t.grade).length;
-  if (ungraded) out.push({ text: `${ungraded} closed trade${ungraded > 1 ? "s" : ""} from the last 7 days ha${ungraded > 1 ? "ve" : "s"} no grade yet.`, href: "/journal" });
-  const noPlan = recent.filter((t) => t.followedPlan === null).length;
-  if (noPlan) out.push({ text: `You haven't said whether you followed the plan on ${noPlan} recent trade${noPlan > 1 ? "s" : ""}.`, href: "/journal" });
-  const noStop = recent.filter((t) => t.stopPrice === null).length;
-  if (noStop) out.push({ text: `${noStop} recent trade${noStop > 1 ? "s have" : " has"} no stop recorded, so R can't be measured.`, href: "/journal" });
-  return out.slice(0, 3);
-}
-
-export default function OverviewPage() {
-  const { trades, reportTrades, loading, loadError, settings, editTrade, openTrade, refresh, toast, askJarvis, saveSettings } = useApp();
-  const currency = useCurrency();
-  const [range, setRange] = useState<Range>("30");
-  const scoped = useMemo(() => reportTrades.filter((t) => inRange(t, range)), [reportTrades, range]);
-  const m = useMemo(() => computeMetrics(scoped), [scoped]);
-  const curve = useMemo(() => equityCurve(scoped), [scoped]);
-  const patterns = useMemo(
-    () => (settings?.jarvis.behaviouralInsights ? detectPatterns(reportTrades).filter((p) => !settings.dismissedPatterns.includes(p.id)) : []),
-    [reportTrades, settings],
+export default function DashboardPage() {
+  return (
+    <Suspended>
+      <Dashboard />
+    </Suspended>
   );
-  const prompts = useMemo(() => (settings?.jarvis.reflectionPrompts ? reflectionPrompts(trades) : []), [trades, settings]);
+}
+
+function sevenDaysAgo() {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - 6).toISOString();
+}
+
+const smallLink = "inline-flex h-8 items-center rounded-control border border-line-strong px-3 text-[13px] hover:border-muted";
+
+function Dashboard() {
+  const { settings, saveSettings, editTrade, openTrade, askJarvis, refresh, toast, accounts } = useApp();
+  const filters = useUrlFilters();
+  const { data, error, loading, reload } = useFetch<Analytics>(`/api/analytics?${filters.apiQuery()}`);
+  const recent = useFetch<{ trades: Trade[] }>(data ? `/api/trades?${filters.apiQuery({ extra: { pageSize: "8", currency: data.currency } })}` : null);
+  const week = useMemo(() => sevenDaysAgo(), []);
+  const unanswered = useFetch<{ total: number }>(settings?.jarvis.reflectionPrompts ? `/api/trades?plan=unanswered&from=${encodeURIComponent(week)}&pageSize=1` : null);
 
   const loadSample = async () => {
     const res = await api<{ added: number }>("/api/data/sample", { method: "POST" });
+    filters.set({ includeSample: "1" });
     await refresh();
     toast({ message: res.added ? `Loaded ${res.added} sample trades. Remove them any time in Settings.` : "Sample data is already loaded.", tone: "success" });
   };
 
-  if (loading) return <Spinner label="Loading your journal" />;
-  if (loadError)
-    return <EmptyState title="Couldn't load your journal" body={loadError} action={<Button onClick={() => void refresh()}>Try again</Button>} />;
+  if (error && !data) return <EmptyState title="Couldn't load your dashboard" body={error} action={<Button onClick={reload}>Try again</Button>} />;
+  if (!data) return <Spinner label="Loading your journal" />;
 
-  const hasSample = trades.some((t) => t.source === "sample");
-  const greeting = settings?.displayName ? `Welcome back, ${settings.displayName}` : "Overview";
+  const m = data.metrics;
+  const cur = data.currency;
+  const none = m.totalTrades === 0;
+  const patterns = settings?.jarvis.behaviouralInsights ? data.patterns.filter((p) => !settings.dismissedPatterns.includes(p.id)).slice(0, 2) : [];
+  const pendingLink = `/journal?outcome=pending${filters.get("includeSample") ? "&includeSample=1" : ""}`;
+  const toAnswer = unanswered.data?.total ?? 0;
+  // A sample-only journal still counts as started: the filter bar above offers to show it.
+  const fresh = none && !filters.active && !data.sampleHidden;
 
   return (
-    <>
-      <PageHeader
-        title={greeting}
-        description="Your recorded results, the patterns in them, and what to review next."
-        actions={trades.length > 0 && (
-          <>
-            <CurrencyPicker />
-            <Segmented label="Time range" value={range} onChange={setRange} options={[{ value: "30", label: "30 days" }, { value: "90", label: "90 days" }, { value: "all", label: "All" }]} />
-          </>
-        )}
-      />
+    <div className={loading ? "opacity-70 transition-opacity" : "transition-opacity"}>
+      <PageHeader title={settings?.displayName ? `Welcome back, ${settings.displayName}` : "Dashboard"} actions={<CurrencyPicker currency={cur} currencies={data.currencies} filters={filters} />} />
+      <TradeFilters filters={filters} />
 
-      {trades.length === 0 && !settings?.onboardingDismissed && (
-        <Card className="mb-6">
-          <CardHeader title="Get set up" subtitle="Three ways to start. Everything stays on this computer." action={<Button variant="ghost" size="sm" onClick={() => void saveSettings({ onboardingDismissed: true })}>Hide</Button>} />
-          <ol className="grid gap-4 p-5 sm:grid-cols-3">
-            <li className="rounded-lg border border-line p-4">
+      {none && filters.active && <EmptyState title="No trades match these filters" body="Widen the date range or clear the filters to see more." action={<Button onClick={filters.clear}>Clear filters</Button>} />}
+      {none && !filters.active && data.sampleHidden && <EmptyState title="Only sample trades so far" body="Include the sample data above to explore, or log your own first trade." action={<Button variant="primary" onClick={() => editTrade("new")}>Log a trade</Button>} />}
+      {fresh && !settings?.onboardingDismissed && (
+        <Card>
+          <CardHeader title="Start your journal" subtitle="Everything stays on this computer." action={<Button variant="ghost" size="sm" onClick={() => void saveSettings({ onboardingDismissed: true })}>Hide</Button>} />
+          <ul className="grid divide-y divide-line sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+            <li className="p-card">
               <h3 className="font-medium">Log a trade</h3>
-              <p className="mt-1 text-[13px] text-muted">Record entry, stop, target and how you felt.</p>
+              <p className="mt-1 text-[13.5px] text-muted">Enter one by hand: entry, stop, target and how it went.</p>
               <Button className="mt-3" size="sm" variant="primary" onClick={() => editTrade("new")}>Log a trade</Button>
             </li>
-            <li className="rounded-lg border border-line p-4">
-              <h3 className="font-medium">Import a CSV</h3>
-              <p className="mt-1 text-[13px] text-muted">Map the columns from your broker&apos;s export.</p>
-              <Link href="/journal?import=1" className="mt-3 inline-flex h-8 items-center rounded-md border border-line-strong px-3 text-[13px] hover:border-muted">Import</Link>
+            <li className="p-card">
+              <h3 className="font-medium">Import or connect</h3>
+              <p className="mt-1 text-[13.5px] text-muted">Bring in a broker CSV, or link MetaTrader 5.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Link href="/journal?import=1" className={smallLink}>Import CSV</Link>
+                <Link href="/accounts" className={smallLink}>Accounts &amp; MT5</Link>
+              </div>
             </li>
-            <li className="rounded-lg border border-line p-4">
-              <h3 className="font-medium">Explore with sample data</h3>
-              <p className="mt-1 text-[13px] text-muted">60-odd clearly marked demo trades. Remove them later in Settings.</p>
-              <Button className="mt-3" size="sm" onClick={loadSample}>Load sample journal</Button>
+            <li className="p-card">
+              <h3 className="font-medium">Try it with sample data</h3>
+              <p className="mt-1 text-[13.5px] text-muted">Made-up trades, always labelled Sample, removable in Settings.</p>
+              <Button className="mt-3" size="sm" onClick={() => void loadSample()}>Load sample journal</Button>
             </li>
-          </ol>
+          </ul>
         </Card>
       )}
+      {fresh && settings?.onboardingDismissed && <EmptyState title="No trades yet" body="Log your first trade, or import a CSV from the Journal." action={<Button variant="primary" onClick={() => editTrade("new")}>Log a trade</Button>} />}
 
-      {trades.length === 0 ? (
-        <EmptyState title="No trades yet" body="Once you log or import trades, your results and patterns appear here." action={<Button variant="primary" onClick={() => editTrade("new")}>Log your first trade</Button>} />
-      ) : (
-        <div className="space-y-6">
-          {hasSample && (
-            <p className="text-[13px] text-muted">
-              <Badge tone="info">Sample</Badge> Your journal includes sample trades. <Link className="text-accent underline" href="/settings#data">Remove them</Link> when you&apos;re ready.
-            </p>
+      {!none && (
+        <div className="space-y-section">
+          {m.excludedTrades > 0 && (
+            <Notice action={<Link href={pendingLink} className="text-[13.5px] font-medium text-accent underline underline-offset-2">Show {m.excludedTrades === 1 ? "that trade" : "those trades"}</Link>}>
+              {m.excludedTrades} closed {m.excludedTrades === 1 ? "trade is" : "trades are"} left out of these figures, because a conversion rate to {cur} is missing or the fills don&apos;t add up. Enter the rate on the trade to include it.
+            </Notice>
           )}
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Stat def={METRIC_DEFINITIONS.netPnl} value={money(m.netPnl, currency, true)} tone={toneOf(m.netPnl)} note={`${m.closedTrades} closed · ${m.openTrades} open`} />
-            <Stat def={METRIC_DEFINITIONS.winRate} value={pct(m.winRate)} note={`${m.wins}W / ${m.losses}L`} />
-            <Stat def={METRIC_DEFINITIONS.avgR} value={rFmt(m.avgR)} tone={toneOf(m.avgR)} note={`${m.rSample} trades with a stop`} />
-            <Stat def={METRIC_DEFINITIONS.planAdherence} value={pct(m.planAdherence)} note={`${m.planSample} answered`} />
+
+          <Card>
+            <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-2 px-card pt-4">
+              <div>
+                <p className="text-[13px] text-muted">Net P&amp;L in {cur}</p>
+                <p className={`num text-[34px] leading-tight ${toneOf(m.netPnl)}`}>{money(m.netPnl, cur, true)}</p>
+              </div>
+              <p className="text-[13.5px] text-muted">
+                {m.closedTrades} closed, {pct(m.winRate)} won{m.openTrades > 0 ? `, ${m.openTrades} still open` : ""}
+              </p>
+            </div>
+            <div className="p-3 sm:p-4">
+              {data.equity.length ? (
+                <LineChart label="Equity curve" points={data.equity.map((p) => ({ at: p.at, value: p.equity, tradeId: p.tradeId }))} currency={cur} onSelect={openTrade} />
+              ) : (
+                <p className="px-1 py-8 text-center text-[14px] text-muted">The equity curve starts when a trade closes. Add an exit to an open trade in the Journal.</p>
+              )}
+            </div>
+          </Card>
+
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-section lg:grid-cols-3">
+            <Card>
+              <CardHeader title="Activity" />
+              <dl className="px-card py-1">
+                <Metric def={D.totalTrades} value={m.totalTrades} />
+                <Metric def={D.closedTrades} value={m.closedTrades} />
+                <Metric def={D.openTrades} value={m.openTrades} />
+                <Metric def={D.wins} value={m.wins} />
+                <Metric def={D.losses} value={m.losses} />
+                <Metric def={D.breakeven} value={m.breakeven} />
+                <Metric def={D.avgHold} value={duration(m.avgHoldMin)} />
+                <Metric def={D.maxConsecutiveWins} value={m.maxConsecutiveWins} />
+                <Metric def={D.maxConsecutiveLosses} value={m.maxConsecutiveLosses} />
+              </dl>
+            </Card>
+            <Card>
+              <CardHeader title="Results" />
+              <dl className="px-card py-1">
+                <Metric def={D.winRate} value={pct(m.winRate, 1)} />
+                <Metric def={D.netPnl} value={money(m.netPnl, cur, true)} tone={toneOf(m.netPnl)} />
+                <Metric def={D.grossProfit} value={money(m.grossProfit, cur)} tone="text-profit" />
+                <Metric def={D.grossLoss} value={money(m.grossLoss, cur)} tone={m.grossLoss ? "text-loss" : undefined} />
+                <Metric def={D.profitFactor} value={profitFactorText(m)} />
+                <Metric def={D.expectancy} value={money(m.expectancy, cur, true)} tone={toneOf(m.expectancy)} />
+                <Metric def={D.avgR} value={rFmt(m.avgR)} tone={toneOf(m.avgR)} note={m.rSample ? `${m.rSample} trades with a stop` : "Needs trades with a stop"} />
+              </dl>
+            </Card>
+            <Card>
+              <CardHeader title="Risk and costs" />
+              <dl className="px-card py-1">
+                <Metric def={D.avgWin} value={money(m.avgWin, cur, true)} tone={m.avgWin === null ? undefined : "text-profit"} />
+                <Metric def={D.avgLoss} value={money(m.avgLoss, cur, true)} tone={m.avgLoss === null ? undefined : "text-loss"} />
+                <Metric def={D.totalFees} value={money(m.totalFees, cur)} />
+                <Metric def={D.maxDrawdown} value={money(-m.maxDrawdown, cur)} tone={m.maxDrawdown ? "text-loss" : undefined} />
+                <Metric def={D.bestTrade} value={m.bestTrade ? <button type="button" className="underline-offset-2 hover:underline" onClick={() => openTrade(m.bestTrade!.id)}>{m.bestTrade.symbol} {money(m.bestTrade.pnl, cur, true)}</button> : "—"} />
+                <Metric def={D.worstTrade} value={m.worstTrade ? <button type="button" className="underline-offset-2 hover:underline" onClick={() => openTrade(m.worstTrade!.id)}>{m.worstTrade.symbol} {money(m.worstTrade.pnl, cur, true)}</button> : "—"} />
+              </dl>
+            </Card>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-section lg:grid-cols-3">
             <Card className="lg:col-span-2">
-              <CardHeader title="Equity curve" subtitle="Cumulative net P&L of closed trades. Click a point to open the trade." action={<Link href="/analytics" className="text-[13px] text-accent hover:underline">Analytics →</Link>} />
-              <div className="p-4">{curve.length ? <EquityChart points={curve} currency={currency} onSelect={openTrade} /> : <p className="text-[14px] text-muted">No closed trades in this range.</p>}</div>
+              <CardHeader title="Recent trades" action={<Link href="/journal" className="text-[13px] text-accent hover:underline">Open the journal</Link>} />
+              <ul className="divide-y divide-line">
+                {(recent.data?.trades ?? []).map((t) => (
+                  <li key={t.id}>
+                    <button type="button" onClick={() => openTrade(t.id)} className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-card py-2 text-left hover:bg-raised/50">
+                      <span className="font-medium">{t.symbol}</span>
+                      <SideBadge side={t.side} />
+                      <SourceBadge source={t.source} />
+                      <span className="num text-[12.5px] text-muted">{dateTime(t.openedAt)}</span>
+                      <span className={`num ml-auto text-[14px] ${toneOf(t.pnl)}`}>
+                        {t.pnlStatus !== "ok" ? <PnlIssue status={t.pnlStatus} /> : t.pnl === null ? <span className="text-muted">Open</span> : money(t.pnl, accounts.find((a) => a.id === t.accountId)?.currency, true)}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </Card>
-
             <Card>
-              <CardHeader title="Worth a look" subtitle="From your own records" />
-              <div className="space-y-3 p-4">
-                {patterns.slice(0, 2).map((p) => (
-                  <Link key={p.id} href="/patterns" className="block rounded-lg border border-line p-3 hover:border-line-strong">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[14px] font-medium">{p.title}</span>
-                      {p.cost !== null && <span className={`num text-[13px] whitespace-nowrap ${toneOf(p.cost)}`}>{money(p.cost, currency, true)}</span>}
-                    </div>
-                    <p className="mt-1 line-clamp-2 text-[13px] text-muted">{p.observation}</p>
+              <CardHeader title="Worth a look" />
+              <div className="space-y-2 p-card">
+                {patterns.map((p) => (
+                  <Link key={p.id} href="/patterns" className="block rounded-control border border-line p-2.5 hover:border-line-strong">
+                    <span className="text-[14px] font-medium">{p.title}</span>
+                    <span className="mt-0.5 line-clamp-2 block text-[13px] text-muted">{p.observation}</span>
                   </Link>
                 ))}
-                {prompts.map((p) => (
-                  <Link key={p.text} href={p.href} className="block rounded-lg border border-dashed border-line-strong p-3 text-[13px] text-ink-soft hover:border-accent">
-                    {p.text}
+                {toAnswer > 0 && (
+                  <Link href="/journal?plan=unanswered&range=7d" className="block rounded-control border border-dashed border-line-strong p-2.5 text-[13px] text-ink-soft hover:border-muted">
+                    {toAnswer} {toAnswer === 1 ? "trade" : "trades"} from the last 7 days {toAnswer === 1 ? "has" : "have"} no answer on following the plan.
                   </Link>
-                ))}
-                {patterns.length === 0 && prompts.length === 0 && <p className="text-[13px] text-muted">Nothing stands out right now. Patterns need a few weeks of entries.</p>}
+                )}
+                {patterns.length === 0 && toAnswer === 0 && <p className="text-[13.5px] text-muted">Nothing stands out. Patterns need a few weeks of trades with stops and plan answers.</p>}
                 {settings?.jarvis.enabled && (
-                  <Button size="sm" className="w-full" onClick={() => askJarvis(`Summarise my last ${range === "all" ? "trades" : `${range} days`} and what stands out.`)}>
-                    Ask Jarvis for a summary
+                  <Button size="sm" className="w-full" onClick={() => askJarvis("Summarise my recent trades and what stands out.")}>
+                    Ask the AI Coach for a summary
                   </Button>
                 )}
               </div>
             </Card>
           </div>
-
-          <Card>
-            <CardHeader title="Recent trades" action={<Link href="/journal" className="text-[13px] text-accent hover:underline">Journal →</Link>} />
-            <ul className="divide-y divide-line">
-              {reportTrades.slice(0, 6).map((t) => (
-                <li key={t.id}>
-                  <button type="button" onClick={() => openTrade(t.id)} className="flex w-full items-center gap-3 px-5 py-3 text-left hover:bg-raised/50">
-                    <span className="num w-10 text-[12px] text-muted">#{t.id}</span>
-                    <span className="w-20 font-medium">{t.symbol}</span>
-                    <Badge tone={t.side === "long" ? "info" : "accent"}>{t.side}</Badge>
-                    <span className="hidden text-[13px] text-muted sm:inline">{dateTime(t.openedAt)}</span>
-                    {t.source === "sample" && <Badge tone="info" className="hidden sm:inline-flex">Sample</Badge>}
-                    <span className={`num ml-auto text-[14px] ${toneOf(t.pnl)}`}>{t.pnl === null ? "Open" : money(t.pnl, currency, true)}</span>
-                    <span className="num hidden w-16 text-right text-[13px] text-muted sm:inline">{rFmt(t.rMultiple)}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </Card>
         </div>
       )}
-    </>
+    </div>
   );
 }

@@ -1,0 +1,266 @@
+/* /welcome only. Every class is jw- prefixed: this file is global once imported. */
+.jw {
+  --canvas: #090c0b;
+  --ground: #101614;
+  --raised: #17201c;
+  --ink: #ece9dd;
+  --soft: #aeb8b0;
+  --line: rgb(236 233 221 / 0.07);
+  --line-2: rgb(236 233 221 / 0.16);
+  --red: #ff6a4a;
+  --red-ink: #1a0a05;
+  --red-rule: rgb(255 106 74 / 0.72);
+  --paper: #e8e4d6;
+  --m: 216px;
+  --gap: clamp(28px, 4vw, 64px);
+  --gutter: clamp(20px, 5vw, 80px);
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --serif: var(--jw-serif), Georgia, serif;
+  --mono: var(--jw-mono), ui-monospace, monospace;
+  background: var(--ground);
+  color: var(--ink);
+  color-scheme: dark;
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.6;
+  letter-spacing: 0.005em;
+  overflow-x: clip;
+  caret-color: var(--red);
+}
+.jw ::selection { background: var(--red); color: var(--red-ink); }
+.jw :focus-visible { outline: 2px solid var(--red); outline-offset: 3px; border-radius: 2px; }
+.jw h1, .jw h2 { font-family: var(--serif); font-weight: 300; letter-spacing: -0.025em; line-height: 1.04; text-wrap: balance; }
+.jw p { text-wrap: pretty; }
+
+.jw-vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.jw-skip { position: absolute; left: 12px; top: -60px; z-index: 50; padding: 8px 14px; background: var(--red); color: var(--red-ink); }
+.jw-skip:focus { top: 12px; }
+.jw-body { max-width: 56ch; color: var(--soft); }
+
+/* The ruled ground: red margin at --m, three column lines. Same x everywhere, so sheet and page meet without a seam. */
+.jw-ruled {
+  background-color: var(--ground);
+  background-image:
+    linear-gradient(90deg, transparent calc(var(--m) - 1px), var(--red-rule) calc(var(--m) - 1px), var(--red-rule) var(--m), transparent var(--m)),
+    linear-gradient(90deg, transparent calc(var(--m) + (100% - var(--m)) * 0.25), var(--line) calc(var(--m) + (100% - var(--m)) * 0.25), var(--line) calc(var(--m) + (100% - var(--m)) * 0.25 + 1px), transparent calc(var(--m) + (100% - var(--m)) * 0.25 + 1px)),
+    linear-gradient(90deg, transparent calc(var(--m) + (100% - var(--m)) * 0.5), var(--line) calc(var(--m) + (100% - var(--m)) * 0.5), var(--line) calc(var(--m) + (100% - var(--m)) * 0.5 + 1px), transparent calc(var(--m) + (100% - var(--m)) * 0.5 + 1px)),
+    linear-gradient(90deg, transparent calc(var(--m) + (100% - var(--m)) * 0.75), var(--line) calc(var(--m) + (100% - var(--m)) * 0.75), var(--line) calc(var(--m) + (100% - var(--m)) * 0.75 + 1px), transparent calc(var(--m) + (100% - var(--m)) * 0.75 + 1px));
+}
+
+.jw-cta {
+  display: inline-block;
+  padding: 13px 26px;
+  background: var(--red);
+  color: var(--red-ink);
+  font-weight: 600;
+  white-space: nowrap;
+  border-radius: 2px;
+  box-shadow: 0 10px 24px -12px rgb(0 0 0 / 0.7);
+  transition: background-color 140ms var(--ease), transform 120ms var(--ease);
+}
+.jw-cta:active { transform: translateY(1px); }
+@media (hover: hover) and (pointer: fine) { .jw-cta:hover { background: #ff8569; } }
+
+/* Tick: the page's one hand mark. Default drawn. */
+.jw-tick { width: 1em; height: auto; fill: none; stroke: var(--red); stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
+.jw-tick path { stroke-dasharray: 1; stroke-dashoffset: 0; }
+
+/* Margin index */
+.jw-index { position: fixed; z-index: 30; left: 0; top: 50%; width: var(--m); padding: 0 12px 0 26px; transform: translateY(-50%); visibility: hidden; opacity: 0; transition: opacity 240ms var(--ease), visibility 240ms; display: none; font-size: 13px; line-height: 1.3; }
+.jw-index.is-on { visibility: visible; opacity: 1; }
+.jw-index ol { display: grid; gap: 2px; list-style: none; padding: 0; margin: 0; }
+.jw-index a { display: flex; align-items: center; gap: 8px; padding: 6px 0; color: var(--soft); transition: color 140ms var(--ease); }
+.jw-index a[aria-current] { color: var(--ink); }
+.jw-index .jw-tick { flex: none; width: 15px; }
+.jw-index .jw-tick path { stroke-dashoffset: 1; opacity: 0; transition: stroke-dashoffset 260ms var(--ease), opacity 80ms; }
+.jw-index a.is-passed .jw-tick path { stroke-dashoffset: 0; opacity: 1; }
+@media (hover: hover) and (pointer: fine) { .jw-index a:hover { color: var(--ink); } }
+@media (min-width: 1180px) { .jw-index { display: block; } }
+@media (max-width: 1179px) { .jw { --m: 56px; } }
+
+/* Act 1: the desk */
+.jw-hero { position: relative; }
+.jw-hero__stage { position: relative; height: 100svh; min-height: 560px; overflow: hidden; perspective: 1500px; background: var(--canvas); isolation: isolate; }
+.jw-far { position: absolute; inset: -4%; z-index: 0; background: radial-gradient(60% 62% at 68% 46%, #233029 0%, #161e1a 42%, transparent 76%), var(--canvas); transform: scale(1.08); }
+.jw-far::after { content: ""; position: absolute; inset: 0; opacity: 0.05; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.jw-hero__copy { position: absolute; z-index: 2; left: var(--gutter); top: 0; bottom: 0; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; width: min(46vw, 640px); padding-block: 88px 40px; }
+.jw-mark { position: absolute; top: 32px; left: 0; display: flex; align-items: center; gap: 9px; font-family: var(--serif); font-size: 23px; letter-spacing: -0.01em; }
+.jw-mark .jw-tick { width: 20px; }
+.jw h1 { font-size: clamp(3.6rem, 7.4vw, 7.4rem); line-height: 0.98; letter-spacing: -0.035em; margin: 0; }
+.jw-hero__sub { max-width: 40ch; margin: 28px 0 32px; font-size: 18px; color: var(--soft); }
+.jw-sheet, .jw-under { position: absolute; inset: 0; transform-origin: 50% 50%; backface-visibility: hidden; }
+.jw-sheet { transform: translate3d(30vw, 7vh, 0) rotateX(50deg) rotateZ(-21deg) scale(0.66); }
+.jw-under { z-index: 3; background: #0d1311; box-shadow: 0 60px 110px -20px rgb(4 7 6 / 0.9); transform: translate3d(32vw, 12vh, 0) rotateX(50deg) rotateZ(-26deg) scale(0.66); }
+.jw-sheet { z-index: 4; overflow: hidden; box-shadow: 0 1px 0 rgb(236 233 221 / 0.18) inset, 0 30px 60px -18px rgb(4 7 6 / 0.85); padding: 56px var(--gutter) 0 calc(var(--m) + 28px); }
+.jw-sheet__rows { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 15px; color: var(--soft); table-layout: fixed; }
+.jw-sheet__rows th { padding: 0 0 12px; font-weight: 400; text-align: left; color: var(--ink); }
+.jw-sheet__rows td { padding: 10px 0; border-top: 1px solid var(--line-2); white-space: nowrap; }
+.jw-pencil { position: absolute; z-index: 5; left: 50%; top: 62%; width: 44vw; min-width: 420px; transform: rotate(-34deg); transform-origin: 60% 50%; }
+.jw-pencil__art { display: block; width: 100%; height: auto; position: relative; }
+.jw-pencil__shadow { position: absolute; left: 3%; right: 1%; top: 72%; height: 40%; background: rgb(3 5 4 / 0.75); filter: blur(9px); transform: translateY(14px) rotate(1.4deg); }
+.jw-rule { position: absolute; z-index: 6; right: -14vw; bottom: -8vh; width: 62vw; height: 120px; transform: rotate(-9deg); filter: blur(7px); background: repeating-linear-gradient(90deg, rgb(236 233 221 / 0.26) 0 2px, transparent 2px 22px) 0 0 / 100% 26px no-repeat, linear-gradient(#3a4640, #1f2823); box-shadow: 0 -18px 40px rgb(3 5 4 / 0.6); }
+.jw-air { position: absolute; z-index: 7; inset: 0; pointer-events: none; mix-blend-mode: screen; background: radial-gradient(50% 58% at 72% 30%, rgb(255 233 196 / 0.2), transparent 70%); }
+.jw-hero__note { position: absolute; z-index: 8; right: var(--gutter); bottom: 22px; margin: 0; padding: 3px 8px; font-size: 13px; color: var(--ink); background: rgb(9 12 11 / 0.72); }
+
+/* Act 2: the sting, on the landed sheet */
+.jw-ground > section, .jw-close { padding-left: calc(var(--m) + var(--gap)); padding-right: var(--gutter); }
+.jw-sting { padding-block: clamp(90px, 18vh, 170px) clamp(70px, 12vh, 130px); }
+.jw-sting__big { max-width: 17em; margin: 0 0 34px; font-family: var(--serif); font-weight: 300; font-size: clamp(2.4rem, 5.4vw, 5.2rem); line-height: 1.08; letter-spacing: -0.028em; text-wrap: balance; }
+
+/* Act 3: three ways in. Ruled rows, deliberately not cards. */
+.jw-ways { padding-bottom: clamp(60px, 10vh, 120px); }
+.jw-ways h2 { font-size: clamp(2rem, 3.6vw, 3.4rem); margin: 0 0 26px; }
+.jw-ways ul { list-style: none; margin: 0; padding: 0; }
+.jw-ways li { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(0, 2.4fr) minmax(190px, 1.5fr); gap: 16px 28px; align-items: start; padding: 26px 0; border-top: 1px solid var(--line-2); }
+.jw-ways h3 { margin: 0; font-size: 18px; font-weight: 500; }
+.jw-ways p { margin: 0; max-width: 46ch; color: var(--soft); }
+.jw-way-art { margin: 0; font-family: var(--mono); font-size: 13px; line-height: 1.55; color: var(--soft); white-space: pre; overflow: hidden; }
+.jw-way-art--fields { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.jw-way-art--fields span { padding: 3px 9px; border: 1px solid var(--line-2); color: var(--ink); }
+.jw-way-art--fields i { width: 2px; height: 20px; background: var(--red); }
+.jw-way-art--mt5 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--ink); }
+.jw-way-art--mt5 b { width: 38px; height: 1px; background: var(--soft); position: relative; }
+.jw-way-art--mt5 b::after { content: ""; position: absolute; right: 0; top: -3px; width: 7px; height: 7px; border-top: 1px solid var(--soft); border-right: 1px solid var(--soft); transform: rotate(45deg); }
+.jw-way-art--mt5 em { flex-basis: 100%; font-style: normal; color: var(--red); }
+.is-armed { clip-path: inset(0 100% 0 0); transition: clip-path 760ms var(--ease); }
+.is-armed.is-in { clip-path: inset(0 -8% 0 0); }
+
+/* Act 4: the silence. Authored. */
+.jw-silence { display: flex; align-items: center; min-height: 100svh; }
+.jw-silence p { margin: 0; font-family: var(--serif); font-weight: 300; font-size: clamp(1.7rem, 3vw, 2.8rem); letter-spacing: -0.02em; line-height: 1.1; }
+
+/* Act 5: the peak */
+.jw-sum__stage { position: relative; min-height: 100svh; display: flex; flex-direction: column; justify-content: center; gap: clamp(18px, 3vh, 36px); padding: clamp(24px, 5vh, 56px) var(--gutter) clamp(24px, 5vh, 56px) calc(var(--m) + var(--gap)); }
+.jw-sum h2 { margin: 0; font-size: clamp(2rem, 3.4vw, 3.2rem); }
+.jw-sum__fig { --hand: min(2.5vw, 5vh); display: grid; grid-template-columns: minmax(230px, 280px) minmax(0, 1fr); gap: 16px clamp(28px, 5vw, 72px); margin: 0; align-items: start; }
+.jw-sum__fig figcaption { grid-column: 2; font-size: 13px; color: var(--soft); }
+.jw-ticket { margin: 0; padding: 14px 16px; background: var(--raised); box-shadow: 0 1px 0 rgb(236 233 221 / 0.1) inset, 0 18px 34px -20px rgb(3 5 4 / 0.9); font-family: var(--mono); font-size: 13px; }
+.jw-ticket > div { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; }
+.jw-ticket dt { color: var(--soft); }
+.jw-ticket dd { margin: 0; }
+.jw-ticket__head { padding-bottom: 8px !important; border-bottom: 1px solid var(--line-2); }
+.jw-ticket__head dd { color: var(--ink); }
+.jw-ticket__net { margin-top: 6px; padding-top: 9px !important; border-top: 1px solid var(--line-2); }
+.jw-ticket__net dd { color: var(--ink); font-size: 15px; }
+.jw-working { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(6px, 1.3vh, 12px); }
+.jw-working li { position: relative; font-size: var(--hand); line-height: 1; }
+.jw-working__note { display: block; margin-bottom: 1px; font-size: 13px; line-height: 1.3; color: var(--soft); }
+.jw-hand { display: inline-block; height: 1em; vertical-align: top; overflow: visible; fill: none; stroke: #cfd4c8; stroke-width: 5.6; stroke-linecap: round; stroke-linejoin: round; transform: skewX(-7deg); }
+.jw-working__total .jw-hand { stroke-width: 4.4; }
+.jw-hand [data-stroke] { stroke-dasharray: 1; stroke-dashoffset: 0; }
+.jw-working__total { display: flex; align-items: flex-start; gap: 0; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line-2); font-size: calc(var(--hand) * 2.2) !important; }
+.jw-working__target { position: relative; display: inline-block; height: 1em; }
+.jw-working__target .jw-hand { opacity: var(--jw-pencil-dim, 1); transition: opacity 200ms var(--ease); }
+.jw-working__print { position: absolute; right: 0; top: 0; font-family: var(--mono); line-height: 1; color: var(--ink); opacity: 0; transform-origin: 100% 50%; white-space: nowrap; }
+.jw-tick--big { width: 1.05em; margin-left: 0.25em; }
+.jw-sum__verdict { margin: 0; max-width: 60ch; color: var(--soft); }
+.jw-sum__verdict strong { font-weight: 500; color: var(--ink); }
+
+/* Act 6: what it shows. Reads stacked unless the pan is live. */
+.jw-shows__stage { padding: clamp(50px, 10vh, 90px) var(--gutter) clamp(50px, 10vh, 90px) calc(var(--m) + var(--gap)); }
+.jw-shows h2 { margin: 0 0 clamp(22px, 4vh, 44px); font-size: clamp(2rem, 3.4vw, 3.2rem); }
+.jw-track { display: grid; gap: 44px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+.jw-plate { margin: 0; }
+.jw-plate h3 { margin: 16px 0 2px; font-size: 18px; font-weight: 500; }
+.jw-plate figcaption p { margin: 0; max-width: 42ch; color: var(--soft); }
+.jw-plate small { display: block; margin-top: 4px; font-size: 13px; color: var(--soft); }
+.jw-cal, .jw-note, .jw-bars, .jw-formula { background: var(--raised); box-shadow: 0 1px 0 rgb(236 233 221 / 0.1) inset; }
+.jw-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; padding: 14px; font-family: var(--mono); font-size: 12px; }
+.jw-cal b { font-weight: 400; padding-bottom: 6px; color: var(--soft); text-align: center; }
+.jw-cal span { display: grid; place-items: center; aspect-ratio: 1.2; background: rgb(236 233 221 / 0.035); color: var(--ink); }
+.jw-cal span.down { box-shadow: inset 0 -2px 0 var(--red); }
+.jw-cal span.up { box-shadow: inset 0 -2px 0 var(--soft); }
+.jw-bars { display: block; width: 100%; height: auto; padding: 14px 14px 6px; }
+.jw-bars line { stroke: var(--soft); stroke-width: 1; }
+.jw-bars .up { fill: var(--soft); }
+.jw-bars .down { fill: var(--red); }
+.jw-formula { margin: 0; padding: 4px 14px 14px; font-family: var(--mono); font-size: 13px; line-height: 1.6; color: var(--soft); }
+.jw-formula span { color: var(--ink); }
+.jw-note { padding: 18px; font-size: 16px; }
+.jw-note p { margin: 0; padding: 9px 0; border-top: 1px solid var(--line-2); }
+.jw-note p:first-child { border-top: 0; }
+.jw-note span { display: block; font-size: 13px; color: var(--soft); }
+
+/* Act 7: the coach */
+.jw-coach { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: clamp(36px, 6vw, 96px); align-items: center; padding-block: clamp(70px, 14vh, 150px); }
+.jw-coach h2 { margin: 0 0 20px; font-size: clamp(2rem, 3.4vw, 3.2rem); }
+.jw-talk { margin: 0; }
+.jw-talk p { margin: 0 0 14px; }
+.jw-talk__you { display: table; margin-left: auto !important; padding: 9px 15px; background: var(--raised); }
+.jw-talk__it { padding-left: 15px; border-left: 1px solid var(--line-2); }
+.jw-talk__it span { color: var(--red); }
+.jw-talk figcaption { font-size: 13px; color: var(--soft); }
+
+/* Act 8: hard cut to paper, right of the margin */
+.jw-limits { background: var(--ground); padding-left: var(--m); }
+.jw-limits__paper { --red: #a8321a; background: var(--paper); color: #141a17; padding: clamp(60px, 11vh, 110px) var(--gutter) clamp(60px, 11vh, 110px) var(--gap); }
+.jw-limits h2 { margin: 0 0 clamp(24px, 5vh, 46px); font-size: clamp(3rem, 7vw, 6.4rem); }
+.jw-limits dl { margin: 0; max-width: 980px; }
+.jw-limits dl > div { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(0, 3.2fr); gap: 6px 28px; padding: 18px 0; border-top: 1px solid rgb(20 26 23 / 0.28); }
+.jw-limits dt { font-weight: 600; }
+.jw-limits dd { margin: 0; max-width: 62ch; color: #2e3631; }
+
+/* Act 9: the last line and its double rule */
+.jw-close { min-height: 72svh; display: flex; flex-direction: column; justify-content: center; padding-block: 60px; }
+.jw-close__line { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 22px 40px; padding-bottom: 22px; }
+.jw-close h2 { margin: 0; font-size: clamp(2.4rem, 5.4vw, 5.2rem); }
+.jw-double { display: grid; gap: 5px; }
+.jw-double i { display: block; height: 2px; background: var(--ink); transform-origin: 0 50%; }
+
+/* Motion is only ever added on top of the finished page. */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  .jw-hero { height: 240svh; }
+  .jw-hero__stage { position: sticky; top: 0; }
+  .jw-sheet, .jw-under, .jw-pencil, .jw-rule, .jw-far { will-change: transform; }
+  .jw-sum__stage { position: sticky; top: 0; height: 100svh; }
+  .jw-sum { height: 360svh; }
+  @media (min-width: 761px) {
+    .jw-shows { height: 260svh; }
+    .jw-shows__stage { position: sticky; top: 0; height: 100svh; clip-path: inset(0 0 0 var(--m)); display: flex; flex-direction: column; justify-content: center; }
+    .jw-track { display: flex; width: max-content; gap: clamp(50px, 7vw, 110px); align-items: flex-start; will-change: transform; }
+    .jw-plate--cal { width: min(560px, 68vh); }
+    .jw-plate--stats { width: min(640px, 78vh); }
+    .jw-plate--notes { width: min(480px, 60vh); }
+  }
+  /* A screen too short to hold the sum still: let it read in flow. */
+  @media (max-height: 639px) {
+    .jw-sum { height: auto; }
+    .jw-sum__stage { position: relative; height: auto; }
+  }
+}
+
+/* Separate phone composition, not a shrink. */
+@media (max-width: 760px) {
+  .jw { --m: 12px; --gap: 14px; --gutter: 18px; font-size: 16px; }
+  .jw-hero__copy { left: 26px; right: 18px; width: auto; justify-content: flex-start; padding-top: 88px; }
+  .jw-mark { top: 24px; }
+  .jw h1 { font-size: clamp(3.3rem, 16.5vw, 5rem); }
+  .jw-hero__sub { margin: 16px 0 20px; font-size: 16px; }
+  .jw-sheet { transform: translate3d(11vw, 37vh, 0) rotateX(46deg) rotateZ(-15deg) scale(0.86); padding: 34px 12px 0 28px; }
+  .jw-under { transform: translate3d(13vw, 42vh, 0) rotateX(46deg) rotateZ(-20deg) scale(0.86); }
+  .jw-sheet__rows { font-size: 12.5px; }
+  .jw-sheet__rows th:nth-child(1), .jw-sheet__rows td:nth-child(1), .jw-sheet__rows th:nth-child(3), .jw-sheet__rows td:nth-child(3), .jw-sheet__rows th:nth-child(4), .jw-sheet__rows td:nth-child(4) { display: none; }
+  .jw-pencil { left: 20%; top: 80%; min-width: 0; width: 86vw; }
+  .jw-rule { right: -30vw; bottom: -6vh; width: 90vw; height: 74px; }
+  .jw-hero__note { right: 18px; bottom: 12px; }
+  .jw-sting { padding-block: 70px 50px; }
+  .jw-sting__big { font-size: clamp(2.1rem, 10vw, 3rem); }
+  .jw-ways li { grid-template-columns: 1fr; padding: 20px 0; gap: 8px; }
+  .jw-silence { min-height: 90svh; }
+  .jw-sum__stage { gap: 12px; padding-block: 18px 14px; }
+  .jw-sum h2 { font-size: 1.75rem; }
+  .jw-sum__fig { --hand: min(5.4vw, 26px); grid-template-columns: 1fr; gap: 10px; }
+  .jw-sum__fig figcaption { grid-column: 1; }
+  .jw-ticket { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; padding: 9px 12px; font-size: 12px; line-height: 1.35; }
+  .jw-ticket > div { padding: 2px 0; }
+  .jw-ticket__head, .jw-ticket__net { grid-column: 1 / -1; }
+  .jw-working__total { font-size: calc(var(--hand) * 2) !important; }
+  .jw-shows__stage { padding-block: 60px; }
+  .jw-track { gap: 38px; }
+  .jw-coach { grid-template-columns: 1fr; padding-block: 60px; }
+  .jw-limits dl > div { grid-template-columns: 1fr; }
+  .jw-close { min-height: 60svh; }
+  .jw-close__line .jw-cta { width: 100%; text-align: center; }
+}
+
+@media print { .jw-index { display: none; } }

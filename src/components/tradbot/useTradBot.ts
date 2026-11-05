@@ -25,7 +25,7 @@ export interface TradBotEvent {
 /**
  * Live view of the paired TradBot-I: an EventSource for its feed plus a
  * reachability poll while it isn't connected. Everything goes through
- * Kestrel's server; the browser never talks to TradBot-I directly.
+ * the Jarvis server; the browser never talks to TradBot-I directly.
  */
 export function useTradBot() {
   const [status, setStatus] = useState<TradBotStatus | null>(null);
@@ -143,7 +143,7 @@ export function useTradBotMic(onError: (message: string) => void) {
     } catch {
       teardown();
       setState("error");
-      onError("Lost the connection to Kestrel's server while streaming audio.");
+      onError("Lost the connection to the Jarvis server while streaming audio.");
     } finally {
       sending.current = false;
     }

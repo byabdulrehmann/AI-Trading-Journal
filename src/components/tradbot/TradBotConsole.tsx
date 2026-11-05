@@ -75,18 +75,18 @@ export function TradBotConsole({ compact }: { compact?: boolean }) {
           <div ref={listRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4" aria-live="polite">
             {status.link !== "connected" && (
               <p className="rounded-md border border-accent/40 bg-accent-soft px-3 py-2 text-[13px]">
-                {status.link === "connecting" ? "Connecting to TradBot-I…" : `TradBot-I isn't answering at ${status.url}. Kestrel will reconnect when it's back.`}
+                {status.link === "connecting" ? "Connecting to TradBot-I…" : `TradBot-I isn't answering at ${status.url}. Jarvis will reconnect when it's back.`}
               </p>
             )}
             {feed.length === 0 && status.link === "connected" && (
               <p className="text-[14px] text-ink-soft">
-                Connected to your TradBot-I Jarvis. Type below or turn on the microphone. Jarvis replies out loud on the computer running TradBot-I, in the voice set in its HUD, and the words appear here.
+                Connected to your TradBot-I assistant. Type below or turn on the microphone. It replies out loud on the computer running TradBot-I, in the voice set in its HUD, and the words appear here.
               </p>
             )}
             {feed.map((e) => (
               <FeedItem key={e.id} e={e} />
             ))}
-            {waiting && <p className="typing-caret text-[13px] text-muted">Waiting for Jarvis</p>}
+            {waiting && <p className="typing-caret text-[13px] text-muted">Waiting for TradBot-I</p>}
           </div>
 
           <div className="border-t border-line p-3">
@@ -153,7 +153,7 @@ function StatusBar({ status, streamError, mic }: { status: TradBotStatus; stream
       ? (["accent", "Not paired"] as const)
       : status.link === "connected"
         ? status.session === "reconnecting"
-          ? (["accent", "Jarvis reconnecting to Gemini"] as const)
+          ? (["accent", "TradBot-I reconnecting to Gemini"] as const)
           : (["profit", "Connected"] as const)
         : status.link === "connecting"
           ? (["accent", "Connecting"] as const)
@@ -166,7 +166,7 @@ function StatusBar({ status, streamError, mic }: { status: TradBotStatus; stream
       </Badge>
       {mic === "live" && <Badge tone="loss">● Mic live</Badge>}
       <span className="num ml-auto truncate text-[11.5px] text-muted">{status.url.replace(/^https?:\/\//, "")}</span>
-      {streamError && <span className="w-full text-[12px] text-loss">Lost the live feed from Kestrel&apos;s server; retrying…</span>}
+      {streamError && <span className="w-full text-[12px] text-loss">Lost the live feed from the Jarvis server; retrying…</span>}
     </div>
   );
 }
@@ -181,11 +181,11 @@ function FeedItem({ e }: { e: TradBotEvent }) {
   if (e.type === "log")
     return (
       <div className="animate-rise">
-        <p className="mb-0.5 text-[11.5px] font-semibold tracking-wide text-accent uppercase">Jarvis</p>
+        <p className="mb-0.5 text-[11.5px] font-semibold text-accent">TradBot-I</p>
         <p className="text-[14px] leading-relaxed whitespace-pre-wrap text-ink">{e.text}</p>
       </div>
     );
-  const text = e.type === "status" ? (e.state === "active" ? "Live session ready." : e.state === "reconnecting" ? "Jarvis is reconnecting to Gemini…" : `Status: ${e.state}`) : e.type === "wake" ? "Wake word detected." : e.text ?? e.type;
+  const text = e.type === "status" ? (e.state === "active" ? "Live session ready." : e.state === "reconnecting" ? "TradBot-I is reconnecting to Gemini…" : `Status: ${e.state}`) : e.type === "wake" ? "Wake word detected." : e.text ?? e.type;
   return <p className="text-center text-[12px] text-muted">{text}</p>;
 }
 
@@ -244,7 +244,7 @@ function PairForm({ onPaired, error }: { onPaired: () => void; error: string | n
   };
   return (
     <div className="space-y-3 p-4 text-[14px]">
-      <p className="font-medium">TradBot-I is running. Pair Kestrel with it:</p>
+      <p className="font-medium">TradBot-I is running. Pair Jarvis with it:</p>
       <ol className="list-decimal space-y-1 pl-5 text-ink-soft">
         <li>In the TradBot-I window, press <strong>Remote Control</strong>.</li>
         <li>Type the 6-character key it shows (it expires after 10 minutes and works once).</li>
@@ -263,7 +263,7 @@ function PairForm({ onPaired, error }: { onPaired: () => void; error: string | n
         <Button variant="primary" type="submit" disabled={pin.length !== 6 || busy}>{busy ? "Pairing…" : "Pair"}</Button>
       </form>
       {err && <p role="alert" className="text-[13px] text-loss">{err}</p>}
-      <p className="text-[12.5px] text-muted">The pairing token stays on Kestrel&apos;s server. TradBot-I forgets it when it restarts, so you&apos;ll pair again then.</p>
+      <p className="text-[12.5px] text-muted">The pairing token stays on the Jarvis server. TradBot-I forgets it when it restarts, so you&apos;ll pair again then.</p>
     </div>
   );
 }
@@ -273,7 +273,7 @@ function NotRunning({ status, onRetry }: { status: TradBotStatus; onRetry: () =>
     <div className="space-y-3 p-4 text-[14px]">
       <p className="font-medium">TradBot-I isn&apos;t running</p>
       <p className="text-ink-soft">
-        Kestrel couldn&apos;t reach TradBot-I&apos;s remote dashboard at <code className="num">{status.url}</code>. Everything else in Kestrel keeps working, including the built-in Jarvis coach.
+        Jarvis couldn&apos;t reach TradBot-I&apos;s remote dashboard at <code className="num">{status.url}</code>. Everything else in Jarvis keeps working, including the AI Coach.
       </p>
       <p className="text-ink-soft">Start it in its own folder:</p>
       <pre className="num overflow-x-auto rounded-md bg-sunken p-3 text-[12.5px]">{`cd TradBot-I-main

@@ -110,29 +110,35 @@ function holdingLosers(closed: Closed[]): PatternFinding | null {
 }
 
 function quickReentry(closed: Closed[]): PatternFinding | null {
-  const hits: Closed[] = [];
+  const hits = new Set<Closed>();
+  const opened = closed.map((t) => Date.parse(t.openedAt)); // closed is sorted by open time
   for (const loss of closed.filter((t) => t.pnl < 0)) {
     const lossEnd = Date.parse(loss.closedAt);
-    const next = closed.find(
-      (t) =>
-        t.id !== loss.id &&
-        t.accountId === loss.accountId &&
-        Date.parse(t.openedAt) >= lossEnd &&
-        Date.parse(t.openedAt) - lossEnd <= 15 * 60000,
-    );
-    if (next && !hits.includes(next)) hits.push(next);
+    let [lo, hi] = [0, opened.length];
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (opened[mid] < lossEnd) lo = mid + 1;
+      else hi = mid;
+    }
+    for (let i = lo; i < opened.length && opened[i] - lossEnd <= 15 * 60000; i++) {
+      if (closed[i].id !== loss.id && closed[i].accountId === loss.accountId) {
+        hits.add(closed[i]);
+        break;
+      }
+    }
   }
-  if (hits.length < 2) return null;
-  const wins = hits.filter((t) => t.pnl > 0).length;
+  if (hits.size < 2) return null;
+  const list = [...hits];
+  const wins = list.filter((t) => t.pnl > 0).length;
   return {
     ...base("quick-reentry"),
-    observation: `${hits.length} trades opened within 15 minutes of a losing trade. Together they made ${fmt(totalPnl(hits))} (${wins} of ${hits.length} won).`,
+    observation: `${list.length} trades opened within 15 minutes of a losing trade. Together they made ${fmt(totalPnl(list))} (${wins} of ${list.length} won).`,
     interpretation: "Quick re-entries after a loss are sometimes driven by wanting to win the money back rather than by the setup. That may or may not apply to you.",
     suggestion: "Consider a short pause rule after a loss, and check whether the next setup would have qualified on a fresh day.",
-    occurrences: hits.length,
-    cost: totalPnl(hits),
-    evidenceTradeIds: hits.map((t) => t.id),
-    confidence: hits.length >= 5 ? "medium" : "low",
+    occurrences: list.length,
+    cost: totalPnl(list),
+    evidenceTradeIds: list.map((t) => t.id),
+    confidence: list.length >= 5 ? "medium" : "low",
   };
 }
 

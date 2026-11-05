@@ -24,26 +24,26 @@ export function JarvisPanel({ onClose }: { onClose: () => void }) {
     <aside
       ref={ref}
       id="jarvis-panel"
-      aria-label="Jarvis"
-      className="fixed inset-x-0 top-14 bottom-0 z-30 flex flex-col border-l border-line bg-surface md:left-auto md:w-[400px] md:shadow-2xl xl:sticky xl:top-14 xl:h-[calc(100dvh-3.5rem)] xl:shrink-0 xl:shadow-none"
+      aria-label="AI Coach"
+      className="fixed inset-x-0 top-13 bottom-0 z-30 flex flex-col border-l border-line bg-surface md:left-auto md:w-[400px] md:shadow-2xl xl:sticky xl:top-13 xl:h-[calc(100dvh-3.25rem)] xl:shrink-0 xl:shadow-none"
     >
       <div className="flex items-center justify-between px-4 py-3">
         <div>
-          <h2 className="text-[15px] font-semibold">Jarvis</h2>
+          <h2 className="text-[15px] font-semibold">AI Coach</h2>
           <p className="text-[12px] text-muted">Reflective journaling companion</p>
         </div>
         <div className="flex gap-1">
           <Link href="/jarvis" className="rounded-md px-2 py-1 text-[13px] text-ink-soft hover:bg-raised hover:text-ink">
             Open full view
           </Link>
-          <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close Jarvis">
-            ✕
+          <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close the AI Coach">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden><path d="M2 2l10 10M12 2L2 12" /></svg>
           </Button>
         </div>
       </div>
       <div className="px-4 pb-2">
         <Segmented
-          label="Which Jarvis"
+          label="Which assistant"
           value={mode}
           onChange={setMode}
           options={[

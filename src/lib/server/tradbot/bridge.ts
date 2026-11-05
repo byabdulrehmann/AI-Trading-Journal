@@ -3,7 +3,7 @@ import { db } from "../db";
 
 /**
  * Adapter to a running TradBot-I (the user's own Jarvis) through the remote
- * dashboard it already ships (dashboard/server.py, port 8000). Kestrel acts as
+ * dashboard it already ships (dashboard/server.py, port 8000). Jarvis acts as
  * one more paired remote client, exactly like the phone dashboard:
  *
  *   POST /login {pin}          → bearer token (PIN from the HUD's Remote Control)

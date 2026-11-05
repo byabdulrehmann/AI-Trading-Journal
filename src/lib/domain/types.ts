@@ -192,7 +192,7 @@ export const SHARING_LEVELS = ["metrics", "trades", "trades_with_notes"] as cons
 
 export const Settings = z.object({
   displayName: z.string().trim().max(40).default(""),
-  theme: z.enum(["system", "dark", "light"]).default("system"),
+  theme: z.enum(["system", "dark", "light"]).default("dark"),
   baseCurrency: z.string().length(3).default("USD"),
   defaultAccountId: z.number().int().nullable().default(null),
   onboardingDismissed: z.boolean().default(false),
@@ -268,13 +268,13 @@ export interface ActivityEvent {
   createdAt: string;
 }
 
-/** Every activity type Kestrel can record, shown verbatim in Settings. */
+/** Every activity type Jarvis can record, shown verbatim in Settings. */
 export const ACTIVITY_TYPES: Record<string, string> = {
   "trade.created": "You added a trade (trade id, symbol)",
   "trade.updated": "You edited a trade (trade id, which fields changed)",
   "trade.deleted": "You deleted or restored a trade (trade id)",
-  "import.committed": "You imported a CSV (row count)",
-  "jarvis.chat": "You sent Jarvis a message (length only, never the text)",
+  "import.committed": "You imported a CSV or Excel file (row count)",
+  "jarvis.chat": "You sent the AI Coach a message (length only, never the text)",
   "tradbot.message": "You typed a message to TradBot-I (length only, never the text)",
   "settings.changed": "You changed a setting (setting name)",
 };

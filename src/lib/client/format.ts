@@ -41,3 +41,27 @@ export function toLocalInput(iso: string | null): string {
   const off = d.getTimezoneOffset();
   return new Date(d.getTime() - off * 60000).toISOString().slice(0, 16);
 }
+
+/** Whole-unit shorthand for tight spots such as a phone-width calendar cell. */
+export function compactMoney(n: number): string {
+  const abs = Math.abs(n);
+  const text = abs >= 1e6 ? `${(abs / 1e6).toFixed(1)}m` : abs >= 1e3 ? `${(abs / 1e3).toFixed(1)}k` : abs.toFixed(0);
+  return `${n < 0 ? "−" : n > 0 ? "+" : ""}${text}`;
+}
+
+/** The engine's null profit factor means nothing to divide by, which is good news when there are wins. */
+export function profitFactorText(m: { profitFactor: number | null; losses: number; wins: number }): string {
+  if (m.profitFactor !== null) return m.profitFactor.toFixed(2);
+  return m.losses === 0 && m.wins > 0 ? "No losses" : "—";
+}
+
+export const SESSION_LABELS: Record<string, string> = {
+  sydney: "Sydney",
+  tokyo: "Tokyo",
+  london: "London",
+  new_york: "New York",
+  overlap_london_ny: "London/NY overlap",
+  off_hours: "Off hours",
+};
+
+export const fileSize = (bytes: number) => (bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);

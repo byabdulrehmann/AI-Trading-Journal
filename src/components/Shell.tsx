@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { useApp } from "@/lib/client/app-state";
+import { PUBLIC_PAGES, useApp } from "@/lib/client/app-state";
 import { Button, cx } from "./ui";
 import { JarvisPanel } from "./jarvis/JarvisPanel";
 import { TradeDrawer } from "./journal/TradeDrawer";
@@ -11,33 +11,45 @@ import { TradeFormDialog } from "./journal/TradeForm";
 import { Toasts } from "./Toasts";
 
 const NAV = [
-  { href: "/", label: "Overview", icon: "M3 12l9-8 9 8M5 10v10h14V10" },
-  { href: "/journal", label: "Journal", icon: "M5 4h11l3 3v13H5zM9 9h6M9 13h6M9 17h4" },
-  { href: "/analytics", label: "Analytics", icon: "M4 20V10M10 20V4M16 20v-7M22 20H2" },
-  { href: "/patterns", label: "Patterns", icon: "M4 17l5-5 4 4 7-8M15 8h5v5" },
+  { href: "/", label: "Dashboard", icon: "M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 7h6V4h-6z" },
+  { href: "/journal", label: "Journal", icon: "M6 4h12v16H6zM9.5 9h5M9.5 13h5" },
+  { href: "/calendar", label: "Calendar", icon: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4" },
+  { href: "/analytics", label: "Analytics", icon: "M4 20V11M10 20V5M16 20v-6M3 20h18" },
+  { href: "/patterns", label: "Patterns", icon: "M4 16l5-5 4 4 7-8" },
   { href: "/market", label: "Market context", icon: "M3 12h4l3-7 4 14 3-7h4" },
-  { href: "/jarvis", label: "Jarvis", icon: "M12 3a6 6 0 016 6c0 4-6 12-6 12S6 13 6 9a6 6 0 016-6zM12 7v4" },
-  { href: "/settings", label: "Settings", icon: "M12 8a4 4 0 100 8 4 4 0 000-8zM3 12h2M19 12h2M12 3v2M12 19v2" },
+  { href: "/jarvis", label: "AI Coach", icon: "M4 5h16v11H9l-5 4zM9 10.5h.01M15 10.5h.01" },
+  { href: "/accounts", label: "Accounts & MT5", icon: "M3 7h18v12H3zM3 11h18M7 15h3" },
+  { href: "/settings", label: "Settings", icon: "M5 7h14M5 12h14M5 17h14M9 5v4M15 10v4M8 15v4" },
 ];
 
 export function Logo() {
   return (
-    <span className="flex items-center gap-2.5">
-      <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden>
-        <rect width="32" height="32" rx="8" fill="var(--accent-soft)" />
-        <path d="M6 19c5-1 8-4 10-10 1 5 4 8 10 9-6 1-9 3-10 7-1-4-4-6-10-6z" fill="var(--accent)" />
+    <span className="flex items-center gap-2">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden fill="none">
+        <rect x="0.75" y="0.75" width="22.5" height="22.5" rx="5" stroke="var(--line-strong)" strokeWidth="1.5" />
+        <path d="M14 5.5v9a3.5 3.5 0 0 1-7 0" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" />
+        <circle cx="18" cy="6" r="1.6" fill="var(--accent)" />
       </svg>
-      <span className="text-[16px] font-semibold tracking-tight text-ink">Kestrel</span>
+      <span className="text-[16px] font-semibold tracking-tight text-ink">Jarvis</span>
     </span>
   );
 }
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { jarvisOpen, setJarvisOpen, settings, editTrade } = useApp();
+  const { jarvisOpen, setJarvisOpen, settings, editTrade, user, signOut } = useApp();
   const [navOpen, setNavOpen] = useState(false);
 
-  const jarvisEnabled = settings?.jarvis.enabled ?? true;
+  if (PUBLIC_PAGES.has(pathname)) {
+    return (
+      <>
+        {children}
+        <Toasts />
+      </>
+    );
+  }
+
+  const coachEnabled = settings?.jarvis.enabled ?? true;
 
   return (
     <div className="flex min-h-dvh">
@@ -47,17 +59,17 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       <aside
         className={cx(
-          "fixed inset-y-0 left-0 z-40 w-60 flex-col border-r border-line bg-surface lg:static lg:flex",
+          "fixed inset-y-0 left-0 z-40 w-56 flex-col border-r border-line bg-surface lg:sticky lg:top-0 lg:flex lg:h-dvh lg:shrink-0",
           navOpen ? "flex" : "hidden",
         )}
         aria-label="Primary"
       >
-        <div className="flex h-14 items-center px-5">
-          <Link href="/" aria-label="Kestrel home">
+        <div className="flex h-13 shrink-0 items-center px-4">
+          <Link href="/" aria-label="Jarvis home" onClick={() => setNavOpen(false)}>
             <Logo />
           </Link>
         </div>
-        <nav className="flex-1 space-y-0.5 px-3 py-2">
+        <nav className="flex-1 space-y-px overflow-y-auto px-2 py-2">
           {NAV.map((item) => {
             const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             return (
@@ -67,11 +79,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 aria-current={active ? "page" : undefined}
                 onClick={() => setNavOpen(false)}
                 className={cx(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-[14px] transition-colors",
-                  active ? "bg-raised text-ink ring-1 ring-line" : "text-ink-soft hover:bg-raised/60 hover:text-ink",
+                  "flex items-center gap-2.5 rounded-control px-2.5 py-1.5 text-[14px] transition-colors",
+                  active ? "bg-raised text-ink" : "text-ink-soft hover:bg-raised/60 hover:text-ink",
                 )}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden className={active ? "text-accent" : "text-muted"}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden className={active ? "text-accent" : "text-muted"}>
                   <path d={item.icon} />
                 </svg>
                 {item.label}
@@ -79,36 +91,40 @@ export function Shell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="border-t border-line p-4 text-[12px] leading-relaxed text-muted">
-          Educational journaling tool. Not financial advice. Kestrel never places trades.
+        <div className="border-t border-line p-3">
+          {user && <p className="truncate px-1 text-[13px] text-ink-soft" title={user.email}>{user.name || user.email}</p>}
+          <Button variant="ghost" size="sm" className="mt-1 w-full justify-start px-1" onClick={() => void signOut()}>
+            Sign out
+          </Button>
+          <p className="mt-2 px-1 text-[12px] leading-snug text-muted">A journal, not advice. Jarvis never places trades.</p>
         </div>
       </aside>
-      {navOpen && <div className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={() => setNavOpen(false)} aria-hidden />}
+      {navOpen && <div className="fixed inset-0 z-30 bg-[var(--scrim)] lg:hidden" onClick={() => setNavOpen(false)} aria-hidden />}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-line bg-canvas/90 px-4 backdrop-blur sm:px-6">
-          <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setNavOpen(true)} aria-label="Open navigation">
-            ☰
+        <header className="sticky top-0 z-20 flex h-13 items-center gap-2 border-b border-line bg-canvas px-gutter sm:px-6">
+          <Button variant="ghost" size="sm" className="px-2 lg:hidden" onClick={() => setNavOpen(true)} aria-label="Open navigation" aria-expanded={navOpen}>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden><path d="M2 4.5h14M2 9h14M2 13.5h14" /></svg>
           </Button>
           <span className="lg:hidden">
             <Logo />
           </span>
           <div className="ml-auto flex items-center gap-2">
-            <Button size="sm" onClick={() => editTrade("new")}>
-              + Log trade
+            <Button size="sm" variant="primary" onClick={() => editTrade("new")}>
+              Log trade
             </Button>
-            {jarvisEnabled && (
-              <Button size="sm" variant={jarvisOpen ? "primary" : "secondary"} aria-expanded={jarvisOpen} aria-controls="jarvis-panel" onClick={() => setJarvisOpen(!jarvisOpen)}>
-                Jarvis
+            {coachEnabled && (
+              <Button size="sm" aria-expanded={jarvisOpen} aria-controls="jarvis-panel" onClick={() => setJarvisOpen(!jarvisOpen)}>
+                AI Coach
               </Button>
             )}
           </div>
         </header>
         <div className="flex min-w-0 flex-1">
-          <main id="main" className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
-            <div className="mx-auto max-w-6xl">{children}</div>
+          <main id="main" className="min-w-0 flex-1 px-gutter py-5 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-[1200px]">{children}</div>
           </main>
-          {jarvisEnabled && jarvisOpen && pathname !== "/jarvis" && <JarvisPanel onClose={() => setJarvisOpen(false)} />}
+          {coachEnabled && jarvisOpen && pathname !== "/jarvis" && <JarvisPanel onClose={() => setJarvisOpen(false)} />}
         </div>
       </div>
 

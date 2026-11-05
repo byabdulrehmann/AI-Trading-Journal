@@ -220,7 +220,10 @@ export interface TradeFilters {
   from?: string;
   to?: string;
   source?: TradeSource;
-  outcome?: "win" | "loss" | "breakeven" | "open";
+  outcome?: "win" | "loss" | "breakeven" | "open" | "pending";
+  /** Close-time window, for a calendar day. `from` and `to` are open-time. */
+  closedFrom?: string;
+  closedTo?: string;
   plan?: "on" | "off" | "unanswered";
   session?: string;
   tag?: string;
@@ -250,6 +253,9 @@ function whereClause(userId: number, f: TradeFilters): { sql: string; args: (str
   if (f.outcome === "loss") add("t.status = 'closed' AND t.net_pnl < 0");
   if (f.outcome === "breakeven") add("t.status = 'closed' AND t.net_pnl = 0");
   if (f.outcome === "open") add("t.status != 'closed'");
+  if (f.outcome === "pending") add("t.pnl_status != 'ok'");
+  if (f.closedFrom) add("t.closed_at >= ?", f.closedFrom);
+  if (f.closedTo) add("t.closed_at <= ?", f.closedTo);
   if (f.plan === "on") add("t.followed_plan = 1");
   if (f.plan === "off") add("t.followed_plan = 0");
   if (f.plan === "unanswered") add("t.followed_plan IS NULL");
@@ -613,10 +619,10 @@ export function exportAll(userId: number) {
   };
 }
 
-function removeAttachmentFiles(names: string[]) {
+function removeStoredFiles(folder: string, names: string[]) {
   for (const name of names) {
     try {
-      unlinkSync(path.join(dataPath("attachments"), name));
+      unlinkSync(path.join(dataPath(folder), name));
     } catch {
       // Already gone: the row is what the app reads.
     }
@@ -626,14 +632,18 @@ function removeAttachmentFiles(names: string[]) {
 /** Removes this user's data; the login stays. Connected MT5 passwords go with their accounts. */
 export function deleteAllData(userId: number) {
   const conn = db();
-  const files = (conn.prepare("SELECT stored_name FROM attachments WHERE user_id = ?").all(userId) as { stored_name: string }[]).map((r) => r.stored_name);
+  const storedNames = (table: string) => (conn.prepare(`SELECT stored_name FROM ${table} WHERE user_id = ? AND stored_name IS NOT NULL`).all(userId) as { stored_name: string }[]).map((r) => r.stored_name);
+  const [attachments, uploads] = [storedNames("attachments"), storedNames("import_batches")];
+  const accountSettings = (conn.prepare("SELECT id FROM accounts WHERE user_id = ?").all(userId) as { id: number }[]).map((a) => `mt5:${a.id}`);
   transaction(conn, () => {
+    for (const key of accountSettings) conn.prepare("DELETE FROM settings WHERE key = ?").run(key);
     for (const table of ["jarvis_conversations", "jarvis_memories", "activity_log", "import_batches", "attachments", "reconciliations", "trades", "tags", "strategies", "accounts"])
       conn.prepare(`DELETE FROM ${table} WHERE user_id = ?`).run(userId);
     conn.prepare("DELETE FROM settings WHERE key = ?").run(`app:${userId}`);
     audit(userId, "data.deleted_all");
   });
-  removeAttachmentFiles(files);
+  removeStoredFiles("attachments", attachments);
+  removeStoredFiles("imports", uploads);
 }
 
 export function removeSampleData(userId: number): number {

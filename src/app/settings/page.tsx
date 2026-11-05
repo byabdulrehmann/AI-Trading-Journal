@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import type { Facets } from "@/lib/client/analytics";
 import { api, fieldErrors } from "@/lib/client/api";
 import { useApp } from "@/lib/client/app-state";
 import { dateTime, money } from "@/lib/client/format";
+import { useFetch } from "@/lib/client/use-fetch";
 import { COACHING_STYLES, type ActivityEvent, type SHARING_LEVELS } from "@/lib/domain/types";
 import { Badge, Button, Card, CardHeader, Field, PageHeader, Segmented, Spinner, Toggle, cx, inputClass } from "@/components/ui";
 
@@ -23,9 +25,9 @@ export default function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" description="Preferences, privacy and your data. Everything is stored locally in a SQLite file on this computer." />
+      <PageHeader title="Settings" description="Preferences, privacy and your data. Everything is stored in a local database on this computer." />
       <nav aria-label="Settings sections" className="mb-6 flex flex-wrap gap-2 text-[13px]">
-        {[["profile", "Profile"], ["accounts", "Accounts"], ["jarvis", "Jarvis"], ["privacy", "Privacy"], ["data", "Your data"]].map(([id, l]) => (
+        {[["profile", "Profile"], ["accounts", "Accounts"], ["jarvis", "AI Coach"], ["privacy", "Privacy"], ["data", "Your data"]].map(([id, l]) => (
           <a key={id} href={`#${id}`} className="rounded-full border border-line px-3 py-1 text-ink-soft hover:border-line-strong hover:text-ink">{l}</a>
         ))}
       </nav>
@@ -34,11 +36,11 @@ export default function SettingsPage() {
         <Card id="profile" className="scroll-mt-20">
           <CardHeader title="Profile" />
           <div className="grid gap-4 p-5 sm:grid-cols-3">
-            <Field label="Display name" hint="Used by Jarvis to greet you">
+            <Field label="Display name" hint="Used to greet you">
               {(p) => <input {...p} className={inputClass} defaultValue={settings.displayName} maxLength={40} onBlur={(e) => e.target.value !== settings.displayName && void saveSettings({ displayName: e.target.value })} />}
             </Field>
             <div className="flex flex-col gap-1.5">
-              <span className="text-[13px] font-medium text-ink-soft">Theme</span>
+              <span className="text-[13px] text-ink-soft">Theme</span>
               <Segmented label="Theme" value={settings.theme} onChange={(theme) => void saveSettings({ theme })} options={[{ value: "system", label: "System" }, { value: "dark", label: "Dark" }, { value: "light", label: "Light" }]} />
             </div>
           </div>
@@ -47,18 +49,18 @@ export default function SettingsPage() {
         <Accounts />
 
         <Card id="jarvis" className="scroll-mt-20">
-          <CardHeader title="Jarvis" subtitle={<>Model and provider are chosen on the <Link href="/jarvis" className="text-accent underline">Jarvis → Model</Link> tab.</>} />
+          <CardHeader title="AI Coach" subtitle={<>Model and provider are chosen on the <Link href="/jarvis" className="text-accent underline">AI Coach</Link> page, under Model.</>} />
           <div className="divide-y divide-line px-5">
-            <Toggle label="Enable Jarvis" checked={j.enabled} onChange={(v) => void saveSettings({ jarvis: { enabled: v } })} description="When off, the panel is hidden and no messages are processed. Saved history is kept." />
+            <Toggle label="Enable the AI Coach" checked={j.enabled} onChange={(v) => void saveSettings({ jarvis: { enabled: v } })} description="When off, the panel is hidden and no messages are processed. Saved history is kept." />
             <div className="flex flex-wrap items-center justify-between gap-3 py-3">
               <div>
                 <p className="text-[14px] font-medium">Coaching style</p>
-                <p className="text-[13px] text-muted">How Jarvis phrases its replies.</p>
+                <p className="text-[13px] text-muted">How the coach phrases its replies.</p>
               </div>
               <Segmented label="Coaching style" value={j.coachingStyle} onChange={(coachingStyle) => void saveSettings({ jarvis: { coachingStyle } })} options={COACHING_STYLES.map((s) => ({ value: s, label: STYLE_LABEL[s] }))} />
             </div>
-            <Toggle label="Behavioural insights" checked={j.behaviouralInsights} onChange={(v) => void saveSettings({ jarvis: { behaviouralInsights: v } })} description="Detects patterns like fast re-entries after losses. Turn off to stop pattern analysis everywhere, including Jarvis." />
-            <Toggle label="Reflection prompts" checked={j.reflectionPrompts} onChange={(v) => void saveSettings({ jarvis: { reflectionPrompts: v } })} description="Gentle reminders on the overview, e.g. trades without a grade. Shown in the app only." />
+            <Toggle label="Behavioural insights" checked={j.behaviouralInsights} onChange={(v) => void saveSettings({ jarvis: { behaviouralInsights: v } })} description="Detects patterns like fast re-entries after losses. Turn off to stop pattern analysis everywhere, including the AI Coach." />
+            <Toggle label="Reflection prompts" checked={j.reflectionPrompts} onChange={(v) => void saveSettings({ jarvis: { reflectionPrompts: v } })} description="A reminder on the dashboard about recent trades with no plan answer. Shown in the app only." />
           </div>
         </Card>
 
@@ -94,13 +96,13 @@ function Accounts() {
 
   return (
     <Card id="accounts" className="scroll-mt-20">
-      <CardHeader title="Trading accounts" subtitle="Broker sync isn't available yet — import CSV exports instead." />
+      <CardHeader title="Trading accounts" subtitle={<>MetaTrader 5 connections are managed under <Link href="/accounts" className="text-accent underline">Accounts &amp; MT5</Link>.</>} />
       <ul className="divide-y divide-line">
         {accounts.map((a) => (
           <li key={a.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
             <div className="min-w-0 flex-1">
               <p className="font-medium">{a.name} {a.isSample && <Badge tone="info">Sample</Badge>} {a.archived && <Badge>Archived</Badge>}</p>
-              <p className="num text-[12.5px] text-muted">{a.currency} · starting {money(a.startingBalance, a.currency)}</p>
+              <p className="num text-[12.5px] text-muted">{a.currency}, starting {money(a.startingBalance, a.currency)}</p>
             </div>
             {settings?.defaultAccountId === a.id ? (
               <Badge tone="accent">Default</Badge>
@@ -136,7 +138,7 @@ function Privacy() {
 
   return (
     <Card id="privacy" className="scroll-mt-20">
-      <CardHeader title="Privacy" subtitle="What Jarvis can use, what is recorded, and what leaves this computer." />
+      <CardHeader title="Privacy" subtitle="What the AI Coach can use, what is recorded, and what leaves this computer." />
       <div className="space-y-6 p-5">
         <section>
           <h3 className="text-[14px] font-semibold">Sharing with external AI providers</h3>
@@ -174,7 +176,7 @@ function Privacy() {
         </section>
 
         <section className="divide-y divide-line border-t border-line">
-          <Toggle label="Jarvis memory" checked={j.memoryEnabled} onChange={(v) => void saveSettings({ jarvis: { memoryEnabled: v } })} description={<>Lets Jarvis use the notes you&apos;ve asked it to remember. Manage them in <Link href="/jarvis" className="underline">Jarvis → Memory</Link>.</>} />
+          <Toggle label="AI Coach memory" checked={j.memoryEnabled} onChange={(v) => void saveSettings({ jarvis: { memoryEnabled: v } })} description={<>Lets the coach use the notes you&apos;ve asked it to remember. Manage them on the <Link href="/jarvis" className="underline">AI Coach</Link> page, under Memory.</>} />
           <Toggle
             label="Record app activity"
             checked={settings.activityTracking}
@@ -182,7 +184,7 @@ function Privacy() {
               await saveSettings({ activityTracking: v });
               toast({ message: v ? "Activity recording is on. Nothing is sent anywhere." : "Activity recording paused." });
             }}
-            description="Off by default. When on, Kestrel keeps a local log of the actions below. The log stays on this computer: it isn't sent to Jarvis or any provider."
+            description="Off by default. When on, Jarvis keeps a local log of the actions below. The log stays on this computer: it isn't sent to the AI Coach or any provider."
           />
         </section>
 
@@ -191,10 +193,10 @@ function Privacy() {
             <h3 className="text-[14px] font-semibold">What activity recording captures</h3>
             <ul className="mt-2 grid gap-1 text-[13px] text-ink-soft sm:grid-cols-2">
               {Object.entries(activity.types).map(([k, v]) => (
-                <li key={k}><code className="num text-[12px] text-muted">{k}</code> — {v}</li>
+                <li key={k}><code className="num text-[12px] text-muted">{k}</code>: {v}</li>
               ))}
             </ul>
-            <p className="mt-2 text-[13px] text-muted">Kestrel does not record page views, clicks, keystrokes, time on page, or chat content.</p>
+            <p className="mt-2 text-[13px] text-muted">Jarvis does not record page views, clicks, keystrokes, time on page, or chat content.</p>
             <div className="mt-4 flex items-center justify-between">
               <h3 className="text-[14px] font-semibold">Recorded events ({activity.events.length})</h3>
               <Button size="sm" variant="danger" disabled={!activity.events.length} onClick={async () => { await api("/api/activity", { method: "DELETE" }); await loadActivity(); }}>Delete log</Button>
@@ -220,16 +222,16 @@ function Privacy() {
 }
 
 function DataControls() {
-  const { trades, refresh, toast } = useApp();
+  const { refresh, toast } = useApp();
   const [confirmText, setConfirmText] = useState("");
-  const hasSample = trades.some((t) => t.source === "sample");
+  const hasSample = useFetch<Facets>("/api/facets").data?.hasSample;
 
   return (
     <Card id="data" className="scroll-mt-20">
-      <CardHeader title="Your data" subtitle="Stored in data/kestrel.db inside the app folder." />
+      <CardHeader title="Your data" subtitle="Stored in a database file inside the app's data folder." />
       <div className="space-y-5 p-5">
         <div className="flex flex-wrap items-center gap-3">
-          <a href="/api/data" className="inline-flex h-10 items-center rounded-md border border-line-strong bg-raised px-4 text-sm font-medium hover:border-muted" download>
+          <a href="/api/data" className="inline-flex h-9 items-center rounded-control border border-line-strong bg-raised px-3.5 text-sm font-medium hover:border-muted" download>
             Export everything (JSON)
           </a>
           {hasSample ? (
@@ -240,7 +242,7 @@ function DataControls() {
         </div>
         <div className="rounded-lg border border-loss/40 p-4">
           <h3 className="text-[14px] font-semibold text-loss">Delete all data</h3>
-          <p className="mt-1 text-[13px] text-muted">Permanently removes trades, accounts, settings, Jarvis conversations, memories and the activity log. Export first if you want a copy.</p>
+          <p className="mt-1 text-[13px] text-muted">Permanently removes trades, accounts, attachments, settings, AI Coach conversations, memories and the activity log. Your sign-in stays. Export first if you want a copy.</p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <label htmlFor="confirm-delete" className="sr-only">Type DELETE to confirm</label>
             <input id="confirm-delete" className={cx(inputClass, "sm:w-56")} placeholder="Type DELETE to confirm" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} />

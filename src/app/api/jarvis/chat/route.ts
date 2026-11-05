@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   const data = await body(req, Body);
   if (data instanceof Response) return data;
   const settings = getSettings(user.id);
-  if (!settings.jarvis.enabled) return fail("Jarvis is turned off in Settings.", 403);
+  if (!settings.jarvis.enabled) return fail("The AI Coach is turned off in Settings.", 403);
   if (data.conversationId && !conversationExists(user.id, data.conversationId)) return fail("Conversation not found.", 404);
 
   const conversationId = data.conversationId ?? createConversation(user.id, data.message);
@@ -57,7 +57,7 @@ export async function POST(req: Request) {
       try {
         const command = await handleModelCommand(user.id, data.message);
         if (command) {
-          send("meta", { conversationId, provider: "kestrel", model: null, disclosure: ["Nothing — this was handled inside Kestrel."] });
+          send("meta", { conversationId, provider: "kestrel", model: null, disclosure: ["Nothing. This was handled inside Jarvis."] });
           send("delta", { text: command });
           const saved = addMessage(conversationId, "assistant", command, "kestrel", null);
           send("done", { messageId: saved.id, switched: true });
@@ -119,7 +119,7 @@ async function reply(userId: number, conversationId: number, focusTradeId: numbe
     if (clientSignal.aborted) return; // the user pressed Stop or left
     const timedOut = signal.aborted;
     const e = timedOut
-      ? new ProviderError("Jarvis took too long to reply, so Kestrel stopped waiting. Please try again.", "timeout", true)
+      ? new ProviderError("The AI Coach took too long to reply, so Jarvis stopped waiting. Please try again.", "timeout", true)
       : err instanceof ProviderError
         ? err
         : new ProviderError("Something went wrong generating a reply.", "unavailable");

@@ -1,4 +1,4 @@
-import { breakdown, computeMetrics, drawdownCurve, equityCurve, periodSummaries, pnlDistribution, reportingCurrencies } from "@/lib/domain/metrics";
+import { breakdown, computeMetrics, drawdownCurve, equityCurve, isClosed, periodSummaries, pnlDistribution, reportingCurrencies } from "@/lib/domain/metrics";
 import { detectPatterns } from "@/lib/domain/patterns";
 import type { Trade } from "@/lib/domain/types";
 import { requireUser } from "@/lib/server/auth";
@@ -8,6 +8,11 @@ import { getAccount, hasSampleData, listAccounts, listTrades } from "@/lib/serve
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const hour = (iso: string) => `${String(new Date(iso).getHours()).padStart(2, "0")}:00`;
+
+function meanR(trades: Trade[], side: (pnl: number) => boolean): number | null {
+  const rs = trades.filter(isClosed).filter((t) => side(t.pnl) && t.rMultiple !== null).map((t) => t.rMultiple as number);
+  return rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null;
+}
 
 /**
  * Everything the dashboard and analytics pages show, computed here from the database for the
@@ -48,7 +53,10 @@ export async function GET(req: Request) {
       account: by((t) => accounts.find((a) => a.id === t.accountId)?.name ?? "(unknown)"),
       setup: by((t) => t.setup || "(no setup)"),
       emotion: by((t) => t.emotionBefore ?? "(not recorded)"),
+      // "weekday-hour" of the open time, local to this computer, Sunday = 0.
+      heatmap: by((t) => `${new Date(t.openedAt).getDay()}-${new Date(t.openedAt).getHours()}`),
     },
     patterns: detectPatterns(trades),
+    avgR: { winners: meanR(trades, (p) => p > 0), losers: meanR(trades, (p) => p < 0) },
   });
 }

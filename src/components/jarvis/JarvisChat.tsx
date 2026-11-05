@@ -153,7 +153,7 @@ export function JarvisChat({
         }}
       >
         <label htmlFor="jarvis-input" className="sr-only">
-          Message Jarvis
+          Message the AI Coach
         </label>
         <div className="flex items-end gap-2">
           <textarea
@@ -204,7 +204,7 @@ function MessageView({ m, compact }: { m: UiMessage; compact?: boolean }) {
     try {
       const ids = [...m.content.matchAll(/\[#(\d+)\]/g)].map((x) => Number(x[1])).slice(0, 20);
       await api("/api/jarvis/memories", { method: "POST", json: { kind, content: memText, evidenceTradeIds: ids, source: "user" } });
-      toast({ message: "Saved to Jarvis memory. Manage it in Jarvis → Memory.", tone: "success" });
+      toast({ message: "Saved to memory. Manage it on the AI Coach page.", tone: "success" });
       setRemembering(false);
       setMemText("");
     } catch (e) {
@@ -232,7 +232,7 @@ function MessageView({ m, compact }: { m: UiMessage; compact?: boolean }) {
       {remembering && (
         <div className="mt-2 space-y-2 rounded-lg border border-line p-3">
           <label className="block text-[12.5px] text-ink-soft" htmlFor={`mem-${m.key}`}>
-            In your words, what should Jarvis remember? You can edit or delete it later.
+            In your words, what should the coach remember? You can edit or delete it later.
           </label>
           <textarea id={`mem-${m.key}`} rows={2} className={cx(inputClass, "h-auto py-2")} value={memText} onChange={(e) => setMemText(e.target.value)} maxLength={500} />
           <div className="flex flex-wrap items-center gap-2">

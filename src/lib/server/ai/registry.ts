@@ -24,7 +24,8 @@ export function resolveActive(settings: Settings): ActiveModel {
   const status = wanted.status();
   if (!status.configured)
     return { provider: demoProvider, model: demoProvider.defaultModel, fallbackReason: `${wanted.label} isn't configured: ${status.reason}` };
-  return { provider: wanted, model: settings.jarvis.model || wanted.defaultModel };
+  // "kestrel-demo" is the demo model's old id, possibly still saved in settings.
+  return { provider: wanted, model: (settings.jarvis.model !== "kestrel-demo" && settings.jarvis.model) || wanted.defaultModel };
 }
 
 export interface SwitchResult {

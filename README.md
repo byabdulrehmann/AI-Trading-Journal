@@ -1,10 +1,10 @@
-# Kestrel
+# Jarvis
 
 A local-first trading journal with a reflective AI companion, **Trading Jarvis**.
 Log or import trades, see analytics with their formulas, spot behavioural patterns
 backed by evidence, and talk them through with Jarvis.
 
-Kestrel is an educational journaling tool. It never places trades and does not
+Jarvis is an educational journaling tool. It never places trades and does not
 give financial, investment or psychological advice.
 
 ## Run it locally
@@ -83,7 +83,7 @@ than one. If `npm run dev` keeps reloading the page after code changes, restart 
 | Demo mode | Always available, offline | Nothing. Replies are fixed templates filled from your own computed records. |
 | Anthropic (Claude) | Wired; streaming, cancellation, 60 s per-attempt timeout, 2 retries, 120 s overall cap | `ANTHROPIC_API_KEY` in `.env.local`, then restart |
 
-- Models are **discovered** from the provider's Models API (cached 10 min); Kestrel
+- Models are **discovered** from the provider's Models API (cached 10 min); Jarvis
   only offers models the key can actually see. Default: `claude-opus-5-5`
   (override with `KESTREL_ANTHROPIC_MODEL`). Server-side refusal fallbacks are
   enabled for models that support them.
@@ -134,9 +134,9 @@ behavioural insights can be switched off entirely.
 
 ## TradBot-I integration (your own Jarvis)
 
-Kestrel can drive your existing **TradBot-I** Jarvis, the PyQt6 + Gemini Live desktop
+Jarvis can drive your existing **TradBot-I** Jarvis, the PyQt6 + Gemini Live desktop
 assistant, as the same assistant with the same personality, tools, memory, MT5
-trading monitor and voice. TradBot-I's code is used unchanged: Kestrel connects
+trading monitor and voice. TradBot-I's code is used unchanged: Jarvis connects
 to the remote dashboard TradBot-I already runs (`dashboard/server.py`, port 8000),
 as one more paired client alongside the phone dashboard.
 
@@ -151,7 +151,7 @@ cd TradBot-I-main
 .venv\Scripts\activate          # macOS/Linux: source .venv/bin/activate
 python main.py
 
-# 2) Kestrel, in another terminal
+# 2) Jarvis, in another terminal
 cd kestrel
 npm run dev
 ```
@@ -159,16 +159,16 @@ npm run dev
 Then pair once per TradBot-I launch:
 
 1. In the TradBot-I window press **Remote Control**. It shows a QR code and a 6-character key (single use, 10 minutes).
-2. In Kestrel → Jarvis → TradBot-I live, type the key and press **Pair**.
+2. In Jarvis → Jarvis → TradBot-I live, type the key and press **Pair**.
 
-TradBot-I keeps pairings in memory, so after it restarts Kestrel shows
+TradBot-I keeps pairings in memory, so after it restarts Jarvis shows
 "no longer recognises this pairing" and asks for a new key.
 
 > **TradBot-I patch needed for Auto-Start / `pythonw.exe`.** TradBot-I's Auto-Start on
 > Boot registers a `JARVIS_AI` startup entry that runs `pythonw.exe` (no console). Unpatched,
 > `sys.stdout` is `None` there and uvicorn's log setup raises
 > `AttributeError: 'NoneType' object has no attribute 'isatty'`. The dashboard task dies
-> silently, nothing listens on port 8000, and both Kestrel and TradBot-I's phone Remote
+> silently, nothing listens on port 8000, and both Jarvis and TradBot-I's phone Remote
 > Control can't connect. Fix (applied to the local copy on 2026-11-03; original backed up
 > as `dashboard-server.py.backup-2026-11-03` next to the TradBot-I folder): add
 > `log_config=None` to the two `uvicorn.Config(...)` calls in `dashboard/server.py`.
@@ -178,7 +178,7 @@ TradBot-I keeps pairings in memory, so after it restarts Kestrel shows
 
 ### How it's wired
 
-| Browser (Kestrel UI) | Kestrel server (`src/lib/server/tradbot/bridge.ts`) | TradBot-I dashboard |
+| Browser (Jarvis UI) | Jarvis server (`src/lib/server/tradbot/bridge.ts`) | TradBot-I dashboard |
 |---|---|---|
 | `POST /api/tradbot/pair {pin}` | `POST /login` → bearer token, stored server-side in SQLite (`settings.tradbot_session`) | issues token |
 | `POST /api/tradbot/command {text}` | `POST /api/command` | queued into the live Gemini session (`_process_dashboard_commands`) |
@@ -195,20 +195,20 @@ The bearer token never reaches the browser, logs or the JSON export. Set
   16 kHz mono PCM16 exactly as TradBot-I's own phone dashboard does, and streams it
   into TradBot-I's live session. While it streams, TradBot-I mutes its PC mic. It also
   ignores incoming audio while it is speaking, which is its existing echo guard.
-  Browsers allow microphone access on `http://localhost`. Kestrel doesn't accept
+  Browsers allow microphone access on `http://localhost`. Jarvis doesn't accept
   connections from other devices (see Data storage).
 - **Output:** TradBot-I speaks through the **speakers of the computer running it**, in
   the voice selected in its HUD (Charon, Puck, Kore, Fenrir or Aoede, saved in its own
-  config). Its dashboard API doesn't stream reply audio, so Kestrel shows the reply text
-  and doesn't fake a voice in the browser. If you use Kestrel on another device, you'll
+  config). Its dashboard API doesn't stream reply audio, so Jarvis shows the reply text
+  and doesn't fake a voice in the browser. If you use Jarvis on another device, you'll
   read replies there but hear them at the TradBot-I computer.
 - Voice choice, audio devices, push-to-talk, wake settings and trading settings are
-  changed in TradBot-I's ⚙ drawer. Kestrel doesn't touch its config file, which also
+  changed in TradBot-I's ⚙ drawer. Jarvis doesn't touch its config file, which also
   holds its Gemini key.
 
-### What TradBot-I supports through Kestrel
+### What TradBot-I supports through Jarvis
 
-| Capability | Through Kestrel | Notes |
+| Capability | Through Jarvis | Notes |
 |---|---|---|
 | Typed conversation with TradBot-I's persona and tools | Yes | Replies arrive as text when its turn completes (not token-streamed) |
 | Voice input | Yes | Browser mic → its live session |
@@ -217,15 +217,15 @@ The bearer token never reaches the browser, logs or the JSON export. Set
 | Model switching | No | TradBot-I uses one fixed model (`LIVE_MODEL = gemini-3.1-flash-live-preview`); its `core/llm_client.py` isn't wired into the app |
 | Voice switching | In TradBot-I's HUD | 5 Gemini voices; not exposed by its dashboard API |
 | Confirming shutdown/restart/Wi-Fi | In TradBot-I's window only | Its confirmation gate is UI-issued by design |
-| MT5 monthly history, file upload | Not surfaced yet | Its dashboard has `/api/trading/monthly` and `/api/upload`; Kestrel doesn't call them yet |
+| MT5 monthly history, file upload | Not surfaced yet | Its dashboard has `/api/trading/monthly` and `/api/upload`; Jarvis doesn't call them yet |
 
 ### Requirements and privacy
 
 TradBot-I needs Python 3.11–3.13, its dependencies (`python setup.py`), a Gemini key
 from its first-run setup, plus a microphone and speakers. MT5 features need its own
 MT5 setup. Anything you type or say to it is sent to Google Gemini by TradBot-I,
-as its README describes. Kestrel shares nothing else with it: not your Kestrel
-journal, memories or settings. With activity recording on, Kestrel logs only the
+as its README describes. Jarvis shares nothing else with it: not your Jarvis
+journal, memories or settings. With activity recording on, Jarvis logs only the
 length of messages you type to TradBot-I.
 
 ## Market context (demo only)
@@ -256,7 +256,7 @@ reduced-motion support, dark/light/system themes. Layouts were checked at
   `python main.py` session with Gemini. Voice input through the browser mic couldn't be
   tested in the review browser (microphone blocked); its server-side path was verified
   with synthetic PCM against TradBot-I's real dashboard code. TradBot-I doesn't
-  broadcast typed dashboard messages, so Kestrel shows your typed messages from its
+  broadcast typed dashboard messages, so Jarvis shows your typed messages from its
   own copy; they don't appear on TradBot-I's phone dashboard.
 - No automated test suite yet; domain math was verified through the API during review.
 - In `next dev`, React logs a warning about the inline theme script in `<head>`;

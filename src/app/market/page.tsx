@@ -101,7 +101,7 @@ export default function MarketPage() {
           <div className="divide-y divide-line">
             {[...byDay.entries()].map(([d, events]) => (
               <div key={d} className="px-4 py-3">
-                <h3 className="text-[12px] font-semibold tracking-wide text-muted uppercase">{new Date(d).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</h3>
+                <h3 className="text-[13px] font-semibold text-muted">{new Date(d).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</h3>
                 <ul className="mt-2 space-y-2">
                   {events.map((e) => (
                     <li key={e.id} className="text-[13px]">

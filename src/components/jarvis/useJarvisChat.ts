@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "@/lib/domain/types";
-import { api } from "@/lib/client/api";
+import { api, goToLogin } from "@/lib/client/api";
 
 export interface UiMessage {
   key: string;
@@ -38,7 +38,17 @@ export function useJarvisChat(onModelSwitched?: () => void) {
   const keyRef = useRef(0);
   const nextKey = () => `m${++keyRef.current}`;
 
-  useEffect(() => () => abortRef.current?.abort(), []);
+  // Only a real unmount cancels: React's dev double-mount would otherwise stop a request sent as the panel opens.
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      queueMicrotask(() => {
+        if (!mounted.current) abortRef.current?.abort();
+      });
+    };
+  }, []);
 
   const load = useCallback(async (id: number | null) => {
     abortRef.current?.abort();
@@ -71,7 +81,8 @@ export function useJarvisChat(onModelSwitched?: () => void) {
         });
         if (!res.ok || !res.body) {
           const data = await res.json().catch(() => ({}));
-          throw new Error(data.error ?? `Jarvis is unavailable (${res.status}).`);
+          if (res.status === 401) goToLogin();
+          throw new Error(data.error ?? `The AI Coach is unavailable (${res.status}).`);
         }
         const reader = res.body.getReader();
         const decoder = new TextDecoder();

@@ -27,7 +27,7 @@ export interface MetricDefinition {
 export const METRIC_DEFINITIONS = {
   netPnl: {
     label: "Net P&L",
-    formula: "Σ (exit − entry) × direction × size × multiplier − fees",
+    formula: "Σ (exit − avg entry) × direction × size × multiplier × fx − costs",
     meaning: "Total profit or loss of closed trades after fees.",
   },
   winRate: {
@@ -79,6 +79,76 @@ export const METRIC_DEFINITIONS = {
     label: "Median hold — losers",
     formula: "median(close − open) of losers",
     meaning: "Typical time a losing trade stays open.",
+  },
+  totalTrades: {
+    label: "Total trades",
+    formula: "count of trades matching the filters",
+    meaning: "Open, partly closed and closed trades.",
+  },
+  closedTrades: {
+    label: "Closed",
+    formula: "trades fully exited with a known P&L",
+    meaning: "Every result uses these. A trade missing a conversion rate isn't counted until the rate is entered.",
+  },
+  openTrades: {
+    label: "Open",
+    formula: "trades with size still on",
+    meaning: "Includes partly closed trades. Not part of realized results.",
+  },
+  wins: {
+    label: "Winning",
+    formula: "closed trades with net P&L > 0",
+    meaning: "Costs are included, so a small gross win can become a loss.",
+  },
+  losses: {
+    label: "Losing",
+    formula: "closed trades with net P&L < 0",
+    meaning: "Costs are included.",
+  },
+  breakeven: {
+    label: "Breakeven",
+    formula: "closed trades with net P&L = 0",
+    meaning: "Neither a win nor a loss. Lowers the win rate and ends a streak.",
+  },
+  grossProfit: {
+    label: "Gross profit",
+    formula: "Σ net P&L of winning trades",
+    meaning: "What winners earned, after each winner's own costs.",
+  },
+  grossLoss: {
+    label: "Gross loss",
+    formula: "Σ net P&L of losing trades",
+    meaning: "What losers cost, after each loser's own costs.",
+  },
+  totalFees: {
+    label: "Total fees",
+    formula: "Σ commission + swap + other fees",
+    meaning: "Closed trades only. Positive is a cost, negative a net credit.",
+  },
+  bestTrade: {
+    label: "Best trade",
+    formula: "max(net P&L)",
+    meaning: "The largest single closed result.",
+  },
+  worstTrade: {
+    label: "Worst trade",
+    formula: "min(net P&L)",
+    meaning: "The smallest single closed result.",
+  },
+  avgHold: {
+    label: "Avg holding time",
+    formula: "mean(close − open) of closed trades",
+    meaning: "From the first entry to the last exit.",
+  },
+  maxConsecutiveWins: {
+    label: "Consecutive wins",
+    formula: "longest run of wins, in closing order",
+    meaning: "A breakeven trade ends the run.",
+  },
+  maxConsecutiveLosses: {
+    label: "Consecutive losses",
+    formula: "longest run of losses, in closing order",
+    meaning: "A breakeven trade ends the run.",
   },
 } satisfies Record<string, MetricDefinition>;
 
@@ -290,7 +360,9 @@ export function breakdown(trades: Trade[], keyOf: (t: Trade) => string | null): 
   for (const t of trades.filter(isClosed)) {
     const k = keyOf(t);
     if (!k) continue;
-    groups.set(k, [...(groups.get(k) ?? []), t]);
+    const group = groups.get(k);
+    if (group) group.push(t);
+    else groups.set(k, [t]);
   }
   return [...groups.entries()]
     .map(([key, ts]) => ({
