@@ -118,6 +118,41 @@ export const MIGRATIONS: { version: number; name: string; sql: string; run?: (db
       PRIMARY KEY (user_id, date)
     );`,
   },
+  {
+    version: 6,
+    name: "playbook rules, trade checklists and missed trades",
+    sql: `ALTER TABLE strategies ADD COLUMN is_sample INTEGER NOT NULL DEFAULT 0;
+    CREATE TABLE strategy_rules (
+      id INTEGER PRIMARY KEY,
+      strategy_id INTEGER NOT NULL REFERENCES strategies(id) ON DELETE CASCADE,
+      group_name TEXT NOT NULL,
+      text TEXT NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX strategy_rules_strategy ON strategy_rules(strategy_id);
+    CREATE TABLE trade_rule_checks (
+      trade_id INTEGER NOT NULL REFERENCES trades(id) ON DELETE CASCADE,
+      rule_id INTEGER NOT NULL REFERENCES strategy_rules(id) ON DELETE CASCADE,
+      checked INTEGER NOT NULL,
+      PRIMARY KEY (trade_id, rule_id)
+    );
+    CREATE INDEX trade_rule_checks_rule ON trade_rule_checks(rule_id);
+    CREATE TABLE missed_trades (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      strategy_id INTEGER REFERENCES strategies(id) ON DELETE SET NULL,
+      symbol TEXT NOT NULL,
+      side TEXT NOT NULL,
+      at TEXT NOT NULL,
+      entry_price REAL NOT NULL,
+      stop_price REAL,
+      exit_price REAL,
+      reason TEXT NOT NULL DEFAULT '',
+      is_sample INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX missed_trades_user ON missed_trades(user_id);`,
+  },
 ];
 
 const globalForDb = globalThis as unknown as { __kestrelDb?: DatabaseSync };

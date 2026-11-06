@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { computePosition } from "./engine/position";
-import { HOLD_BUCKETS, R_BUCKETS, breakdownMany, bucketBreakdown, computeMetrics, computeScore, dailySummaries, holdMinutes, periodKey, periodSummaries, ramp, tradesInUnit, type Metrics } from "./metrics";
+import { HOLD_BUCKETS, R_BUCKETS, breakdownMany, bucketBreakdown, computeMetrics, computeScore, dailySummaries, holdMinutes, missedSummary, periodKey, periodSummaries, playbookStats, ramp, tradesInUnit, type Metrics } from "./metrics";
+import { MissedInput, PLAYBOOK_TEMPLATES, PlaybookInput, missedR } from "./playbooks";
 import type { Trade } from "./types";
 import { zoneDateKey, zoneInstant, zoneParts } from "./zone";
 
@@ -309,5 +310,78 @@ describe("display units", () => {
     const r = tradesInUnit([closed("2026-03-02T10:00:00Z", 5, { status: "open", closedAt: null, pnl: null })], "r");
     assert.equal(r.trades.length, 1);
     assert.equal(r.left, 0);
+  });
+});
+
+describe("playbook figures, by hand", () => {
+  const trades = () => {
+    const a = closed("2026-03-02T10:00:00Z", 100, { id: 1, rMultiple: 1 });
+    const b = closed("2026-03-03T10:00:00Z", -50, { id: 2, rMultiple: -0.5 });
+    const c = closed("2026-03-04T10:00:00Z", 30, { id: 3, rMultiple: 0.3 });
+    const d = closed("2026-03-05T10:00:00Z", -20, { id: 4 });
+    const open = closed("2026-03-06T10:00:00Z", 0, { id: 5, status: "open", closedAt: null, pnl: null });
+    return [a, b, c, d, open];
+  };
+  const checks = new Map([
+    [1, { done: 5, total: 5 }], // every rule
+    [2, { done: 3, total: 5 }], // missed two
+    [3, { done: 4, total: 4 }], // every rule, from before a fifth rule was added
+    [5, { done: 1, total: 5 }], // open, reviewed
+  ]);
+
+  test("results use closed trades", () => {
+    const s = playbookStats(trades(), checks);
+    assert.deepEqual([s.closed, s.wins, s.losses, s.netPnl], [4, 2, 2, 60]); // 100 - 50 + 30 - 20
+    assert.equal(s.winRate, 0.5);
+    assert.ok(Math.abs((s.profitFactor as number) - 130 / 70) < 0.01);
+    assert.equal(s.expectancy, 15); // 60 / 4
+    assert.equal(s.avgR, 0.27); // (1 - 0.5 + 0.3) / 3 = 0.2667
+    assert.equal(s.rSample, 3);
+  });
+
+  test("adherence adds up answers, open trades included, and leaves out trades not reviewed", () => {
+    const s = playbookStats(trades(), checks);
+    assert.equal(s.adherence, 13 / 19); // (5 + 3 + 4 + 1) / (5 + 5 + 4 + 5)
+    assert.equal(s.reviewed, 3); // closed and reviewed
+    assert.equal(s.openReviewed, 1);
+  });
+
+  test("following every rule against missing one: closed, reviewed trades only", () => {
+    const s = playbookStats(trades(), checks);
+    assert.deepEqual([s.onRule?.trades, s.onRule?.netPnl, s.onRule?.winRate], [2, 130, 1]); // 100 + 30
+    assert.deepEqual([s.offRule?.trades, s.offRule?.netPnl, s.offRule?.winRate], [1, -50, 0]);
+  });
+
+  test("nothing reviewed, and no trades at all", () => {
+    const s = playbookStats(trades(), new Map());
+    assert.deepEqual([s.adherence, s.onRule, s.offRule, s.reviewed], [null, null, null, 0]);
+    const none = playbookStats([], new Map());
+    assert.deepEqual([none.closed, none.netPnl, none.winRate, none.profitFactor, none.adherence], [0, 0, null, null, null]);
+  });
+
+  test("a reviewed trade with every box empty counts as missed, not as unanswered", () => {
+    const s = playbookStats([closed("2026-03-02T10:00:00Z", 10, { id: 9 })], new Map([[9, { done: 0, total: 3 }]]));
+    assert.equal(s.adherence, 0);
+    assert.equal(s.offRule?.trades, 1);
+  });
+
+  test("missed trades add up in R, skipping those with no R", () => {
+    assert.deepEqual(missedSummary([{ r: 2 }, { r: -1 }, { r: null }]), { count: 3, rSample: 2, totalR: 1, avgR: 0.5 });
+    assert.deepEqual(missedSummary([]), { count: 0, rSample: 0, totalR: 0, avgR: null });
+  });
+
+  test("a missed trade's R, both ways", () => {
+    assert.equal(missedR({ side: "long", entryPrice: 100, stopPrice: 98, exitPrice: 106 }), 3); // +6 on 2 of risk
+    assert.equal(missedR({ side: "short", entryPrice: 100, stopPrice: 102, exitPrice: 106 }), -3);
+    assert.equal(missedR({ side: "long", entryPrice: 100, stopPrice: null, exitPrice: 106 }), null);
+    assert.equal(missedR({ side: "long", entryPrice: 100, stopPrice: 98, exitPrice: null }), null);
+  });
+
+  test("a stop on the wrong side is refused, and every template is valid", () => {
+    assert.equal(MissedInput.safeParse({ symbol: "A", side: "long", at: "2026-03-02T10:00:00Z", entryPrice: 100, stopPrice: 101 }).success, false);
+    assert.equal(MissedInput.safeParse({ symbol: "A", side: "short", at: "2026-03-02T10:00:00Z", entryPrice: 100, stopPrice: 99 }).success, false);
+    assert.ok(PLAYBOOK_TEMPLATES.length >= 5);
+    for (const t of PLAYBOOK_TEMPLATES) assert.ok(PlaybookInput.safeParse(t).success, t.name);
+    assert.equal(new Set(PLAYBOOK_TEMPLATES.map((t) => t.name)).size, PLAYBOOK_TEMPLATES.length);
   });
 });

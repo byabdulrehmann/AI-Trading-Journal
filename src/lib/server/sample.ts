@@ -1,6 +1,8 @@
 import "server-only";
 import { insertSampleDays } from "./repo/daily";
-import { createAccount, hasSampleData, insertSampleTrades } from "./repo/journal";
+import { createAccount, hasSampleData, insertSampleTrades, listStrategies } from "./repo/journal";
+import { db, now, transaction } from "./db";
+import { MissedInput, PLAYBOOK_TEMPLATES } from "@/lib/domain/playbooks";
 import { EMOTIONS, TradeInput, type DailyInput, type TradeData } from "@/lib/domain/types";
 import type { AssetClass } from "@/lib/domain/engine/instruments";
 
@@ -195,6 +197,50 @@ export function buildSampleTrades(accountIds: number[], today: Date): TradeData[
   return trades;
 }
 
+/**
+ * Flags the strategies the sample just created, then gives them rules, answers and missed trades. A strategy the user
+ * already had keeps its own rules: the sample's trades may share its name, but nothing else is added to it.
+ */
+function seedPlaybooks(userId: number, before: Set<string>, today: Date) {
+  const rand = rng(20261105);
+  const conn = db();
+  transaction(conn, () => {
+    for (const s of listStrategies(userId)) {
+      if (before.has(s.name)) continue;
+      const template = PLAYBOOK_TEMPLATES.find((t) => t.name === s.name);
+      conn.prepare("UPDATE strategies SET is_sample = 1, description = ? WHERE id = ?").run(template?.description ?? "", s.id);
+      const rule = conn.prepare("INSERT INTO strategy_rules (strategy_id, group_name, text, position) VALUES (?, ?, ?, ?)");
+      template?.rules.forEach((r, i) => rule.run(s.id, r.group, r.text, i));
+      const rules = (conn.prepare("SELECT id FROM strategy_rules WHERE strategy_id = ?").all(s.id) as { id: number }[]).map((r) => r.id);
+      const trades = conn.prepare("SELECT id, followed_plan FROM trades WHERE user_id = ? AND source = 'sample' AND strategy_id = ?").all(userId, s.id) as { id: number; followed_plan: number | null }[];
+      const check = conn.prepare("INSERT INTO trade_rule_checks (trade_id, rule_id, checked) VALUES (?, ?, ?)");
+      for (const t of trades) {
+        if (rand() > 0.6) continue;
+        // On-plan trades followed every rule. Off-plan ones missed one.
+        const missed = t.followed_plan === 1 ? -1 : Math.floor(rand() * rules.length);
+        rules.forEach((id, i) => check.run(t.id, id, i === missed ? 0 : 1));
+      }
+      const addMissed = conn.prepare("INSERT INTO missed_trades (user_id, strategy_id, symbol, side, at, entry_price, stop_price, exit_price, reason, is_sample, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)");
+      for (let i = 0; i < 4; i++) {
+        const side = rand() < 0.5 ? "long" : "short";
+        const dir = side === "long" ? 1 : -1;
+        const entry = Math.round((100 + rand() * 100) * 100) / 100;
+        const m = MissedInput.parse({
+          strategyId: s.id,
+          symbol: ["AAPL", "NVDA", "ES", "EURUSD"][i],
+          side,
+          at: new Date(today.getFullYear(), today.getMonth(), today.getDate() - 2 - Math.floor(rand() * 60), 10).toISOString(),
+          entryPrice: entry,
+          stopPrice: Math.round((entry - dir * 2) * 100) / 100,
+          exitPrice: Math.round((entry + dir * (rand() * 8 - 2)) * 100) / 100,
+          reason: ["Sample: hesitated at the level", "Sample: was away from the screen", "Sample: already at my daily limit", "Sample: didn't trust the setup"][i],
+        });
+        addMissed.run(userId, s.id, m.symbol, m.side, m.at, m.entryPrice, m.stopPrice, m.exitPrice, m.reason, now());
+      }
+    }
+  });
+}
+
 /** Made-up notes for most recent weekdays, so the daily journal has something to show. */
 export function buildSampleDays(today: Date): DailyInput[] {
   const rand = rng(20261104);
@@ -215,9 +261,11 @@ export function buildSampleDays(today: Date): DailyInput[] {
 
 export function loadSampleData(userId: number): number {
   if (hasSampleData(userId)) return 0;
+  const before = new Set(listStrategies(userId).map((s) => s.name));
   const ids = BOOKS.map((b) => createAccount(userId, { name: b.name, broker: b.broker, currency: "USD", startingBalance: b.balance }, { isSample: true }).id);
   const trades = buildSampleTrades(ids, new Date());
   insertSampleTrades(userId, trades);
   insertSampleDays(userId, buildSampleDays(new Date()));
+  seedPlaybooks(userId, before, new Date());
   return trades.length;
 }

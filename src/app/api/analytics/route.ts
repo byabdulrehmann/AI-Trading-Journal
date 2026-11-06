@@ -1,12 +1,13 @@
-import { HOLD_BUCKETS, PRICE_BUCKETS, R_BUCKETS, SIZE_BUCKETS, UNITS, breakdown, breakdownMany, bucketBreakdown, computeMetrics, computeScore, drawdownCurve, equityCurve, holdMinutes, isClosed, periodSummaries, pnlDistribution, reportingCurrencies, tradesInUnit, type Unit } from "@/lib/domain/metrics";
+import { HOLD_BUCKETS, PRICE_BUCKETS, R_BUCKETS, SIZE_BUCKETS, UNITS, breakdown, breakdownMany, bucketBreakdown, computeMetrics, computeScore, drawdownCurve, equityCurve, holdMinutes, isClosed, periodSummaries, pnlDistribution, tradesInUnit, type Unit } from "@/lib/domain/metrics";
 import { detectPatterns } from "@/lib/domain/patterns";
 import type { Account, Trade } from "@/lib/domain/types";
 import { zoneParts } from "@/lib/domain/zone";
 import { requireUser } from "@/lib/server/auth";
 import { filtersFrom } from "@/lib/server/filters";
 import { json } from "@/lib/server/http";
-import { getAccount, hasSampleData, listAccounts, listInstruments, listTrades } from "@/lib/server/repo/journal";
+import { hasSampleData, listInstruments } from "@/lib/server/repo/journal";
 import { getSettings } from "@/lib/server/repo/settings";
+import { currencyScope } from "@/lib/server/scope";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -35,9 +36,7 @@ function restate(userId: number, trades: Trade[], unit: Unit, accounts: Account[
 }
 
 /**
- * Everything the dashboard and analytics pages show, computed here from the database for the
- * given filters. Money never mixes currencies: with no currency chosen it reports in the
- * first one that has trades, and lists the others so the page can offer them.
+ * Everything the dashboard and analytics pages show, computed here from the database for the given filters.
  */
 export async function GET(req: Request) {
   const user = await requireUser();
@@ -45,13 +44,7 @@ export async function GET(req: Request) {
   const filters = filtersFrom(new URL(req.url).searchParams);
   if (filters instanceof Response) return filters;
 
-  const accounts = listAccounts(user.id);
-  const unscoped = listTrades(user.id, { ...filters, currency: undefined });
-  const { currencies, primary } = reportingCurrencies(accounts, unscoped);
-  const accountCurrency = filters.accountId ? getAccount(user.id, filters.accountId)?.currency : undefined;
-  const currency = accountCurrency ?? (filters.currency && currencies.includes(filters.currency) ? filters.currency : primary) ?? "USD";
-  const ids = new Set(accounts.filter((a) => a.currency === currency).map((a) => a.id));
-  const real = unscoped.filter((t) => ids.has(t.accountId));
+  const { accounts, currency, currencies, trades: real } = currencyScope(user.id, filters);
 
   const tz = getSettings(user.id).timeZone || undefined;
   const moneyMetrics = computeMetrics(real, tz);

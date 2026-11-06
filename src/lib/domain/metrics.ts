@@ -152,6 +152,11 @@ export const METRIC_DEFINITIONS = {
     formula: "longest run of losses, in closing order",
     meaning: "A breakeven trade ends the run.",
   },
+  ruleAdherence: {
+    label: "Rule adherence",
+    formula: "rules followed ÷ rules answered, on reviewed trades",
+    meaning: "How much of your playbook you actually followed. Trades you haven't reviewed don't count either way.",
+  },
   payoffRatio: {
     label: "Payoff ratio",
     formula: "average win ÷ |average loss|",
@@ -640,4 +645,71 @@ export function tradesInUnit(trades: Trade[], unit: Unit, opts: { balances?: Map
     return [{ ...t, pnl: value }];
   });
   return { trades: out, left, base };
+}
+
+// ---------- playbooks ----------
+
+export interface PlaybookStats {
+  closed: number;
+  wins: number;
+  losses: number;
+  winRate: number | null;
+  profitFactor: number | null;
+  expectancy: number | null;
+  netPnl: number;
+  avgR: number | null;
+  rSample: number;
+  /** Closed trades checked against the rules. */
+  reviewed: number;
+  /** Open trades checked against the rules: in adherence, not in results. */
+  openReviewed: number;
+  adherence: number | null;
+  onRule: BreakdownRow | null;
+  offRule: BreakdownRow | null;
+}
+
+/** One playbook's trades. Results use closed trades, as everywhere. Adherence also counts open trades that were reviewed. */
+export function playbookStats(trades: Trade[], checks: Map<number, { done: number; total: number }>): PlaybookStats {
+  const m = computeMetrics(trades);
+  const answered = trades.filter((t) => checks.has(t.id));
+  const closed = answered.filter(isClosed);
+  const totals = answered.reduce((a, t) => {
+    const c = checks.get(t.id) as { done: number; total: number };
+    return { done: a.done + c.done, total: a.total + c.total };
+  }, { done: 0, total: 0 });
+  const row = (key: string, ts: Trade[]) => (ts.length ? breakdownRow(key, ts) : null);
+  const full = (t: Trade) => {
+    const c = checks.get(t.id) as { done: number; total: number };
+    return c.done === c.total;
+  };
+  return {
+    closed: m.closedTrades,
+    wins: m.wins,
+    losses: m.losses,
+    winRate: m.winRate,
+    profitFactor: m.profitFactor,
+    expectancy: m.expectancy,
+    netPnl: m.netPnl,
+    avgR: m.avgR,
+    rSample: m.rSample,
+    reviewed: closed.length,
+    openReviewed: answered.length - closed.length,
+    adherence: totals.total ? totals.done / totals.total : null,
+    onRule: row("followed", closed.filter(full)),
+    offRule: row("missed", closed.filter((t) => !full(t))),
+  };
+}
+
+export interface MissedSummary {
+  count: number;
+  /** How many have both a stop and an exit, so an R. */
+  rSample: number;
+  totalR: number;
+  avgR: number | null;
+}
+
+export function missedSummary(missed: { r: number | null }[]): MissedSummary {
+  const rs = missed.flatMap((m) => (m.r === null ? [] : [m.r]));
+  const totalR = round(rs.reduce((a, b) => a + b, 0), 2);
+  return { count: missed.length, rSample: rs.length, totalR, avgR: rs.length ? round(totalR / rs.length, 2) : null };
 }

@@ -8,6 +8,7 @@ import type { Trade } from "@/lib/domain/types";
 import type { InstrumentSpec } from "@/lib/server/repo/journal";
 import { RowsSkeleton } from "../tape/Skeletons";
 import { Button, Dialog, cx } from "../ui";
+import { PlaybookChecklist } from "./Checklist";
 import { PnlIssue, SideBadge, SourceBadge, StatusBadge } from "./badges";
 import { useTradeActions } from "./useTradeActions";
 
@@ -223,6 +224,8 @@ function TradeDetail({ trade: t }: { trade: Trade }) {
       ) : (
         <p className="border-t border-line pt-4 text-[13.5px] text-muted">No analysis yet. Edit the trade to note why you took it and how it went.</p>
       )}
+
+      <PlaybookChecklist key={t.id} tradeId={t.id} />
 
       {hasPsych ? (
         <section className="space-y-2.5 border-t border-line pt-4">
