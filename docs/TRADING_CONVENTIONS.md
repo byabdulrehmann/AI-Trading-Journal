@@ -122,3 +122,7 @@ These are my judgment, not claims about any product.
 ## Tested on this machine: don't copy MT5 servers.dat
 
 The `servers.dat` from a terminal's data folder signed a separate copy of the terminal in to that terminal's account, with no login given (confirmed on 2026-11-06 by restoring only that file). So Jarvis's terminal starts with its own default list, gets its credentials through `mt5.initialize`, and refuses to read anything if it finds itself on another account.
+
+## Seen on this machine: MT5 refusal codes
+
+The API gives -6 "Authorization failed" for a wrong password and also while the broker is refusing logins. The terminal log told them apart ("Invalid account", "Service is not available"), the API did not. So a connection that has worked only stops syncing after three refusals in a row.

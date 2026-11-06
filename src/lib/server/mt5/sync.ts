@@ -2,13 +2,17 @@ import "server-only";
 import { db, now, transaction } from "../db";
 import { audit } from "../repo/audit";
 import { createAccount } from "../repo/journal";
-import { applyPayload, clearConnection, findAccountId, finishJob, needsFullHistory, readForSync, recordFailure, saveConnection, startJob } from "../repo/mt5";
+import { applyPayload, clearConnection, findAccountId, finishJob, needsFullHistory, priorRefusals, readForSync, recordFailure, saveConnection, startJob } from "../repo/mt5";
 import { runSession, stopService, type SessionCategory, type SessionPayload, type SessionResult } from "./client";
 import { decrypt, encrypt } from "./crypto";
 
 const HISTORY_START = 946684800; // 2000-01-01: "everything".
 // Deal times may carry the broker's offset, and a late-booked deal shouldn't be missed.
 const OVERLAP_SECONDS = 3 * 86400;
+// MT5 gives one code for a wrong password and for a broker that is briefly refusing logins (seen: "Service is not available"),
+// so a connection that has worked only stops after this many refusals in a row. Few enough not to lock an account.
+const REFUSALS_TO_STOP = 3;
+const REFUSED_WILL_RETRY = "MT5 refused the login. This also happens during a short broker outage, so Jarvis will try again. If you changed the investor password, disconnect and connect again.";
 
 const g = globalThis as unknown as { __jarvisMt5Syncing?: Set<number> };
 /** Accounts with a sync running now. In memory, so a crash can't leave one stuck as "syncing". */
@@ -73,9 +77,13 @@ export async function syncAccount(accountId: number): Promise<SyncOutcome> {
   const at = now();
   const job = startJob(accountId, at);
   const failed = (category: SessionCategory, error: string): SyncOutcome => {
-    recordFailure(accountId, at, error, category === "wrong_password");
-    finishJob(job, accountId, "failed", {}, error);
-    return { ok: false, category, error };
+    const stop = errorText("wrong_password");
+    const refused = category === "wrong_password";
+    const stopping = refused && priorRefusals(accountId, job, [REFUSED_WILL_RETRY, stop]) + 1 >= REFUSALS_TO_STOP;
+    const text = refused && !stopping ? REFUSED_WILL_RETRY : error;
+    recordFailure(accountId, at, text, stopping);
+    finishJob(job, accountId, "failed", {}, text);
+    return { ok: false, category, error: text };
   };
   try {
     let password: string;

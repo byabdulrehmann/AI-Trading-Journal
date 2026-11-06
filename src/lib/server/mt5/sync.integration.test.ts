@@ -287,13 +287,47 @@ describe("failures, staleness, disconnect", () => {
     assert.equal(job.status, "failed");
   });
 
-  test("a wrong password stops automatic sync, so it can't lock the account", async () => {
+  test("three refusals in a row stop automatic sync, so a wrong password can't lock the account", async () => {
     const id = await connected(3002);
     assert.ok(R.listSchedulable().some((s) => s.account_id === id));
     fakes.__mt5Fake.next = { ok: false, category: "wrong_password", code: -6 };
     await syncAccount(id);
+    await syncAccount(id);
+    assert.ok(R.listSchedulable().some((s) => s.account_id === id), "still retrying after two");
+    assert.equal(R.getConnection(userId, id)!.state, "error");
+    await syncAccount(id);
     assert.ok(!R.listSchedulable().some((s) => s.account_id === id));
     assert.equal(R.getConnection(userId, id)!.state, "auth_failed");
+  });
+
+  test("one refusal is a blip: it retries, a success clears it, and the count starts again", async () => {
+    const id = await connected(3003);
+    const good = session({}, 3003);
+    fakes.__mt5Fake.next = { ok: false, category: "wrong_password", code: -6 };
+    const first = await syncAccount(id);
+    assert.equal(first.ok, false);
+    assert.match((first as { error: string }).error, /short broker outage/);
+    assert.ok(R.listSchedulable().some((s) => s.account_id === id));
+    await syncAccount(id);
+    fakes.__mt5Fake.next = good;
+    assert.equal((await syncAccount(id)).ok, true);
+    assert.equal(R.getConnection(userId, id)!.state, "connected");
+    fakes.__mt5Fake.next = { ok: false, category: "wrong_password", code: -6 };
+    await syncAccount(id);
+    await syncAccount(id);
+    assert.ok(R.listSchedulable().some((s) => s.account_id === id), "the earlier two no longer count");
+  });
+
+  test("another kind of failure in between resets the count", async () => {
+    const id = await connected(3004);
+    fakes.__mt5Fake.next = { ok: false, category: "wrong_password", code: -6 };
+    await syncAccount(id);
+    await syncAccount(id);
+    fakes.__mt5Fake.next = { ok: false, category: "timeout" };
+    await syncAccount(id);
+    fakes.__mt5Fake.next = { ok: false, category: "wrong_password", code: -6 };
+    await syncAccount(id);
+    assert.ok(R.listSchedulable().some((s) => s.account_id === id));
   });
 
   test("stale rule: over twice the interval, or a failed last attempt", () => {

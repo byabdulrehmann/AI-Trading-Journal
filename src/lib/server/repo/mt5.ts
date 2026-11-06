@@ -171,6 +171,13 @@ export function finishJob(jobId: number, accountId: number, status: "ok" | "fail
   conn.prepare("DELETE FROM sync_jobs WHERE account_id = ? AND id <= ?").run(accountId, jobId - JOBS_KEPT);
 }
 
+/** How many jobs right before this one ended with one of these errors. */
+export function priorRefusals(accountId: number, jobId: number, errors: string[]): number {
+  const rows = db().prepare("SELECT error FROM sync_jobs WHERE account_id = ? AND id < ? ORDER BY id DESC LIMIT 10").all(accountId, jobId) as { error: string | null }[];
+  const stopAt = rows.findIndex((r) => !r.error || !errors.includes(r.error));
+  return stopAt === -1 ? rows.length : stopAt;
+}
+
 export function recordFailure(accountId: number, at: string, message: string, authFailed: boolean) {
   db().prepare("UPDATE mt5_connections SET last_attempt_at = ?, last_error = ?, status = ? WHERE account_id = ?").run(at, message, authFailed ? "auth_failed" : "error", accountId);
 }
