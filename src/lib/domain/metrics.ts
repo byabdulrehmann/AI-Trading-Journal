@@ -1,5 +1,6 @@
 import type { Account, Trade } from "./types";
 import { round } from "./trade-math";
+import { pipsBetween } from "./engine/instruments";
 import { addMoney } from "./engine/position";
 import { computeStats } from "./engine/stats";
 import { zoneDateKey, zoneParts } from "./zone";
@@ -510,3 +511,133 @@ export function bucketBreakdown(trades: Trade[], valueOf: (t: Trade) => number |
   });
 }
 
+// ---------- the score ----------
+
+export const SCORE_MIN_TRADES = 20;
+export const SCORE_MIN_DAYS = 5;
+
+export interface ScoreAxis extends MetricDefinition {
+  key: string;
+  /** 0 to 100. Null when these trades can't say, and then it sits out of the total. */
+  value: number | null;
+  weight: number;
+  /** Why it's blank. */
+  missing?: string;
+}
+
+export interface Score {
+  /** Null until there are enough trades for a total to mean something. */
+  score: number | null;
+  axes: ScoreAxis[];
+  needs: { trades: number; days: number };
+}
+
+/** Straight lines between anchor points, flat beyond the ends. */
+export function ramp(x: number, anchors: [number, number][]): number {
+  if (x <= anchors[0][0]) return anchors[0][1];
+  for (let i = 1; i < anchors.length; i++) {
+    const [x0, y0] = anchors[i - 1];
+    const [x1, y1] = anchors[i];
+    if (x <= x1) return y0 + ((x - x0) / (x1 - x0)) * (y1 - y0);
+  }
+  return anchors[anchors.length - 1][1];
+}
+
+/**
+ * Jarvis's own composite. The weights and anchors are judgement calls, stated here and shown beside the score, not
+ * findings about what makes a trader profitable. Money-based axes are ratios, so account size doesn't change them.
+ */
+export function computeScore(m: Metrics): Score {
+  const noLosses = m.losses === 0 && m.wins > 0;
+  const axes: ScoreAxis[] = [
+    {
+      key: "profitability",
+      label: "Profitability",
+      weight: 25,
+      formula: "profit factor: 0.5 = 0, 1 = 40, 1.5 = 70, 2.5 = 100",
+      meaning: "How much winners earned against what losers cost. Weight 25.",
+      value: m.profitFactor !== null ? ramp(m.profitFactor, [[0.5, 0], [1, 40], [1.5, 70], [2.5, 100]]) : noLosses ? 100 : null,
+    },
+    {
+      key: "edge",
+      label: "Edge per trade",
+      weight: 20,
+      formula: "expectancy ÷ |average loss|: −0.5 = 0, 0 = 40, 0.25 = 70, 0.75 = 100",
+      meaning: "What an average trade makes, measured in typical losses. Weight 20.",
+      value: m.expectancy !== null && m.avgLoss ? ramp(m.expectancy / Math.abs(m.avgLoss), [[-0.5, 0], [0, 40], [0.25, 70], [0.75, 100]]) : noLosses ? 100 : null,
+    },
+    {
+      key: "risk",
+      label: "Drawdown control",
+      weight: 20,
+      formula: "recovery factor: −1 = 0, 0 = 30, 1 = 50, 3 = 80, 6 = 100",
+      meaning: "Profit made for each unit of the deepest drawdown. Weight 20.",
+      value: m.recoveryFactor !== null ? ramp(m.recoveryFactor, [[-1, 0], [0, 30], [1, 50], [3, 80], [6, 100]]) : m.netPnl > 0 ? 100 : null,
+    },
+    {
+      key: "consistency",
+      label: "Consistency",
+      weight: 15,
+      formula: "winning days: 30% = 0, 50% = 50, 70% = 100",
+      meaning: "How often a day ended up. Weight 15.",
+      value: m.dayWinRate !== null ? ramp(m.dayWinRate, [[0.3, 0], [0.5, 50], [0.7, 100]]) : null,
+    },
+    {
+      key: "discipline",
+      label: "Discipline",
+      weight: 10,
+      formula: "on-plan answers: 50% = 0, 80% = 60, 100% = 100",
+      meaning: "How often you reported following your plan. Needs at least 10 answers. Weight 10.",
+      value: m.planAdherence !== null && m.planSample >= 10 ? ramp(m.planAdherence, [[0.5, 0], [0.8, 60], [1, 100]]) : null,
+      missing: "Answer whether you followed the plan on at least 10 trades.",
+    },
+    {
+      key: "stops",
+      label: "Stop use",
+      weight: 10,
+      formula: "closed trades with a stop: 0% = 0, 100% = 100",
+      meaning: "A trade with no stop has no defined risk. Weight 10.",
+      value: m.closedTrades ? (m.rSample / m.closedTrades) * 100 : null,
+    },
+  ];
+  const known = axes.filter((a) => a.value !== null);
+  const weight = known.reduce((t, a) => t + a.weight, 0);
+  const enough = m.closedTrades >= SCORE_MIN_TRADES && m.tradingDays >= SCORE_MIN_DAYS && weight > 0;
+  return {
+    score: enough ? Math.round(known.reduce((t, a) => t + (a.value as number) * a.weight, 0) / weight) : null,
+    axes,
+    needs: { trades: SCORE_MIN_TRADES, days: SCORE_MIN_DAYS },
+  };
+}
+
+// ---------- display units ----------
+
+export const UNITS = ["money", "percent", "r", "pips"] as const;
+export type Unit = (typeof UNITS)[number];
+
+/**
+ * The same trades with each result restated, so every figure and chart is worked out once, whatever the unit.
+ * Closed trades the unit can't express are left out, and the caller says how many. Costs stay in money.
+ */
+export function tradesInUnit(trades: Trade[], unit: Unit, opts: { balances?: Map<number, number>; digits?: (t: Trade) => number | null } = {}): { trades: Trade[]; left: number; base: number } {
+  if (unit === "money") return { trades, left: 0, base: 0 };
+  const used = [...new Set(trades.map((t) => t.accountId))];
+  const base = used.reduce((total, id) => total + (opts.balances?.get(id) ?? 0), 0);
+  const restate = (t: Trade): number | null => {
+    if (!isClosed(t)) return null;
+    if (unit === "r") return t.rMultiple;
+    if (unit === "percent") return base > 0 && (opts.balances?.get(t.accountId) ?? 0) > 0 ? round((t.pnl / base) * 100, 4) : null;
+    return pipsBetween(t.symbol, t.side, t.entryPrice, t.exitPrice, opts.digits?.(t));
+  };
+  let left = 0;
+  const out = trades.flatMap((t) => {
+    if (!isClosed(t)) return [t];
+    const value = restate(t);
+    if (value === null) {
+      left++;
+      return [];
+    }
+    return [{ ...t, pnl: value }];
+  });
+  return { trades: out, left, base };
+}

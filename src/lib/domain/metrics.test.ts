@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { computePosition } from "./engine/position";
-import { HOLD_BUCKETS, R_BUCKETS, breakdownMany, bucketBreakdown, computeMetrics, dailySummaries, holdMinutes, periodKey, periodSummaries } from "./metrics";
+import { HOLD_BUCKETS, R_BUCKETS, breakdownMany, bucketBreakdown, computeMetrics, computeScore, dailySummaries, holdMinutes, periodKey, periodSummaries, ramp, tradesInUnit, type Metrics } from "./metrics";
 import type { Trade } from "./types";
 import { zoneDateKey, zoneInstant, zoneParts } from "./zone";
 
@@ -199,5 +199,115 @@ describe("time zones", () => {
     assert.equal(periodKey("2026-03-08T12:00:00Z", "week", UTC), "2026-03-02"); // a Sunday
     assert.equal(periodKey("2026-03-09T02:00:00Z", "week", UTC), "2026-03-09"); // Monday in UTC
     assert.equal(periodKey("2026-03-09T02:00:00Z", "week", NY), "2026-03-02"); // still Sunday in New York
+  });
+});
+
+describe("the score, by hand", () => {
+  const base = { profitFactor: 2.2, expectancy: 30, avgLoss: -75, recoveryFactor: 1.8, dayWinRate: 0.75, planAdherence: null, planSample: 0, rSample: 12, closedTrades: 20, tradingDays: 5, wins: 10, losses: 8, netPnl: 180 } as unknown as Metrics;
+  const axis = (s: ReturnType<typeof computeScore>, key: string) => s.axes.find((a) => a.key === key)?.value;
+
+  test("ramp: flat beyond the ends, straight between anchors", () => {
+    const a: [number, number][] = [[1, 10], [3, 30]];
+    assert.deepEqual([ramp(0, a), ramp(1, a), ramp(2, a), ramp(3, a), ramp(9, a)], [10, 10, 20, 30, 30]);
+  });
+
+  test("each axis, and the total with a blank axis sitting out", () => {
+    const s = computeScore(base);
+    assert.ok(Math.abs((axis(s, "profitability") as number) - 91) < 1e-9); // 2.2 between 1.5 = 70 and 2.5 = 100
+    assert.ok(Math.abs((axis(s, "edge") as number) - 79) < 1e-9); // 30 / 75 = 0.4, between 0.25 = 70 and 0.75 = 100
+    assert.ok(Math.abs((axis(s, "risk") as number) - 62) < 1e-9); // 1.8 between 1 = 50 and 3 = 80
+    assert.equal(axis(s, "consistency"), 100); // 75% winning days is past the top anchor
+    assert.equal(axis(s, "discipline"), null); // no plan answers
+    assert.equal(axis(s, "stops"), 60); // 12 of 20
+    assert.equal(s.score, 80); // (25x91 + 20x79 + 20x62 + 15x100 + 10x60) / 90 = 7195 / 90 = 79.94
+  });
+
+  test("discipline joins with 10 answers, and moves the total", () => {
+    const s = computeScore({ ...base, planAdherence: 0.8, planSample: 10 });
+    assert.ok(Math.abs((axis(s, "discipline") as number) - 60) < 1e-9);
+    assert.equal(s.score, 78); // (7195 + 10x60) / 100 = 77.95
+    assert.equal(axis(computeScore({ ...base, planAdherence: 0.8, planSample: 9 }), "discipline"), null);
+  });
+
+  test("no total below 20 trades or 5 days, but the axes still read", () => {
+    assert.equal(computeScore({ ...base, closedTrades: 19 }).score, null);
+    assert.equal(computeScore({ ...base, tradingDays: 4 }).score, null);
+    assert.ok(axis(computeScore({ ...base, closedTrades: 19 }), "profitability") !== null);
+  });
+
+  test("no trades: no total, blank axes, never NaN", () => {
+    const s = computeScore(computeMetrics([], UTC));
+    assert.equal(s.score, null);
+    assert.ok(s.axes.every((a) => a.value === null));
+  });
+
+  test("all wins can't divide by a loss, and read as the top of those axes", () => {
+    const m = computeMetrics(Array.from({ length: 20 }, (_, i) => closed(`2026-03-${String((i % 5) + 2).padStart(2, "0")}T10:00:00Z`, 10, { rMultiple: 1 })), UTC);
+    const s = computeScore(m);
+    assert.deepEqual([axis(s, "profitability"), axis(s, "edge"), axis(s, "risk"), axis(s, "consistency"), axis(s, "stops")], [100, 100, 100, 100, 100]);
+    assert.equal(s.score, 100);
+  });
+
+  test("all losses bottom out", () => {
+    const m = computeMetrics(Array.from({ length: 20 }, (_, i) => closed(`2026-03-${String((i % 5) + 2).padStart(2, "0")}T10:00:00Z`, -10)), UTC);
+    const s = computeScore(m);
+    assert.equal(axis(s, "profitability"), 0); // profit factor 0
+    assert.equal(axis(s, "edge"), 0); // -10 / 10 = -1, below the bottom anchor
+    assert.equal(axis(s, "risk"), 0); // recovery -1
+    assert.equal(axis(s, "consistency"), 0);
+    assert.equal(s.score, 0);
+  });
+
+  test("the same results at ten times the size score the same", () => {
+    const at = (x: number) => SIX().map((t) => ({ ...t, pnl: (t.pnl as number) * x }));
+    assert.equal(computeScore({ ...computeMetrics(at(10), UTC), closedTrades: 20, tradingDays: 5 }).score, computeScore({ ...computeMetrics(at(1), UTC), closedTrades: 20, tradingDays: 5 }).score);
+  });
+});
+
+describe("display units", () => {
+  const three = () => [
+    closed("2026-03-02T10:00:00Z", 100, { accountId: 1, rMultiple: 1, symbol: "EURUSD", side: "long", entryPrice: 1.1, exitPrice: 1.105 }), // 50 pips
+    closed("2026-03-03T10:00:00Z", -50, { accountId: 1, rMultiple: -0.5, symbol: "XAUUSD", side: "long", entryPrice: 2000, exitPrice: 1999 }),
+    closed("2026-03-04T10:00:00Z", 25, { accountId: 2, symbol: "AAPL", side: "long", entryPrice: 100, exitPrice: 101 }), // no stop, no pips
+  ];
+  const balances = new Map([[1, 1000], [2, 0]]);
+
+  test("money leaves trades alone", () => {
+    const t = three();
+    assert.equal(tradesInUnit(t, "money").trades, t);
+  });
+
+  test("R uses each trade's R and leaves out trades with no stop", () => {
+    const r = tradesInUnit(three(), "r");
+    assert.equal(r.left, 1);
+    assert.deepEqual(r.trades.map((t) => t.pnl), [1, -0.5]);
+    assert.equal(computeMetrics(r.trades, UTC).netPnl, 0.5);
+    assert.equal(computeMetrics(r.trades, UTC).maxDrawdown, 0.5);
+  });
+
+  test("percent is of the combined balance, and accounts with none are left out", () => {
+    const r = tradesInUnit(three(), "percent", { balances });
+    assert.equal(r.base, 1000);
+    assert.equal(r.left, 1);
+    assert.deepEqual(r.trades.map((t) => t.pnl), [10, -5]);
+    assert.equal(computeMetrics(r.trades, UTC).netPnl, 5);
+  });
+
+  test("percent with no balance anywhere shows nothing", () => {
+    assert.equal(tradesInUnit(three(), "percent", { balances: new Map() }).trades.length, 0);
+  });
+
+  test("pips: forex by its pip, metals only with digits, everything else left out", () => {
+    const none = tradesInUnit(three(), "pips");
+    assert.deepEqual(none.trades.map((t) => t.pnl), [50]);
+    assert.equal(none.left, 2);
+    const withDigits = tradesInUnit(three(), "pips", { digits: (t) => (t.symbol === "XAUUSD" ? 2 : null) });
+    assert.deepEqual(withDigits.trades.map((t) => t.pnl), [50, -10]); // -1.00 at a 0.1 pip
+  });
+
+  test("open trades stay, and don't count as left out", () => {
+    const r = tradesInUnit([closed("2026-03-02T10:00:00Z", 5, { status: "open", closedAt: null, pnl: null })], "r");
+    assert.equal(r.trades.length, 1);
+    assert.equal(r.left, 0);
   });
 });

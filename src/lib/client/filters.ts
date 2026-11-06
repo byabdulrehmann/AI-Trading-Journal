@@ -36,10 +36,10 @@ function dateWindow(range: string, from: string, to: string, tz?: string): { fro
 }
 
 const EXTRA_KEYS = ["side", "session", "tag", "mistake", "emotion", "grade", "assetClass", "rMin", "rMax", "holdMin", "holdMax"];
-const API_KEYS = ["accountId", "symbol", "strategy", "source", "outcome", "plan", "includeSample", "currency", "q", "weekday", "hour", "closedOnly", ...EXTRA_KEYS];
-const FILTER_KEYS = [...API_KEYS.filter((k) => k !== "includeSample" && k !== "currency"), "range", "from", "to", "closedFrom", "closedTo"];
+const API_KEYS = ["accountId", "symbol", "strategy", "source", "outcome", "plan", "includeSample", "currency", "unit", "q", "weekday", "hour", "closedOnly", ...EXTRA_KEYS];
+const FILTER_KEYS = [...API_KEYS.filter((k) => k !== "includeSample" && k !== "currency" && k !== "unit"), "range", "from", "to", "closedFrom", "closedTo"];
 /** What follows you from page to page. The rest belongs to one link or one screen. */
-const GLOBAL_KEYS = ["range", "from", "to", "accountId", "symbol", "strategy", "source", "outcome", "plan", "includeSample", "currency", ...EXTRA_KEYS];
+const GLOBAL_KEYS = ["range", "from", "to", "accountId", "symbol", "strategy", "source", "outcome", "plan", "includeSample", "currency", "unit", ...EXTRA_KEYS];
 const STORE = "jarvis-filters";
 
 /** Per tab. Storage can be blocked, and the filters then just stay on their own page. */

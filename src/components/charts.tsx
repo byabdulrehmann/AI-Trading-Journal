@@ -405,7 +405,7 @@ export function ValueBar({ value, max }: { value: number; max: number }) {
 }
 
 /** A comparison of groups: net P&L, win rate and what each trade averaged. `hrefFor` links a row where it has somewhere to go. */
-export function BreakdownTable({ rows, currency, group, label = (k) => k, hrefFor, empty = "No closed trades to compare yet. This fills in as trades close." }: { empty?: string; rows: BreakdownRow[]; currency: string; group: string; label?: (key: string) => string; hrefFor?: (key: string) => string | null }) {
+export function BreakdownTable({ rows, currency, group, label = (k) => k, hrefFor, compact, empty = "No closed trades to compare yet. This fills in as trades close." }: { empty?: string; compact?: boolean; rows: BreakdownRow[]; currency: string; group: string; label?: (key: string) => string; hrefFor?: (key: string) => string | null }) {
   const router = useRouter();
   if (rows.length === 0) return <p className="text-[13.5px] text-muted">{empty}</p>;
   const maxAbs = Math.max(0, ...rows.map((r) => Math.abs(r.netPnl)));
@@ -414,7 +414,7 @@ export function BreakdownTable({ rows, currency, group, label = (k) => k, hrefFo
       <thead className="text-left text-[12.5px] text-muted">
         <tr className="border-b border-line">
           <th scope="col" className="py-1.5 pr-3 font-normal whitespace-nowrap">{group}</th>
-          <th scope="col" className="hidden w-[22%] py-1.5 pr-3 font-normal sm:table-cell"><span className="sr-only">Net, as a bar</span></th>
+          {!compact && <th scope="col" className="hidden w-[22%] py-1.5 pr-3 font-normal sm:table-cell"><span className="sr-only">Net, as a bar</span></th>}
           <th scope="col" className="hidden w-16 py-1.5 pr-3 text-right font-normal whitespace-nowrap sm:table-cell">Trades</th>
           <th scope="col" className="hidden w-14 py-1.5 pr-3 text-right font-normal whitespace-nowrap sm:table-cell">Won</th>
           <th scope="col" className="hidden w-[6.5rem] py-1.5 pr-3 text-right font-normal whitespace-nowrap sm:table-cell">Per trade</th>
@@ -443,7 +443,7 @@ export function BreakdownTable({ rows, currency, group, label = (k) => k, hrefFo
                   <span className="num">{r.trades}</span> trades, <span className="num">{pct(r.winRate)}</span> won, <span className="num">{perTrade}</span> per trade
                 </div>
               </td>
-              <td className="hidden py-1.5 pr-3 align-middle sm:table-cell"><ValueBar value={r.netPnl} max={maxAbs} /></td>
+              {!compact && <td className="hidden py-1.5 pr-3 align-middle sm:table-cell"><ValueBar value={r.netPnl} max={maxAbs} /></td>}
               <td className="num hidden py-1.5 pr-3 text-right text-ink-soft sm:table-cell">{r.trades}</td>
               <td className="num hidden py-1.5 pr-3 text-right text-ink-soft sm:table-cell">{pct(r.winRate)}</td>
               <td className={cx("num hidden py-1.5 pr-3 text-right whitespace-nowrap sm:table-cell", toneOf(r.netPnl))}>{perTrade}</td>
@@ -495,5 +495,53 @@ export function MonthlyTable({ rows, currency, hrefFor }: { rows: PeriodRow[]; c
         </tbody>
       </table>
     </div>
+  );
+}
+
+/** One series on 0 to 100 axes, so no legend: the card's title names it. A blank axis is skipped, never drawn as zero. */
+export function RadarChart({ axes, label, size = 280 }: { axes: { label: string; value: number | null }[]; label: string; size?: number }) {
+  const { active, setActive, focusProps } = useScrub(axes.length);
+  const c = size / 2;
+  const radius = c - 42;
+  const angle = (i: number) => -Math.PI / 2 + (i / axes.length) * 2 * Math.PI;
+  const point = (i: number, v: number): [number, number] => [c + (v / 100) * radius * Math.cos(angle(i)), c + (v / 100) * radius * Math.sin(angle(i))];
+  const ring = (v: number) => axes.map((_, i) => point(i, v).map((n) => n.toFixed(1)).join(",")).join(" ");
+  const known = axes.flatMap((a, i) => (a.value === null ? [] : [{ i, v: a.value }]));
+  const shape = known.map(({ i, v }) => point(i, v).map((n) => n.toFixed(1)).join(",")).join(" ");
+  const h = active !== null ? axes[active] : null;
+  return (
+    <figure className="relative m-0 min-w-0" style={{ maxWidth: size + 72 }}>
+      <svg
+        viewBox={`-36 0 ${size + 72} ${size}`}
+        className="block w-full"
+        role="img"
+        aria-label={`${label}. ${axes.map((a) => `${a.label} ${a.value === null ? "not known" : Math.round(a.value)}`).join(", ")}.`}
+        {...focusProps}
+      >
+        {[25, 50, 75, 100].map((v) => <polygon key={v} points={ring(v)} fill="none" stroke={v === 100 ? "var(--line-strong)" : "var(--line)"} />)}
+        {axes.map((a, i) => {
+          const [x, y] = point(i, 100);
+          const [lx, ly] = point(i, 116);
+          const anchor = Math.abs(lx - c) < 4 ? "middle" : lx > c ? "start" : "end";
+          return (
+            <g key={a.label}>
+              <line x1={c} y1={c} x2={x} y2={y} stroke="var(--line)" strokeDasharray={a.value === null ? "2 3" : undefined} />
+              <text x={lx} y={ly + 3.5} textAnchor={anchor} fontSize={LABEL + 0.5} fill={active === i ? "var(--ink)" : "var(--muted)"}>{a.label.split(" ")[0]}</text>
+            </g>
+          );
+        })}
+        {known.length > 2 && <polygon points={shape} fill="var(--info-soft)" stroke="var(--info)" strokeWidth="2" strokeLinejoin="bevel" />}
+        {known.map(({ i, v }) => {
+          const [x, y] = point(i, v);
+          return <rect key={i} x={x - 4} y={y - 4} width="8" height="8" fill={active === i ? "var(--ink)" : "var(--info)"} stroke="var(--canvas)" strokeWidth="2" />;
+        })}
+        {/* Larger than the marks, so they're easy to hit. */}
+        {axes.map((a, i) => {
+          const [x, y] = point(i, a.value ?? 100);
+          return <rect key={a.label} x={x - 16} y={y - 16} width="32" height="32" fill="transparent" onPointerEnter={() => setActive(i)} />;
+        })}
+      </svg>
+      {h && <figcaption aria-live="polite" className="pointer-events-none absolute top-0 left-0 z-[var(--z-raised)] border border-line-strong bg-raised px-2 py-1 text-[12px]">{h.label}: <span className="num">{h.value === null ? "not known" : Math.round(h.value)}</span></figcaption>}
+    </figure>
   );
 }

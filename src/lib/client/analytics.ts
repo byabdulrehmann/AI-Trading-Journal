@@ -1,10 +1,17 @@
-import type { BreakdownRow, DrawdownPoint, EquityPoint, Metrics, PeriodRow } from "@/lib/domain/metrics";
+import type { BreakdownRow, DrawdownPoint, EquityPoint, Metrics, PeriodRow, Score, Unit } from "@/lib/domain/metrics";
 import type { PatternFinding } from "@/lib/domain/patterns";
 
 /** What /api/analytics returns. */
 export interface Analytics {
   currency: string;
   currencies: string[];
+  unit: Unit;
+  /** The currency, or %, R or pips: what figures below are stated in. */
+  display: string;
+  unitNote: string | null;
+  /** Always in money. The score reads these, so it doesn't change with the unit. */
+  moneyMetrics: Metrics;
+  score: Score;
   sampleHidden: boolean;
   metrics: Metrics;
   equity: EquityPoint[];

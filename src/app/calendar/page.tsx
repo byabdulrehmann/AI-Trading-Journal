@@ -85,7 +85,7 @@ function CalendarView() {
       </div>
     );
 
-  const cur = data.currency;
+  const cur = data.display;
   const inMonth = data.periods.day.filter((r) => r.key.startsWith(monthKey));
   const trades = inMonth.reduce((a, r) => a + r.trades, 0);
   const wins = inMonth.reduce((a, r) => a + r.wins, 0);
@@ -122,8 +122,8 @@ function CalendarView() {
 
   return (
     <div className={cx("transition-opacity", loading && "opacity-70")}>
-      <PageHeader title="Calendar" description={`Results land on the day a trade closed, ${zoneName() === "local time" ? "in this computer's time zone" : zoneName()}.`} actions={<CurrencyPicker currency={cur} currencies={data.currencies} filters={filters} />} />
-      <TradeFilters filters={filters} dates={false} />
+      <PageHeader title="Calendar" description={`Results land on the day a trade closed, ${zoneName() === "local time" ? "in this computer's time zone" : zoneName()}.`} actions={<CurrencyPicker currency={data.currency} currencies={data.currencies} filters={filters} />} />
+      <TradeFilters filters={filters} dates={false} units unitNote={data.unitNote} />
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-x-8 gap-y-5 xl:grid-cols-[minmax(0,1fr)_19rem]">
         <section aria-label="Month grid" className="border-t border-line">

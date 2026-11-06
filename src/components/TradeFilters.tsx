@@ -36,6 +36,7 @@ const nice = (s: string) => {
   const t = s.replace(/_/g, " ");
   return t[0].toUpperCase() + t.slice(1);
 };
+const UNIT_OPTIONS = [["", "In money"], ["percent", "In percent"], ["r", "In R"], ["pips", "In pips"]];
 const SIDES = [["", "Long and short"], ["long", "Long"], ["short", "Short"]];
 const SESSIONS = [["", "Any session"], ...Object.entries(SESSION_LABELS)];
 const ASSETS = [["", "Any asset class"], ...ASSET_CLASSES.map((c) => [c, nice(c)])];
@@ -85,7 +86,7 @@ function NumberFilter({ label, value, min, onCommit }: { label: string; value: s
 }
 
 /** The shared filter bar. Filters live in the URL query; see useUrlFilters. */
-export function TradeFilters({ filters, dates = true, source, outcome, plan, children }: { filters: UrlFilters; dates?: boolean; source?: boolean; outcome?: boolean; plan?: boolean; children?: React.ReactNode }) {
+export function TradeFilters({ filters, dates = true, source, outcome, plan, units, unitNote, children }: { filters: UrlFilters; dates?: boolean; source?: boolean; outcome?: boolean; plan?: boolean; units?: boolean; unitNote?: string | null; children?: React.ReactNode }) {
   const { accounts } = useApp();
   const { data: facets } = useFetch<Facets>("/api/facets");
   const { get, set } = filters;
@@ -173,6 +174,7 @@ export function TradeFilters({ filters, dates = true, source, outcome, plan, chi
           {source && <Select label="Source" value={get("source")} onChange={(v) => set({ source: v })} options={SOURCES} />}
           {outcome && <Select label="Outcome" value={get("outcome")} onChange={(v) => set({ outcome: v })} options={OUTCOMES} />}
           {plan && <Select label="Plan" value={get("plan")} onChange={(v) => set({ plan: v })} options={PLANS} />}
+          {units && <Select label="Show results in" value={get("unit")} onChange={(v) => set({ unit: v })} options={UNIT_OPTIONS} />}
           <button type="button" aria-expanded={more || extraCount > 0} onClick={() => setMore((m) => !m)} className={cx(quiet(extraCount > 0), "col-span-2 text-left")}>
             More filters{extraCount > 0 && <span className="num ml-1.5 text-accent">{extraCount}</span>}
           </button>
@@ -196,6 +198,7 @@ export function TradeFilters({ filters, dates = true, source, outcome, plan, chi
           )}
         </div>
       </div>
+      {units && unitNote && <p role="note" data-testid="unit-note" className="mt-1 text-[13px] text-muted">{unitNote}</p>}
       {sampleHidden && (
         <p role="note" className="mt-1 flex flex-wrap items-center gap-x-3 text-[13px] text-muted">
           Sample trades are hidden, so what you see here is only your own record.

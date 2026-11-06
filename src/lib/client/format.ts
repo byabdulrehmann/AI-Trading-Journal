@@ -13,6 +13,10 @@ export function money(n: number | null | undefined, currency = "USD", signed = f
   if (n === null || n === undefined || Number.isNaN(n)) return "—";
   const abs = Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const sign = n < 0 ? "−" : signed && n > 0 ? "+" : "";
+  // Results can be shown in these instead of a currency.
+  if (currency === "%") return `${sign}${abs}%`;
+  if (currency === "R") return `${sign}${abs}R`;
+  if (currency === "pips") return `${sign}${abs} pips`;
   return `${sign}${currencySymbol(currency)}${abs}`;
 }
 

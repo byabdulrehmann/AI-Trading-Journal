@@ -1,11 +1,11 @@
-import { HOLD_BUCKETS, PRICE_BUCKETS, R_BUCKETS, SIZE_BUCKETS, breakdown, breakdownMany, bucketBreakdown, computeMetrics, drawdownCurve, equityCurve, holdMinutes, isClosed, periodSummaries, pnlDistribution, reportingCurrencies } from "@/lib/domain/metrics";
+import { HOLD_BUCKETS, PRICE_BUCKETS, R_BUCKETS, SIZE_BUCKETS, UNITS, breakdown, breakdownMany, bucketBreakdown, computeMetrics, computeScore, drawdownCurve, equityCurve, holdMinutes, isClosed, periodSummaries, pnlDistribution, reportingCurrencies, tradesInUnit, type Unit } from "@/lib/domain/metrics";
 import { detectPatterns } from "@/lib/domain/patterns";
-import type { Trade } from "@/lib/domain/types";
+import type { Account, Trade } from "@/lib/domain/types";
 import { zoneParts } from "@/lib/domain/zone";
 import { requireUser } from "@/lib/server/auth";
 import { filtersFrom } from "@/lib/server/filters";
 import { json } from "@/lib/server/http";
-import { getAccount, hasSampleData, listAccounts, listTrades } from "@/lib/server/repo/journal";
+import { getAccount, hasSampleData, listAccounts, listInstruments, listTrades } from "@/lib/server/repo/journal";
 import { getSettings } from "@/lib/server/repo/settings";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -13,6 +13,25 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 function meanR(trades: Trade[], side: (pnl: number) => boolean): number | null {
   const rs = trades.filter(isClosed).filter((t) => side(t.pnl) && t.rMultiple !== null).map((t) => t.rMultiple as number);
   return rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null;
+}
+
+const UNIT_CODE: Record<Exclude<Unit, "money">, string> = { percent: "%", r: "R", pips: "pips" };
+const LEFT_OUT: Record<Exclude<Unit, "money">, string> = {
+  percent: "their account has no starting balance",
+  r: "they have no stop",
+  pips: "pips only apply to forex, and to metals when the broker's digits are known",
+};
+
+/** Falls back to money, and says so, when nothing can be shown in the unit asked for. */
+function restate(userId: number, trades: Trade[], unit: Unit, accounts: Account[]): { unit: Unit; trades: Trade[]; note: string | null } {
+  if (unit === "money") return { unit, trades, note: null };
+  const balances = new Map(accounts.map((a) => [a.id, a.startingBalance]));
+  const specs = new Map(unit === "pips" ? [...new Set(trades.map((t) => t.accountId))].flatMap((id) => listInstruments(userId, id).map((s) => [`${id}:${s.symbol}`, s.digits] as const)) : []);
+  const r = tradesInUnit(trades, unit, { balances, digits: (t) => specs.get(`${t.accountId}:${t.symbol}`) ?? null });
+  const closed = r.trades.filter(isClosed).length;
+  if (r.left > 0 && closed === 0) return { unit: "money", trades, note: `Showing money, because no closed trade here can be shown that way: ${LEFT_OUT[unit]}.` };
+  const base = unit === "percent" && closed ? `Percent of the ${r.base.toLocaleString("en-US")} combined starting balance. ` : "";
+  return { unit, trades: r.trades, note: r.left ? `${base}${r.left} closed ${r.left === 1 ? "trade is" : "trades are"} left out: ${LEFT_OUT[unit]}.` : base.trim() || null };
 }
 
 /**
@@ -32,16 +51,25 @@ export async function GET(req: Request) {
   const accountCurrency = filters.accountId ? getAccount(user.id, filters.accountId)?.currency : undefined;
   const currency = accountCurrency ?? (filters.currency && currencies.includes(filters.currency) ? filters.currency : primary) ?? "USD";
   const ids = new Set(accounts.filter((a) => a.currency === currency).map((a) => a.id));
-  const trades = unscoped.filter((t) => ids.has(t.accountId));
+  const real = unscoped.filter((t) => ids.has(t.accountId));
 
   const tz = getSettings(user.id).timeZone || undefined;
+  const moneyMetrics = computeMetrics(real, tz);
+  const asked = new URL(req.url).searchParams.get("unit") as Unit | null;
+  const shown = restate(user.id, real, asked && UNITS.includes(asked) ? asked : "money", accounts);
+  const trades = shown.trades;
   const opened = (t: Trade) => zoneParts(Date.parse(t.openedAt), tz);
   const by = (keyOf: (t: Trade) => string | null) => breakdown(trades, keyOf);
   return json({
     currency,
     currencies,
+    unit: shown.unit,
+    display: shown.unit === "money" ? currency : UNIT_CODE[shown.unit],
+    unitNote: shown.note,
+    moneyMetrics,
+    score: computeScore(moneyMetrics),
     sampleHidden: !filters.includeSample && filters.source !== "sample" && !filters.accountId && hasSampleData(user.id),
-    metrics: computeMetrics(trades, tz),
+    metrics: shown.unit === "money" ? moneyMetrics : computeMetrics(trades, tz),
     equity: equityCurve(trades),
     drawdown: drawdownCurve(trades),
     periods: { day: periodSummaries(trades, "day", tz), week: periodSummaries(trades, "week", tz), month: periodSummaries(trades, "month", tz), year: periodSummaries(trades, "year", tz) },
@@ -67,7 +95,7 @@ export async function GET(req: Request) {
       // "weekday-hour" of the open time, in the chosen zone, Sunday = 0.
       heatmap: by((t) => `${opened(t).weekday}-${opened(t).hour}`),
     },
-    patterns: detectPatterns(trades, tz),
-    avgR: { winners: meanR(trades, (p) => p > 0), losers: meanR(trades, (p) => p < 0) },
+    patterns: detectPatterns(real, tz),
+    avgR: { winners: meanR(real, (p) => p > 0), losers: meanR(real, (p) => p < 0) },
   });
 }

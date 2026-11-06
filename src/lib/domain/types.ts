@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ASSET_CLASSES, SESSIONS, type AssetClass, type MarketSession } from "./engine/instruments";
+import { DashboardLayout } from "./dashboard";
 import { isValidZone } from "./zone";
 
 export const EMOTIONS = [
@@ -233,6 +234,8 @@ export const Settings = z.object({
   timeZone: z.string().max(64).refine((v) => v === "" || isValidZone(v), "Unknown time zone").default(""),
   /** Filled into a new manual trade, where they can still be changed. Never applied to imported or synced trades. */
   feeDefaults: z.object({ commission: z.number().min(0).default(0), otherFees: z.number().min(0).default(0) }).default({ commission: 0, otherFees: 0 }),
+  /** Null: the standard layout. */
+  dashboard: DashboardLayout.nullable().default(null),
   /** Explicit opt-in. Nothing is written to the activity log while false. */
   activityTracking: z.boolean().default(false),
 });

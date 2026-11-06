@@ -76,7 +76,7 @@ function AnalyticsView() {
   if (!data) return <Loading />;
 
   const m = data.metrics;
-  const cur = data.currency;
+  const cur = data.display;
   const period = (PERIODS.some((p) => p.value === filters.get("period")) ? filters.get("period") : "month") as Period;
   const fmt = (n: number) => money(n, cur, true);
   const b = data.breakdowns;
@@ -99,8 +99,8 @@ function AnalyticsView() {
 
   return (
     <div className={cx("transition-opacity", loading && "opacity-70")}>
-      <PageHeader title="Analytics" description="Every figure comes from your recorded closed trades. Dates filter by open time, results land on the day a trade closed." actions={<CurrencyPicker currency={cur} currencies={data.currencies} filters={filters} />} />
-      <TradeFilters filters={filters} source />
+      <PageHeader title="Analytics" description="Every figure comes from your recorded closed trades. Dates filter by open time, results land on the day a trade closed." actions={<CurrencyPicker currency={data.currency} currencies={data.currencies} filters={filters} />} />
+      <TradeFilters filters={filters} source units unitNote={data.unitNote} />
 
       {m.closedTrades === 0 ? (
         filters.active ? (
@@ -198,39 +198,39 @@ function AnalyticsView() {
           <div className="grid grid-cols-[minmax(0,1fr)] gap-x-10 gap-y-8 xl:grid-cols-2">
             <Card>
               <CardHeader title="Mistakes" subtitle="A trade counts once under each mistake marked on it." />
-              <BreakdownTable rows={b.mistake} currency={cur} group="Mistake" label={nice} empty="No mistakes marked on these closed trades." hrefFor={(k) => journalHref(search, { mistake: k })} />
+              <BreakdownTable compact rows={b.mistake} currency={cur} group="Mistake" label={nice} empty="No mistakes marked on these closed trades." hrefFor={(k) => journalHref(search, { mistake: k })} />
             </Card>
             <Card>
               <CardHeader title="Tags" subtitle="A trade counts once under each of its tags." />
-              <BreakdownTable rows={b.tag} currency={cur} group="Tag" empty="No tags on these closed trades." hrefFor={(k) => journalHref(search, { tag: k })} />
+              <BreakdownTable compact rows={b.tag} currency={cur} group="Tag" empty="No tags on these closed trades." hrefFor={(k) => journalHref(search, { tag: k })} />
             </Card>
             <Card>
               <CardHeader title="Emotion before the trade" />
-              <BreakdownTable rows={b.emotion} currency={cur} group="Emotion" label={(k) => (k.startsWith("(") ? k : nice(k))} hrefFor={(k) => (k.startsWith("(") ? null : journalHref(search, { emotion: k }))} />
+              <BreakdownTable compact rows={b.emotion} currency={cur} group="Emotion" label={(k) => (k.startsWith("(") ? k : nice(k))} hrefFor={(k) => (k.startsWith("(") ? null : journalHref(search, { emotion: k }))} />
             </Card>
             <Card>
               <CardHeader title="Grade" />
-              <BreakdownTable rows={b.grade} currency={cur} group="Grade" empty="No grades on these closed trades." hrefFor={(k) => journalHref(search, { grade: k })} />
+              <BreakdownTable compact rows={b.grade} currency={cur} group="Grade" empty="No grades on these closed trades." hrefFor={(k) => journalHref(search, { grade: k })} />
             </Card>
             <Card>
               <CardHeader title="R multiple" subtitle="Only trades with a stop have an R." />
-              <BreakdownTable rows={b.rMultiple} currency={cur} group="Result" empty="No closed trade here has a stop." hrefFor={toBand(R_BUCKETS, "rMin", "rMax")} />
+              <BreakdownTable compact rows={b.rMultiple} currency={cur} group="Result" empty="No closed trade here has a stop." hrefFor={toBand(R_BUCKETS, "rMin", "rMax")} />
             </Card>
             <Card>
               <CardHeader title="Holding time" subtitle="From the first entry to the last exit." />
-              <BreakdownTable rows={b.hold} currency={cur} group="Held for" hrefFor={toBand(HOLD_BUCKETS, "holdMin", "holdMax")} />
+              <BreakdownTable compact rows={b.hold} currency={cur} group="Held for" hrefFor={toBand(HOLD_BUCKETS, "holdMin", "holdMax")} />
             </Card>
             <Card>
               <CardHeader title="Entry price" subtitle="Average entry, in the instrument's own price." />
-              <BreakdownTable rows={b.price} currency={cur} group="Price" />
+              <BreakdownTable compact rows={b.price} currency={cur} group="Price" />
             </Card>
             <Card>
               <CardHeader title="Size" subtitle="Lots, shares or contracts, as recorded." />
-              <BreakdownTable rows={b.size} currency={cur} group="Size" />
+              <BreakdownTable compact rows={b.size} currency={cur} group="Size" />
             </Card>
             <Card>
               <CardHeader title="Asset class" />
-              <BreakdownTable rows={b.assetClass} currency={cur} group="Asset class" label={nice} hrefFor={(k) => journalHref(search, { assetClass: k })} />
+              <BreakdownTable compact rows={b.assetClass} currency={cur} group="Asset class" label={nice} hrefFor={(k) => journalHref(search, { assetClass: k })} />
             </Card>
           </div>
 
