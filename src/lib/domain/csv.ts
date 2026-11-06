@@ -1,4 +1,5 @@
 import { computePnl } from "./trade-math";
+import type { Account, Trade } from "./types";
 import { TradeInput, type TradeData } from "./types";
 
 /** "10 MB" in decimal: a full-size upload plus its multipart overhead stays under the proxy's 10 MiB body buffer. */
@@ -351,4 +352,47 @@ export function mapRows(rows: Cell[][], mapping: ColumnMapping, accountId: numbe
     if (mismatch) warnings.push(mismatch);
     return { line, ok: true, trade: parsed.data, errors: [], ...(warnings.length ? { warnings } : {}), ...(mismatch ? { mismatch: true } : {}) };
   });
+}
+
+const EXPORT_COLUMNS: [string, (t: Trade, account: string) => string | number | null][] = [
+  ["Journal ID", (t) => t.id],
+  ["Account", (_, account) => account],
+  ["Symbol", (t) => t.symbol],
+  ["Side", (t) => t.side],
+  ["Asset class", (t) => t.assetClass],
+  ["Open time", (t) => t.openedAt],
+  ["Close time", (t) => t.closedAt],
+  ["Entry", (t) => t.entryPrice],
+  ["Exit", (t) => t.exitPrice],
+  ["Quantity", (t) => t.quantity],
+  ["Multiplier", (t) => t.multiplier],
+  ["Stop", (t) => t.stopPrice],
+  ["Target", (t) => t.targetPrice],
+  ["Commission", (t) => t.commission],
+  ["Overnight cost", (t) => t.swap],
+  ["Other costs", (t) => t.otherFees],
+  ["Status", (t) => t.status],
+  ["Gross result", (t) => t.grossPnl],
+  ["Net result", (t) => t.pnl],
+  ["R multiple", (t) => t.rMultiple],
+  ["Planned R", (t) => t.plannedR],
+  ["Minutes held", (t) => t.holdingMinutes],
+  ["Strategy", (t) => t.strategy],
+  ["Setup", (t) => t.setup],
+  ["Tags", (t) => [...t.tags, ...t.strategyTags].join("; ")],
+  ["Mistakes", (t) => t.mistakes.join("; ")],
+  ["Emotion before", (t) => t.emotionBefore],
+  ["Emotion after", (t) => t.emotionAfter],
+  ["Grade", (t) => t.grade],
+  ["Followed plan", (t) => (t.followedPlan === null ? "" : t.followedPlan ? "yes" : "no")],
+  ["Option", (t) => (t.assetClass === "option" ? `${t.optionRight} ${t.strike} ${t.expiry}` : "")],
+  ["Source", (t) => t.source],
+  ["Notes", (t) => t.notes],
+];
+
+/** Times are UTC instants, so the file means the same in any time zone. */
+export function tradesCsv(trades: Trade[], accounts: Account[]): string {
+  const names = new Map(accounts.map((a) => [a.id, a.name]));
+  const rows = trades.map((t) => EXPORT_COLUMNS.map(([, read]) => csvCell(read(t, names.get(t.accountId) ?? "") ?? "")).join(","));
+  return [EXPORT_COLUMNS.map(([name]) => name).join(","), ...rows].join("\r\n") + "\r\n";
 }

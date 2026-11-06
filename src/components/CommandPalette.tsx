@@ -18,6 +18,7 @@ interface Item {
 const PAGES: [string, string][] = [
   ["/", "Dashboard"],
   ["/journal", "Journal"],
+  ["/day", "Daily journal"],
   ["/calendar", "Calendar"],
   ["/analytics", "Analytics"],
   ["/patterns", "Patterns"],

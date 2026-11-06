@@ -303,8 +303,8 @@ function whereClause(userId: number, f: TradeFilters): { sql: string; args: (str
   return { sql: where.join(" AND "), args };
 }
 
-export type TradeSort = "openedAt" | "closedAt" | "pnl" | "rMultiple" | "symbol" | "quantity";
-const SORT_COLUMNS: Record<TradeSort, string> = { openedAt: "t.opened_at", closedAt: "t.closed_at", pnl: "t.net_pnl", rMultiple: "t.r_multiple", symbol: "t.symbol", quantity: "t.quantity" };
+export type TradeSort = "openedAt" | "closedAt" | "pnl" | "rMultiple" | "symbol" | "quantity" | "hold";
+const SORT_COLUMNS: Record<TradeSort, string> = { openedAt: "t.opened_at", closedAt: "t.closed_at", pnl: "t.net_pnl", rMultiple: "t.r_multiple", symbol: "t.symbol", quantity: "t.quantity", hold: "t.holding_minutes" };
 
 export function listTradesPage(userId: number, f: TradeFilters, sort: TradeSort, dir: "asc" | "desc", page: number, pageSize: number): { trades: Trade[]; total: number } {
   const { sql, args } = whereClause(userId, f);
@@ -513,6 +513,79 @@ export function duplicateTrade(userId: number, id: number): Trade | null {
   return createTrade(userId, data, { source: "manual" });
 }
 
+export type BulkAction = { type: "setStrategy" | "addTag" | "removeTag"; name: string } | { type: "clearStrategy" } | { type: "moveAccount"; accountId: number };
+
+const MAX_TAGS = 12;
+
+/**
+ * One change across trades, all in one transaction. Notes-style fields are fair on any trade, synced ones included.
+ * Moving is not: a synced trade belongs to its broker account, money can't change currency unconverted, and
+ * sample trades must never land in a real account.
+ */
+export function bulkUpdateTrades(userId: number, ids: number[], action: BulkAction): { changed: number; skipped: { reason: string; count: number }[] } {
+  const conn = db();
+  const skipped = new Map<string, number>();
+  const skip = (reason: string) => skipped.set(reason, (skipped.get(reason) ?? 0) + 1);
+  let changed = 0;
+
+  transaction(conn, () => {
+    const target = action.type === "moveAccount" ? getAccount(userId, action.accountId) : null;
+    if (action.type === "moveAccount" && !target) throw new Error("That account doesn't exist.");
+    for (const id of ids) {
+      const t = conn.prepare("SELECT t.id, t.account_id, t.source, t.source_key, t.symbol, t.asset_class, t.multiplier, a.currency, a.is_sample FROM trades t JOIN accounts a ON a.id = t.account_id WHERE t.id = ? AND t.user_id = ? AND t.deleted_at IS NULL").get(id, userId) as Row | undefined;
+      if (!t) {
+        skip("not found");
+        continue;
+      }
+      if (action.type === "setStrategy") {
+        conn.prepare("UPDATE trades SET strategy_id = ?, updated_at = ? WHERE id = ?").run(strategyId(userId, action.name), now(), id);
+      } else if (action.type === "clearStrategy") {
+        conn.prepare("UPDATE trades SET strategy_id = NULL, updated_at = ? WHERE id = ?").run(now(), id);
+      } else if (action.type === "addTag") {
+        const { n } = conn.prepare("SELECT COUNT(*) AS n FROM trade_tags tt JOIN tags g ON g.id = tt.tag_id WHERE tt.trade_id = ? AND g.kind = 'custom'").get(id) as { n: number };
+        if (n >= MAX_TAGS) {
+          skip(`already has ${MAX_TAGS} tags`);
+          continue;
+        }
+        conn.prepare("INSERT OR IGNORE INTO tags (user_id, name, kind) VALUES (?, ?, 'custom')").run(userId, action.name);
+        const tag = conn.prepare("SELECT id FROM tags WHERE user_id = ? AND name = ? AND kind = 'custom'").get(userId, action.name) as { id: number };
+        conn.prepare("INSERT OR IGNORE INTO trade_tags (trade_id, tag_id) VALUES (?, ?)").run(id, tag.id);
+      } else if (action.type === "removeTag") {
+        conn.prepare("DELETE FROM trade_tags WHERE trade_id = ? AND tag_id IN (SELECT id FROM tags WHERE user_id = ? AND name = ? AND kind = 'custom')").run(id, userId, action.name);
+      } else {
+        const to = target as Account;
+        if (t.account_id === to.id) {
+          skip("already in that account");
+          continue;
+        }
+        if (t.source === "mt5") {
+          skip("synced from MT5, so it stays in its broker account");
+          continue;
+        }
+        if (Boolean(t.is_sample) !== to.isSample) {
+          skip("sample and real trades can't share an account");
+          continue;
+        }
+        if (t.currency !== to.currency) {
+          skip("that account is in another currency");
+          continue;
+        }
+        if (t.source_key && conn.prepare("SELECT 1 FROM trades WHERE account_id = ? AND source = ? AND source_key = ?").get(to.id, t.source as string, t.source_key as string)) {
+          skip("that account already has this imported trade");
+          continue;
+        }
+        conn.prepare("UPDATE trades SET account_id = ?, updated_at = ? WHERE id = ?").run(to.id, now(), id);
+        conn.prepare("UPDATE executions SET account_id = ? WHERE trade_id = ?").run(to.id, id);
+        rememberInstrument(to.id, t.symbol as string, t.asset_class as AssetClass, t.multiplier as number);
+        recalculateTrade(id);
+      }
+      changed++;
+    }
+    audit(userId, "trade.bulk_updated", "trade", ids.join(","), { action: action.type, changed });
+  });
+  return { changed, skipped: [...skipped].map(([reason, count]) => ({ reason, count })) };
+}
+
 /** Soft delete so the UI can offer undo; purgeDeletedTrades removes them after 30 days. */
 export function setTradesDeleted(userId: number, ids: number[], deleted: boolean): number {
   if (ids.length === 0) return 0;
@@ -661,6 +734,7 @@ export function exportAll(userId: number) {
     jarvisConversations: byUser("jarvis_conversations"),
     jarvisMessages: conn.prepare("SELECT m.* FROM jarvis_messages m JOIN jarvis_conversations c ON c.id = m.conversation_id WHERE c.user_id = ?").all(userId),
     activityLog: byUser("activity_log"),
+    dailyJournal: byUser("daily_journal"),
   };
 }
 
@@ -682,7 +756,7 @@ export function deleteAllData(userId: number) {
   const accountSettings = (conn.prepare("SELECT id FROM accounts WHERE user_id = ?").all(userId) as { id: number }[]).map((a) => `mt5:${a.id}`);
   transaction(conn, () => {
     for (const key of accountSettings) conn.prepare("DELETE FROM settings WHERE key = ?").run(key);
-    for (const table of ["jarvis_conversations", "jarvis_memories", "activity_log", "import_batches", "attachments", "reconciliations", "trades", "tags", "strategies", "accounts"])
+    for (const table of ["daily_journal", "jarvis_conversations", "jarvis_memories", "activity_log", "import_batches", "attachments", "reconciliations", "trades", "tags", "strategies", "accounts"])
       conn.prepare(`DELETE FROM ${table} WHERE user_id = ?`).run(userId);
     conn.prepare("DELETE FROM settings WHERE key = ?").run(`app:${userId}`);
     audit(userId, "data.deleted_all");
@@ -698,6 +772,7 @@ export function removeSampleData(userId: number): number {
   const attachments = (conn.prepare("SELECT a.stored_name FROM attachments a JOIN trades t ON t.id = a.trade_id WHERE t.source = 'sample' AND t.user_id = ?").all(userId) as { stored_name: string }[]).map((r) => r.stored_name);
   const removed = transaction(conn, () => {
     const n = Number(conn.prepare("DELETE FROM trades WHERE source = 'sample' AND user_id = ?").run(userId).changes);
+    conn.prepare("DELETE FROM daily_journal WHERE is_sample = 1 AND user_id = ?").run(userId);
     conn.prepare("DELETE FROM accounts WHERE is_sample = 1 AND user_id = ? AND id NOT IN (SELECT account_id FROM trades)").run(userId);
     return n;
   });

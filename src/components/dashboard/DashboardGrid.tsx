@@ -65,7 +65,7 @@ function ViewEditor({ layout, save }: { layout: DashboardLayout; save: (next: Da
       >
         <label htmlFor="new-view">Save as a new view</label>
         <span className="flex gap-2">
-          <input id="new-view" className={cx(inputClass, "h-8 w-40 max-sm:h-11")} value={name} maxLength={30} placeholder="Name" onChange={(e) => setName(e.target.value)} />
+          <input id="new-view" className={cx(inputClass, "h-8 w-40! max-sm:h-11")} value={name} maxLength={30} placeholder="Name" onChange={(e) => setName(e.target.value)} />
           <Button size="sm" type="submit" className="max-sm:h-11" disabled={!name.trim()}>Save view</Button>
         </span>
       </form>
@@ -74,7 +74,7 @@ function ViewEditor({ layout, save }: { layout: DashboardLayout; save: (next: Da
         <input
           key={view.id + view.name}
           aria-label="Rename this view"
-          className={cx(inputClass, "h-8 w-40 max-sm:h-11")}
+          className={cx(inputClass, "h-8 w-40! max-sm:h-11")}
           defaultValue={view.name}
           maxLength={30}
           onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}

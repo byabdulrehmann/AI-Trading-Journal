@@ -1,6 +1,7 @@
 import "server-only";
+import { insertSampleDays } from "./repo/daily";
 import { createAccount, hasSampleData, insertSampleTrades } from "./repo/journal";
-import { EMOTIONS, TradeInput, type TradeData } from "@/lib/domain/types";
+import { EMOTIONS, TradeInput, type DailyInput, type TradeData } from "@/lib/domain/types";
 import type { AssetClass } from "@/lib/domain/engine/instruments";
 
 /**
@@ -194,10 +195,29 @@ export function buildSampleTrades(accountIds: number[], today: Date): TradeData[
   return trades;
 }
 
+/** Made-up notes for most recent weekdays, so the daily journal has something to show. */
+export function buildSampleDays(today: Date): DailyInput[] {
+  const rand = rng(20261104);
+  const days: DailyInput[] = [];
+  const pad = (n: number) => String(n).padStart(2, "0");
+  for (let back = 45; back >= 1; back--) {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - back);
+    if (d.getDay() === 0 || d.getDay() === 6 || rand() < 0.3) continue;
+    days.push({
+      date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+      plan: `Sample plan: ${rand() < 0.5 ? "trend day expected" : "range day expected"}. Trade the first pullback only. Stop after two losses.`,
+      recap: rand() < 0.8 ? `Sample recap: ${rand() < 0.5 ? "stuck to the plan and left the rest" : "took one trade outside the plan, cost more than it should have"}.` : "",
+      rating: 1 + Math.floor(rand() * 5),
+    });
+  }
+  return days;
+}
+
 export function loadSampleData(userId: number): number {
   if (hasSampleData(userId)) return 0;
   const ids = BOOKS.map((b) => createAccount(userId, { name: b.name, broker: b.broker, currency: "USD", startingBalance: b.balance }, { isSample: true }).id);
   const trades = buildSampleTrades(ids, new Date());
   insertSampleTrades(userId, trades);
+  insertSampleDays(userId, buildSampleDays(new Date()));
   return trades.length;
 }

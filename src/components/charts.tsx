@@ -68,7 +68,7 @@ export interface LinePoint {
 }
 
 /** Equity or drawdown over closed trades. Point or arrow keys for a value; click or Enter opens the trade when onSelect is given. */
-export function LineChart({ points, currency, label, onSelect, tone, height = 220 }: { points: LinePoint[]; currency: string; label: string; onSelect?: (tradeId: number) => void; tone?: "profit" | "loss"; height?: number }) {
+export function LineChart({ points, currency, label, onSelect, tone, height = 220, formatAt = dateOnly }: { points: LinePoint[]; currency: string; label: string; onSelect?: (tradeId: number) => void; tone?: "profit" | "loss"; height?: number; formatAt?: (iso: string) => string }) {
   const [box, { width }] = useBoxSize<HTMLElement>({ width: 720, height: 0 });
   const select = (i: number) => {
     const id = points[i]?.tradeId;
@@ -115,8 +115,8 @@ export function LineChart({ points, currency, label, onSelect, tone, height = 22
             <rect x={x(active) - 3} y={y(h.value) - 3} width="6" height="6" fill="var(--ink)" />
           </>
         )}
-        <text x={pad.l} y={height - 5} fontSize={LABEL} fill="var(--muted)" style={MONO}>{points[0] ? dateOnly(points[0].at) : ""}</text>
-        <text x={width - pad.r} y={height - 5} fontSize={LABEL} fill="var(--muted)" textAnchor="end" style={MONO}>{points.length > 1 ? dateOnly(points.at(-1)!.at) : ""}</text>
+        <text x={pad.l} y={height - 5} fontSize={LABEL} fill="var(--muted)" style={MONO}>{points[0] ? formatAt(points[0].at) : ""}</text>
+        <text x={width - pad.r} y={height - 5} fontSize={LABEL} fill="var(--muted)" textAnchor="end" style={MONO}>{points.length > 1 ? formatAt(points.at(-1)!.at) : ""}</text>
       </svg>
       {h && active !== null && (
         <Tip x={x(active)} width={width}>

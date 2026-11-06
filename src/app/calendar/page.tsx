@@ -1,21 +1,21 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Analytics } from "@/lib/client/analytics";
-import { dayKey, dayWindow, fromKey, monthKeyOf, weeksOf } from "@/lib/client/calendar";
+import { dayKey, fromKey, monthKeyOf, weeksOf } from "@/lib/client/calendar";
 import { useApp } from "@/lib/client/app-state";
 import { useUrlFilters } from "@/lib/client/filters";
-import { compactMoney, dateTime, money, pct, toneOf, zoneName } from "@/lib/client/format";
+import { compactMoney, money, pct, toneOf, zoneName } from "@/lib/client/format";
 import { zoneDateKey } from "@/lib/domain/zone";
 import { useFetch } from "@/lib/client/use-fetch";
 import { addMoney } from "@/lib/domain/engine/position";
 import type { PeriodRow } from "@/lib/domain/metrics";
-import type { Trade } from "@/lib/domain/types";
 import { CurrencyPicker } from "@/components/CurrencyPicker";
-import { PnlIssue, SideBadge, StatusBadge } from "@/components/journal/badges";
+import { DayTrades } from "@/components/journal/DayTrades";
 import { Suspended } from "@/components/Suspended";
 import { TradeFilters } from "@/components/TradeFilters";
-import { Button, Card, CardHeader, EmptyState, PageHeader, Spinner, cx } from "@/components/ui";
+import { Button, EmptyState, PageHeader, Spinner, cx } from "@/components/ui";
 
 export default function CalendarPage() {
   return (
@@ -226,7 +226,7 @@ function CalendarView() {
             </dl>
           </section>
           {selected && /^\d{4}-\d{2}-\d{2}$/.test(selected) ? (
-            <DayTrades day={selected} row={days.get(selected)} currency={cur} query={filters.apiQuery} />
+            <DayTrades day={selected} row={days.get(selected)} currency={cur} query={filters.apiQuery} action={<Link href={`/day?${new URLSearchParams({ ...Object.fromEntries(new URLSearchParams(filters.apiQuery({ dates: false }))), date: selected })}`} className="text-[13px] text-ink-soft underline underline-offset-2 hover:text-ink">Open this day in the daily journal</Link>} />
           ) : (
             <p className="border-t border-line pt-3 text-[13.5px] text-muted">Pick a day to list its trades here.</p>
           )}
@@ -271,42 +271,5 @@ function DayCell({ date, dayId, row, outside, isToday, selected, tabStop, curren
         )}
       </button>
     </div>
-  );
-}
-
-function DayTrades({ day, row, currency, query }: { day: string; row?: PeriodRow; currency: string; query: (o: { dates?: boolean; extra?: Record<string, string> }) => string }) {
-  const { openTrade, accounts } = useApp();
-  const { start, end } = dayWindow(day);
-  const closed = useFetch<{ trades: Trade[]; total: number }>(`/api/trades?${query({ dates: false, extra: { closedFrom: start, closedTo: end, sort: "closedAt", dir: "asc", pageSize: "200", currency } })}`);
-  const opened = useFetch<{ trades: Trade[] }>(`/api/trades?${query({ dates: false, extra: { from: start, to: end, outcome: "open", pageSize: "200", currency } })}`);
-  const label = fromKey(day).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
-  const list = [...(closed.data?.trades ?? []), ...(opened.data?.trades ?? [])];
-  const curOf = (t: Trade) => accounts.find((a) => a.id === t.accountId)?.currency;
-
-  return (
-    <Card aria-live="polite" data-testid="day-trades">
-      <CardHeader title={label} subtitle={<>{row ? <>{row.trades} closed, {row.wins} won, {row.losses} lost. </> : null}Times are {zoneName()}.</>} action={row && <span className={cx("num text-[14px]", toneOf(row.pnl))}>{money(row.pnl, currency, true)}</span>} />
-      {closed.loading && !closed.data ? (
-        <Spinner />
-      ) : list.length === 0 ? (
-        <p className="text-[14px] text-muted">No trades closed or opened on this day. Pick a shaded day, or change the filters.</p>
-      ) : (
-        <ul className="divide-y divide-line border-y border-line">
-          {list.map((t) => (
-            <li key={t.id}>
-              <button type="button" onClick={() => openTrade(t.id)} className="flex w-full flex-wrap items-center gap-x-3 gap-y-0.5 py-1.5 text-left hover:bg-raised">
-                <span className="font-medium">{t.symbol}</span>
-                <SideBadge side={t.side} />
-                {t.status !== "closed" && <StatusBadge status={t.status} />}
-                <span className={`num ml-auto text-[14px] ${toneOf(t.pnl)}`}>
-                  {t.pnlStatus !== "ok" ? <PnlIssue status={t.pnlStatus} /> : t.pnl === null ? <span className="text-muted">Open</span> : money(t.pnl, curOf(t), true)}
-                </span>
-                <span className="num w-full text-[12.5px] text-muted">{dateTime(t.closedAt ?? t.openedAt)}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Card>
   );
 }

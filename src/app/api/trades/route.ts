@@ -9,7 +9,7 @@ import { filtersFrom } from "@/lib/server/filters";
 const Query = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(200).default(50),
-  sort: z.enum(["openedAt", "closedAt", "pnl", "rMultiple", "symbol", "quantity"]).default("openedAt"),
+  sort: z.enum(["openedAt", "closedAt", "pnl", "rMultiple", "symbol", "quantity", "hold"]).default("openedAt"),
   dir: z.enum(["asc", "desc"]).default("desc"),
 });
 

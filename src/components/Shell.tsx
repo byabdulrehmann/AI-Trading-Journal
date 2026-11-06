@@ -14,6 +14,7 @@ import { Toasts } from "./Toasts";
 const NAV = [
   { href: "/", label: "Dashboard", icon: "M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 7h6V4h-6z" },
   { href: "/journal", label: "Journal", icon: "M6 4h12v16H6zM9.5 9h5M9.5 13h5" },
+  { href: "/day", label: "Daily journal", icon: "M5 4h14v16H5zM9 4v16M12 9h4M12 13h4" },
   { href: "/calendar", label: "Calendar", icon: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4" },
   { href: "/analytics", label: "Analytics", icon: "M4 20V11M10 20V5M16 20v-6M3 20h18" },
   { href: "/patterns", label: "Patterns", icon: "M4 16l5-5 4 4 7-8" },

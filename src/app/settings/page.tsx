@@ -149,6 +149,38 @@ function FeeDefault({ label, value, onSave }: { label: string; value: number; on
   );
 }
 
+/** Percent results are worked out from this, and synced accounts start with none because deposits aren't journaled. */
+function StartingBalance({ id, name, currency, value }: { id: number; name: string; currency: string; value: number }) {
+  const { refresh, toast } = useApp();
+  const [error, setError] = useState<string | undefined>();
+  return (
+    <label className="flex flex-col gap-0.5 text-[12.5px] text-muted">
+      Starting balance, {currency}
+      <input
+        key={value}
+        aria-label={`Starting balance of ${name}`}
+        className={cx(inputClass, "num h-8 w-32! text-[13px] max-sm:h-11")}
+        inputMode="decimal"
+        defaultValue={value}
+        onBlur={async (e) => {
+          const next = Number(e.target.value.trim() || 0);
+          if (!Number.isFinite(next) || next < 0) return setError("Enter 0 or more");
+          setError(undefined);
+          if (next === value) return;
+          try {
+            await api(`/api/accounts/${id}`, { method: "PATCH", json: { startingBalance: next } });
+            await refresh();
+            toast({ message: `Starting balance of ${name} saved.`, tone: "success" });
+          } catch (err) {
+            toast({ message: err instanceof Error ? err.message : "Couldn't save the balance.", tone: "error" });
+          }
+        }}
+      />
+      {error && <span className="text-loss">{error}</span>}
+    </label>
+  );
+}
+
 function TradingDefaults() {
   const { settings, saveSettings } = useApp();
   if (!settings) return null;
@@ -169,6 +201,14 @@ function TradingDefaults() {
         <FeeDefault label="Other fees" value={fees.otherFees} onSave={(otherFees) => void saveSettings({ feeDefaults: { ...fees, otherFees } })} />
       </div>
       <p className="mt-2 text-[13px] text-muted">The two fee amounts start every new trade you log by hand, where you can still change them. Imported and synced trades keep their own.</p>
+      <div className="mt-4 grid max-w-2xl gap-4 sm:grid-cols-2">
+        <Field label="Daily plan template" hint="Offered when a day's plan is empty.">
+          {(p) => <textarea {...p} rows={6} maxLength={2000} className={cx(inputClass, "h-auto py-1.5")} defaultValue={settings.journalTemplates.plan} onBlur={(e) => e.target.value !== settings.journalTemplates.plan && void saveSettings({ journalTemplates: { ...settings.journalTemplates, plan: e.target.value } })} />}
+        </Field>
+        <Field label="Daily recap template" hint="Offered when a day's recap is empty.">
+          {(p) => <textarea {...p} rows={6} maxLength={2000} className={cx(inputClass, "h-auto py-1.5")} defaultValue={settings.journalTemplates.recap} onBlur={(e) => e.target.value !== settings.journalTemplates.recap && void saveSettings({ journalTemplates: { ...settings.journalTemplates, recap: e.target.value } })} />}
+        </Field>
+      </div>
     </Section>
   );
 }
@@ -205,6 +245,7 @@ function Accounts() {
               <p className="font-medium">{a.name} {a.isSample && <Badge tone="info">Sample</Badge>} {a.archived && <Badge>Archived</Badge>}</p>
               <p className="text-[12.5px] text-muted"><span className="num">{a.currency}</span>, starting <span className="num">{money(a.startingBalance, a.currency)}</span></p>
             </div>
+            <StartingBalance id={a.id} name={a.name} currency={a.currency} value={a.startingBalance} />
             {settings?.defaultAccountId === a.id ? (
               <span className="flex items-center gap-1.5 px-3 text-[13px] text-ink"><span aria-hidden className="h-2 w-2 bg-accent" />Default</span>
             ) : (

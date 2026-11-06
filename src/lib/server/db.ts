@@ -104,6 +104,20 @@ export const MIGRATIONS: { version: number; name: string; sql: string; run?: (db
     name: "option details on trades",
     sql: "ALTER TABLE trades ADD COLUMN option_right TEXT; ALTER TABLE trades ADD COLUMN strike REAL; ALTER TABLE trades ADD COLUMN expiry TEXT;",
   },
+  {
+    version: 5,
+    name: "daily journal",
+    sql: `CREATE TABLE daily_journal (
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      date TEXT NOT NULL,
+      plan TEXT NOT NULL DEFAULT '',
+      recap TEXT NOT NULL DEFAULT '',
+      rating INTEGER,
+      is_sample INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (user_id, date)
+    );`,
+  },
 ];
 
 const globalForDb = globalThis as unknown as { __kestrelDb?: DatabaseSync };

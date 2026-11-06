@@ -3,9 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/lib/client/app-state";
 import { useUrlFilters } from "@/lib/client/filters";
-import { dateTime, money, rFmt, toneOf } from "@/lib/client/format";
+import { dateTime, money, rFmt, toneOf, zoneName } from "@/lib/client/format";
 import { useFetch } from "@/lib/client/use-fetch";
-import type { Trade } from "@/lib/domain/types";
+import { DEFAULT_COLUMNS, JOURNAL_COLUMNS, type JournalColumn, type Trade } from "@/lib/domain/types";
+import { BulkBar } from "@/components/journal/BulkBar";
+import { COLUMN_DEFS, visibleColumns } from "@/components/journal/columns";
 import { Duplicates, type DuplicatePair } from "@/components/journal/Duplicates";
 import { ImportDialog } from "@/components/journal/ImportDialog";
 import { PnlIssue, SideBadge, SourceBadge, StatusBadge } from "@/components/journal/badges";
@@ -55,7 +57,7 @@ const isTyping = (el: EventTarget | null) => {
 };
 
 function Journal() {
-  const { accounts, editTrade, openTrade, dataVersion } = useApp();
+  const { accounts, editTrade, openTrade, dataVersion, settings, saveSettings } = useApp();
   const { deleteTrades, duplicateTrade } = useTradeActions();
   const filters = useUrlFilters();
   const { get, set } = filters;
@@ -107,6 +109,17 @@ function Journal() {
   const curOf = (t: Trade) => accounts.find((a) => a.id === t.accountId)?.currency;
   const dupeCount = dupes.data?.pairs.length ?? 0;
   const sh = { sort, dir, onSort: sortBy };
+  // Shown at once, while the save catches up.
+  const [pendingColumns, setPendingColumns] = useState<JournalColumn[] | null>(null);
+  const columns = visibleColumns(pendingColumns ?? settings?.journalColumns);
+  // Extra columns can outgrow the page. The table then scrolls sideways, and its head can't also stick to the top.
+  const wide = columns.length > DEFAULT_COLUMNS.length;
+  const toggleColumn = async (c: JournalColumn) => {
+    const next = columns.includes(c) ? columns.filter((x) => x !== c) : [...columns, c];
+    setPendingColumns(next);
+    await saveSettings({ journalColumns: next });
+    setPendingColumns(null);
+  };
 
   // Re-subscribes each render, so the keys always read this page's rows and cursor.
   useEffect(() => {
@@ -154,6 +167,7 @@ function Journal() {
         />
         <div className="flex flex-wrap gap-2 sm:ml-auto">
           <Button size="sm" className="max-sm:h-11" onClick={() => set({ import: "1" })}>Import</Button>
+          <a href={`/api/trades/export?${filters.apiQuery()}`} download className="inline-flex h-8 items-center border border-line-strong px-3 text-[13px] font-medium hover:bg-raised max-sm:h-11">Export CSV</a>
           <Button size="sm" className="max-sm:h-11" onClick={() => editTrade("new")}>Log trade</Button>
         </div>
       </header>
@@ -183,6 +197,20 @@ function Journal() {
             )
           ) : (
             <div className={cx("transition-opacity", loading && "opacity-70")}>
+              <details className="mb-1 text-[13px]" data-testid="columns-menu">
+                <summary className="inline-flex h-8 cursor-pointer items-center text-ink-soft hover:text-ink max-sm:h-11">Columns</summary>
+                <fieldset className="grid grid-cols-2 gap-x-4 gap-y-1 border-y border-line py-2 sm:grid-cols-4 lg:grid-cols-6">
+                  <legend className="sr-only">Columns to show</legend>
+                  {JOURNAL_COLUMNS.map((c) => (
+                    <label key={c} className="flex min-h-8 items-center gap-2 text-ink-soft max-sm:min-h-11">
+                      <input type="checkbox" checked={columns.includes(c)} onChange={() => void toggleColumn(c)} className={checkbox} />
+                      {COLUMN_DEFS[c].label}
+                    </label>
+                  ))}
+                  <button type="button" className="col-span-full justify-self-start text-[12.5px] text-muted underline underline-offset-2 hover:text-ink" onClick={() => void saveSettings({ journalColumns: null })}>Back to the standard columns</button>
+                </fieldset>
+              </details>
+              <div className={wide ? "overflow-x-auto [&_th]:static" : undefined}>
               <table className="w-full text-[13.5px]">
                 <caption className="sr-only">Trades, page {page} of {lastPage}, {total} in all</caption>
                 <thead className="text-left text-[12.5px] text-muted">
@@ -191,13 +219,14 @@ function Journal() {
                       <input type="checkbox" aria-label="Select every trade on this page" checked={allSelected} onChange={togglePage} className={checkbox} />
                     </th>
                     <SortHeader {...sh} k="symbol" label="Trade" />
-                    <th scope="col" className={cx(headCell, "hidden px-2 md:table-cell")}>Side</th>
-                    <SortHeader {...sh} k="openedAt" label="Opened" className="hidden sm:table-cell" />
-                    <SortHeader {...sh} k="closedAt" label="Closed" className="hidden xl:table-cell" />
-                    <th scope="col" className={cx(headCell, "hidden px-2 xl:table-cell")}>Strategy</th>
-                    <th scope="col" className={cx(headCell, "hidden px-2 lg:table-cell")}>Source</th>
-                    <th scope="col" className={cx(headCell, "hidden px-2 md:table-cell")}>Status</th>
-                    <SortHeader {...sh} k="quantity" label="Size" className="hidden text-right lg:table-cell" />
+                    {columns.map((c) => {
+                      const d = COLUMN_DEFS[c];
+                      return d.sort ? (
+                        <SortHeader key={c} {...sh} k={d.sort} label={d.label} className={cx(d.show, d.numeric && "text-right")} />
+                      ) : (
+                        <th key={c} scope="col" className={cx(headCell, "px-2", d.show, d.numeric && "text-right")}>{d.label}</th>
+                      );
+                    })}
                     <SortHeader {...sh} k="pnl" label="P&L" className="text-right" />
                     <SortHeader {...sh} k="rMultiple" label="R" className="hidden text-right sm:table-cell" />
                     <th scope="col" className={cx(headCell, "hidden w-28 md:table-cell")}><span className="sr-only">Actions</span></th>
@@ -219,7 +248,7 @@ function Journal() {
                           </label>
                         </td>
                         <td className="px-2 py-1">
-                          <button type="button" className="font-medium hover:underline" onClick={() => openTrade(t.id)}>{t.symbol}</button>
+                          <button type="button" className="font-medium whitespace-nowrap hover:underline" onClick={() => openTrade(t.id)}>{t.symbol}</button>
                           <span className="ml-2 md:hidden"><SideBadge side={t.side} /></span>
                           <span className="ml-2 lg:hidden"><SourceBadge source={t.source} /></span>
                           <span className="mt-0.5 flex flex-wrap items-baseline gap-x-2 sm:hidden">
@@ -227,13 +256,9 @@ function Journal() {
                             <StatusBadge status={t.status} />
                           </span>
                         </td>
-                        <td className="hidden px-2 py-1 md:table-cell"><SideBadge side={t.side} /></td>
-                        <td className="num hidden px-2 py-1 text-[12.5px] whitespace-nowrap text-ink-soft sm:table-cell">{dateTime(t.openedAt)}</td>
-                        <td className="num hidden px-2 py-1 text-[12.5px] whitespace-nowrap text-ink-soft xl:table-cell">{dateTime(t.closedAt)}</td>
-                        <td className="hidden max-w-32 truncate px-2 py-1 text-[13px] text-ink-soft xl:table-cell">{t.strategy || <span className="text-muted">None</span>}</td>
-                        <td className="hidden px-2 py-1 lg:table-cell"><SourceBadge source={t.source} /></td>
-                        <td className="hidden px-2 py-1 md:table-cell"><StatusBadge status={t.status} /></td>
-                        <td className="num hidden px-2 py-1 text-right text-[12.5px] text-ink-soft lg:table-cell">{t.quantity}</td>
+                        {columns.map((c) => (
+                          <td key={c} data-col={c} className={cx("px-2 py-1", COLUMN_DEFS[c].show, COLUMN_DEFS[c].numeric && "text-right")}>{COLUMN_DEFS[c].cell(t, { accounts })}</td>
+                        ))}
                         <td className={`num px-2 py-1 text-right whitespace-nowrap ${toneOf(t.pnl)}`}>
                           {t.pnlStatus !== "ok" ? <PnlIssue status={t.pnlStatus} /> : t.pnl === null ? <span className="font-sans text-muted">Open</span> : money(t.pnl, curOf(t), true)}
                           <span className="block text-[12.5px] text-ink-soft sm:hidden">{rFmt(t.rMultiple)}</span>
@@ -250,9 +275,10 @@ function Journal() {
                   })}
                 </tbody>
               </table>
+              </div>
 
               <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2 text-[13px] text-muted">
-                <span><span className="num">{((page - 1) * Number(pageSize) + 1).toLocaleString()} to {Math.min(page * Number(pageSize), total).toLocaleString()} of {total.toLocaleString()}</span>. Times are local time.</span>
+                <span><span className="num">{((page - 1) * Number(pageSize) + 1).toLocaleString()} to {Math.min(page * Number(pageSize), total).toLocaleString()} of {total.toLocaleString()}</span>. Times are {zoneName()}.</span>
                 <span className="flex items-center gap-2">
                   <label htmlFor="page-size" className="whitespace-nowrap">Per page</label>
                   <select id="page-size" className="num h-8 border border-line-strong bg-sunken px-1 text-[13px] text-ink max-sm:h-11" value={pageSize} onChange={(e) => set({ pageSize: e.target.value })}>
@@ -269,11 +295,16 @@ function Journal() {
           )}
 
           {selected.size > 0 && (
-            <div className="sticky bottom-0 z-10 mt-2 flex flex-wrap items-center gap-3 border-t border-line-strong bg-raised px-3 py-2 text-[13.5px]" role="region" aria-label="Bulk actions">
-              <span><span className="num">{selected.size}</span> selected</span>
-              <Button size="sm" variant="danger" className="max-sm:h-11" disabled={selected.size > MAX_BULK} title={selected.size > MAX_BULK ? `Up to ${MAX_BULK} at a time` : undefined} onClick={async () => { await deleteTrades([...selected]); setSelected(new Set()); }}>Delete selected</Button>
-              <Button size="sm" variant="ghost" className="max-sm:h-11" onClick={() => setSelected(new Set())}>Clear selection</Button>
-            </div>
+            <BulkBar
+              ids={[...selected]}
+              maxBulk={MAX_BULK}
+              onDone={() => setSelected(new Set())}
+              onDelete={async () => {
+                await deleteTrades([...selected]);
+                setSelected(new Set());
+              }}
+              onClear={() => setSelected(new Set())}
+            />
           )}
         </>
       )}

@@ -279,10 +279,10 @@ function Section({ title, summary, defaultOpen, force, children }: { title: stri
   );
 }
 
-function Rating({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+export function Rating({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <span className="text-[13px] text-ink-soft capitalize">{label}</span>
+      <span className="text-[13px] text-ink-soft first-letter:uppercase">{label}</span>
       <div role="radiogroup" aria-label={`${label}, 1 to 5`} className="flex gap-0.5">
         {[1, 2, 3, 4, 5].map((v) => (
           <button

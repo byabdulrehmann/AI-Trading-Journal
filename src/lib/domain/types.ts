@@ -197,6 +197,26 @@ export interface Trade extends Omit<TradeData, "assetClass" | "session" | "execu
   attachments?: Attachment[];
 }
 
+/** Everything the trade log can show, in the order it shows them. */
+export const JOURNAL_COLUMNS = ["side", "opened", "closed", "hold", "strategy", "setup", "tags", "mistakes", "emotion", "grade", "account", "assetClass", "source", "status", "entry", "exit", "size", "fees", "plannedR"] as const;
+export type JournalColumn = (typeof JOURNAL_COLUMNS)[number];
+export const DEFAULT_COLUMNS: JournalColumn[] = ["side", "opened", "closed", "strategy", "source", "status", "size"];
+
+const validDay = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(`${v}T12:00:00Z`)) && new Date(`${v}T12:00:00Z`).toISOString().slice(0, 10) === v;
+
+export const DailyInput = z.object({
+  date: z.string().refine(validDay, "Enter a valid date"),
+  plan: z.string().max(8000).default(""),
+  recap: z.string().max(8000).default(""),
+  rating: z.number().int().min(1).max(5).nullable().default(null),
+});
+export type DailyInput = z.output<typeof DailyInput>;
+
+export interface DailyEntry extends DailyInput {
+  isSample: boolean;
+  updatedAt: string;
+}
+
 export const COACHING_STYLES = ["direct", "supportive", "analytical"] as const;
 export const SHARING_LEVELS = ["metrics", "trades", "trades_with_notes"] as const;
 
@@ -234,6 +254,15 @@ export const Settings = z.object({
   timeZone: z.string().max(64).refine((v) => v === "" || isValidZone(v), "Unknown time zone").default(""),
   /** Filled into a new manual trade, where they can still be changed. Never applied to imported or synced trades. */
   feeDefaults: z.object({ commission: z.number().min(0).default(0), otherFees: z.number().min(0).default(0) }).default({ commission: 0, otherFees: 0 }),
+  /** Null: the standard columns. */
+  journalColumns: z.array(z.enum(JOURNAL_COLUMNS)).max(JOURNAL_COLUMNS.length).nullable().default(null),
+  /** Offered when a day's plan or recap is empty. */
+  journalTemplates: z
+    .object({ plan: z.string().max(2000).default(""), recap: z.string().max(2000).default("") })
+    .default({
+      plan: "Market bias:\nLevels to watch:\nSetups I will take:\nMost I can lose today:\nNews to stay away from:",
+      recap: "What went well:\nWhat did not:\nDid I follow my plan?\nOne thing to change tomorrow:",
+    }),
   /** Null: the standard layout. */
   dashboard: DashboardLayout.nullable().default(null),
   /** Explicit opt-in. Nothing is written to the activity log while false. */
