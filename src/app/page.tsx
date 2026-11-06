@@ -6,7 +6,8 @@ import { api } from "@/lib/client/api";
 import type { Analytics } from "@/lib/client/analytics";
 import { useApp } from "@/lib/client/app-state";
 import { useUrlFilters } from "@/lib/client/filters";
-import { dateTime, duration, money, pct, profitFactorText, rFmt, toneOf } from "@/lib/client/format";
+import { dateTime, duration, money, pct, profitFactorText, rFmt, toneOf, zoneName } from "@/lib/client/format";
+import { zoneInstant, zoneParts } from "@/lib/domain/zone";
 import { useFetch } from "@/lib/client/use-fetch";
 import { METRIC_DEFINITIONS as D } from "@/lib/domain/metrics";
 import type { Trade } from "@/lib/domain/types";
@@ -27,9 +28,9 @@ export default function DashboardPage() {
   );
 }
 
-function sevenDaysAgo() {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - 6).toISOString();
+function sevenDaysAgo(tz?: string) {
+  const d = zoneParts(Date.now(), tz);
+  return new Date(zoneInstant(d.year, d.month, d.day - 6, 0, 0, tz)).toISOString();
 }
 
 const smallLink = "inline-flex h-8 items-center border border-line-strong px-3 text-[13px] hover:border-muted";
@@ -49,7 +50,8 @@ function Dashboard() {
   const { data, error, loading, reload } = useFetch<Analytics>(`/api/analytics?${filters.apiQuery()}`);
   const recent = useFetch<{ trades: Trade[] }>(data ? `/api/trades?${filters.apiQuery({ extra: { pageSize: "8", currency: data.currency } })}` : null);
   const symbols = useSymbols(data && data.equity.length ? filters.apiQuery({ extra: { currency: data.currency } }) : null);
-  const week = useMemo(() => sevenDaysAgo(), []);
+  const tz = useApp().settings?.timeZone || undefined;
+  const week = useMemo(() => sevenDaysAgo(tz), [tz]);
   const unanswered = useFetch<{ total: number }>(settings?.jarvis.reflectionPrompts ? `/api/trades?plan=unanswered&from=${encodeURIComponent(week)}&pageSize=1` : null);
 
   const loadSample = async () => {
@@ -171,7 +173,7 @@ function Dashboard() {
                     <th scope="col" className="py-1.5 pr-3 font-normal">Trade</th>
                     <th scope="col" className="hidden py-1.5 pr-3 font-normal sm:table-cell">Side</th>
                     <th scope="col" className="hidden py-1.5 pr-3 font-normal sm:table-cell">Source</th>
-                    <th scope="col" className="py-1.5 pr-3 font-normal whitespace-nowrap">Opened, local time</th>
+                    <th scope="col" className="py-1.5 pr-3 font-normal whitespace-nowrap">Opened, {zoneName()}</th>
                     <th scope="col" className="py-1.5 text-right font-normal">P&amp;L</th>
                   </tr>
                 </thead>

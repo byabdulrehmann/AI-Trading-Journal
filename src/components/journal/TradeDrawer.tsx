@@ -1,7 +1,7 @@
 "use client";
 
 import { useApp } from "@/lib/client/app-state";
-import { SESSION_LABELS, dateTime, duration, fileSize, money, rFmt, toneOf } from "@/lib/client/format";
+import { SESSION_LABELS, dateTime, duration, fileSize, money, rFmt, toneOf, zoneName } from "@/lib/client/format";
 import { useFetch } from "@/lib/client/use-fetch";
 import { pipsBetween } from "@/lib/domain/engine/instruments";
 import type { Trade } from "@/lib/domain/types";
@@ -147,10 +147,11 @@ function TradeDetail({ trade: t }: { trade: Trade }) {
           ["Remaining", t.remainingQty],
           ["Pips", pips ?? "—"],
           ["Duration", duration(t.holdingMinutes)],
-          ["Opened, local time", dateTime(t.openedAt)],
-          ["Closed, local time", dateTime(t.closedAt)],
+          [`Opened, ${zoneName()}`, dateTime(t.openedAt)],
+          [`Closed, ${zoneName()}`, dateTime(t.closedAt)],
           ["Session", <span key="s" className="font-sans">{t.session ? SESSION_LABELS[t.session] : "—"}</span>],
           ["Asset class", <span key="c" className="font-sans capitalize">{t.assetClass}</span>],
+          ...(t.assetClass === "option" && t.strike !== null ? ([["Option", <span key="o" className="capitalize">{t.optionRight} {t.strike}, expires {t.expiry}</span>]] as [string, React.ReactNode][]) : []),
           ["Strategy", <span key="st" className="font-sans">{t.strategy || "—"}</span>],
         ]}
       />

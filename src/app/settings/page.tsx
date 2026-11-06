@@ -80,7 +80,7 @@ export default function SettingsPage() {
     <>
       <PageHeader title="Settings" description="Preferences, privacy and your data. Everything is stored in a local database on this computer." />
       <nav aria-label="Settings sections" className="mb-5 flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
-        {[["profile", "Profile"], ["password", "Password"], ["accounts", "Accounts"], ["jarvis", "AI Coach"], ["privacy", "Privacy"], ["data", "Your data"]].map(([id, l]) => (
+        {[["profile", "Profile"], ["defaults", "Trading defaults"], ["password", "Password"], ["accounts", "Accounts"], ["jarvis", "AI Coach"], ["privacy", "Privacy"], ["data", "Your data"]].map(([id, l]) => (
           <a key={id} href={`#${id}`} className="py-1 text-ink-soft underline-offset-2 hover:text-ink hover:underline pointer-coarse:py-3">{l}</a>
         ))}
       </nav>
@@ -96,6 +96,8 @@ export default function SettingsPage() {
           </div>
         </div>
       </Section>
+
+      <TradingDefaults />
 
       <Password />
 
@@ -119,6 +121,55 @@ export default function SettingsPage() {
       <Privacy />
       <DataControls />
     </>
+  );
+}
+
+/** Only what the browser knows. An older browser without the list still offers this computer's zone. */
+const zones = (): string[] => (typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : []);
+
+function FeeDefault({ label, value, onSave }: { label: string; value: number; onSave: (v: number) => void }) {
+  const [error, setError] = useState<string | undefined>();
+  return (
+    <Field label={label} error={error}>
+      {(p) => (
+        <input
+          {...p}
+          className={cx(inputClass, "num")}
+          inputMode="decimal"
+          defaultValue={value || ""}
+          onBlur={(e) => {
+            const next = e.target.value.trim() === "" ? 0 : Number(e.target.value);
+            if (!Number.isFinite(next) || next < 0) return setError("Enter 0 or more");
+            setError(undefined);
+            if (next !== value) onSave(next);
+          }}
+        />
+      )}
+    </Field>
+  );
+}
+
+function TradingDefaults() {
+  const { settings, saveSettings } = useApp();
+  if (!settings) return null;
+  const fees = settings.feeDefaults;
+  const options = zones();
+  return (
+    <Section id="defaults" title="Trading defaults" description="Days, calendars and reports follow the time zone you pick here.">
+      <div className="grid max-w-md grid-cols-2 gap-4">
+        <Field label="Time zone" className="col-span-2" hint="Files with no zone of their own are still read in this computer's time.">
+          {(p) => (
+            <select {...p} className={inputClass} value={settings.timeZone} onChange={(e) => void saveSettings({ timeZone: e.target.value })}>
+              <option value="">This computer&apos;s time zone</option>
+              {options.map((z) => <option key={z} value={z}>{z.replace(/_/g, " ")}</option>)}
+            </select>
+          )}
+        </Field>
+        <FeeDefault label="Commission" value={fees.commission} onSave={(commission) => void saveSettings({ feeDefaults: { ...fees, commission } })} />
+        <FeeDefault label="Other fees" value={fees.otherFees} onSave={(otherFees) => void saveSettings({ feeDefaults: { ...fees, otherFees } })} />
+      </div>
+      <p className="mt-2 text-[13px] text-muted">The two fee amounts start every new trade you log by hand, where you can still change them. Imported and synced trades keep their own.</p>
+    </Section>
   );
 }
 

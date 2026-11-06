@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { api, fieldErrors } from "@/lib/client/api";
 import type { Facets } from "@/lib/client/analytics";
 import { useApp } from "@/lib/client/app-state";
-import { SESSION_LABELS, fileSize, money, rFmt, toLocalInput } from "@/lib/client/format";
+import { SESSION_LABELS, fileSize, fromLocalInput, money, rFmt, toLocalInput } from "@/lib/client/format";
 import { useFetch } from "@/lib/client/use-fetch";
 import { ASSET_CLASSES, SESSIONS, classifySymbol, normalizeSymbol, parsePair, resolveFxRate, sessionFor } from "@/lib/domain/engine/instruments";
 import { computePosition, type PositionResult } from "@/lib/domain/engine/position";
@@ -40,13 +40,16 @@ const ATTACH_KINDS = [
 ] as const;
 const nice = (s: string) => s.replace(/_/g, " ");
 
-const blank = (accountId: number | undefined) => {
+const blank = (accountId: number | undefined, fees?: { commission: number; otherFees: number }) => {
   const nowLocal = toLocalInput(new Date().toISOString());
   return {
     accountId: accountId ? String(accountId) : "",
     symbol: "",
     side: "long" as "long" | "short",
     assetClass: "",
+    optionRight: "" as "" | "call" | "put",
+    strike: "",
+    expiry: "",
     session: "",
     strategy: "",
     openedAt: nowLocal,
@@ -58,9 +61,9 @@ const blank = (accountId: number | undefined) => {
     multiplier: null as string | null,
     stopPrice: "",
     targetPrice: "",
-    commission: "",
+    commission: fees?.commission ? String(fees.commission) : "",
     swap: "",
-    otherFees: "",
+    otherFees: fees?.otherFees ? String(fees.otherFees) : "",
     fxRate: "",
     useFills: false,
     fills: [] as FillRow[],
@@ -100,6 +103,9 @@ function fromTrade(t: Trade): FormState {
     symbol: t.symbol,
     side: t.side,
     assetClass: t.assetClass,
+    optionRight: t.optionRight ?? "",
+    strike: t.strike === null ? "" : String(t.strike),
+    expiry: t.expiry ?? "",
     session: t.session && t.session !== sessionFor(t.openedAt) ? t.session : "",
     strategy: t.strategy,
     openedAt: toLocalInput(t.openedAt),
@@ -144,7 +150,7 @@ function fromTrade(t: Trade): FormState {
 /** Blank is null; anything unreadable is NaN, for validation to catch. */
 const n = (s: string) => (s.trim() === "" ? null : Number(s));
 const list = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean);
-const toIso = (local: string, kept?: string | null) => (kept && toLocalInput(kept) === local ? kept : local ? new Date(local).toISOString() : "");
+const toIso = (local: string, kept?: string | null) => (kept && toLocalInput(kept) === local ? kept : fromLocalInput(local));
 const good = (v: number | null): v is number => v !== null && Number.isFinite(v) && v > 0;
 
 function fillsOf(f: FormState) {
@@ -166,6 +172,9 @@ function toPayload(f: FormState, multiplier: string, trade: Trade | null) {
     otherFees: n(f.otherFees) ?? 0,
     fxRate: n(f.fxRate),
     assetClass: f.assetClass || null,
+    optionRight: f.assetClass === "option" ? f.optionRight || null : null,
+    strike: f.assetClass === "option" ? n(f.strike) : null,
+    expiry: f.assetClass === "option" ? f.expiry || null : null,
     session: f.session || null,
     strategy: f.strategy,
     strategyTags: list(f.strategyTags),
@@ -299,7 +308,7 @@ function TradeFormBody({ trade }: { trade: Trade | null }) {
   const { editTrade, accounts, settings, refresh, toast, openTrade } = useApp();
   const selectable = accounts.filter((a) => !a.archived || a.id === trade?.accountId);
   const defaultAccount = selectable.find((a) => a.id === settings?.defaultAccountId && !a.isSample) ?? selectable.find((a) => !a.isSample) ?? selectable[0];
-  const [form, setForm] = useState<FormState>(() => (trade ? fromTrade(trade) : blank(defaultAccount?.id)));
+  const [form, setForm] = useState<FormState>(() => (trade ? fromTrade(trade) : blank(defaultAccount?.id, settings?.feeDefaults)));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [pending, setPending] = useState<{ file: File; kind: Attachment["kind"] }[]>([]);
@@ -322,9 +331,9 @@ function TradeFormBody({ trade }: { trade: Trade | null }) {
   const currency = account?.currency ?? "USD";
   const symbol = form.symbol.trim().toUpperCase();
   const spec = specs.data?.instruments.find((i) => i.symbol === symbol) ?? specs.data?.instruments.find((i) => normalizeSymbol(i.symbol) === normalizeSymbol(symbol));
-  const multiplier = form.multiplier ?? String(spec?.contractSize ?? 1);
+  const multiplier = form.multiplier ?? String(spec?.contractSize ?? (form.assetClass === "option" ? 100 : 1));
   const assetClass = form.assetClass || spec?.assetClass || classifySymbol(symbol);
-  const suggestedSession = form.openedAt ? sessionFor(new Date(form.openedAt).toISOString()) : null;
+  const suggestedSession = form.openedAt ? sessionFor(fromLocalInput(form.openedAt)) : null;
 
   // Live figures from the same engine the server uses, so the preview can't disagree with the saved trade.
   const simpleEntry = n(form.entryPrice);
@@ -575,7 +584,7 @@ function TradeFormBody({ trade }: { trade: Trade | null }) {
       </div>
 
       <div className="mt-3 border-t border-line">
-        <Section title="Asset class and session" summary={`${form.assetClass || `Auto: ${assetClass}`}, ${form.session ? SESSION_LABELS[form.session] : `suggested: ${suggestedSession ? SESSION_LABELS[suggestedSession] : "none"}`}`} force={hasErr("assetClass", "session")}>
+        <Section title="Asset class and session" summary={`${form.assetClass || `Auto: ${assetClass}`}, ${form.session ? SESSION_LABELS[form.session] : `suggested: ${suggestedSession ? SESSION_LABELS[suggestedSession] : "none"}`}`} force={form.assetClass === "option" || hasErr("assetClass", "session", "optionRight", "strike", "expiry")}>
           <div className={grid}>
             <Field label="Asset class" error={err("assetClass")}>
               {(p) => (
@@ -593,6 +602,25 @@ function TradeFormBody({ trade }: { trade: Trade | null }) {
                 </select>
               )}
             </Field>
+            {form.assetClass === "option" && (
+              <>
+                <Field label="Call or put" error={err("optionRight")}>
+                  {(p) => (
+                    <select {...p} className={inputClass} value={form.optionRight} disabled={locked} onChange={(e) => set("optionRight", e.target.value as FormState["optionRight"])}>
+                      <option value="">Choose</option>
+                      <option value="call">Call</option>
+                      <option value="put">Put</option>
+                    </select>
+                  )}
+                </Field>
+                <Field label="Strike" error={err("strike")}>
+                  {(p) => <input {...p} className={cx(inputClass, "num")} inputMode="decimal" value={form.strike} disabled={locked} onChange={(e) => set("strike", e.target.value)} />}
+                </Field>
+                <Field label="Expiry" error={err("expiry")}>
+                  {(p) => <input {...p} type="date" className={cx(inputClass, "num text-[13px]")} value={form.expiry} disabled={locked} onChange={(e) => set("expiry", e.target.value)} />}
+                </Field>
+              </>
+            )}
           </div>
         </Section>
 

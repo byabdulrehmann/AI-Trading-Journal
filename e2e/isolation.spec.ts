@@ -43,6 +43,8 @@ test("a second user can't see or touch the first user's trades, by UI, URL or AP
   await open(theirs, "/journal?symbol=EURUSD&closedOnly=1");
   await expect(rows(theirs)).toHaveCount(0);
   await open(theirs, "/");
+  // The symbol filter above follows to the dashboard, which shows it and offers to clear it.
+  await theirs.getByRole("button", { name: "Clear", exact: true }).click();
   await expect(theirs.getByRole("heading", { name: "Start your journal" })).toBeVisible();
   await theirs.keyboard.press("Control+k");
   await dialog(theirs).getByLabel("Search screens and trades").fill("EURUSD");

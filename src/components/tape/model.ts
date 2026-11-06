@@ -1,3 +1,6 @@
+import { displayZone } from "@/lib/client/format";
+import { zoneDateKey } from "@/lib/domain/zone";
+
 /** The Tape's arithmetic: no React, no invented figures. Everything derives from the analytics equity and drawdown curves. */
 
 export interface TapePoint {
@@ -64,10 +67,9 @@ export function tickColumns(points: TapePoint[], xs: number[], step: number): Ti
   return [...columns.values()];
 }
 
-/** The local calendar day, the unit the shared date filter speaks. */
+/** The calendar day in the display zone, the unit the shared date filter speaks. */
 export function localDay(ms: number): string {
-  const d = new Date(ms);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return zoneDateKey(ms, displayZone());
 }
 
 export interface Brushed {

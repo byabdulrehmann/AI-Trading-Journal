@@ -1,5 +1,6 @@
 "use client";
 
+import { displayZone, zoneName } from "@/lib/client/format";
 import { Fragment, useEffect, useState } from "react";
 import { api } from "@/lib/client/api";
 import { useApp } from "@/lib/client/app-state";
@@ -114,7 +115,7 @@ export default function MarketPage() {
         </Card>
 
         <Card className="self-start">
-          <CardHeader title="Economic calendar" subtitle={kind === "live" ? "Upcoming releases, local time" : "Simulated entries, local time"} />
+          <CardHeader title="Economic calendar" subtitle={kind === "live" ? `Upcoming releases, ${zoneName()}` : `Simulated entries, ${zoneName()}`} />
           {[...byDay.entries()].map(([d, events]) => (
             <section key={d} className="border-t border-line py-2">
               <h3 className="text-[13px] font-medium text-muted">{new Date(d).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</h3>
@@ -122,7 +123,7 @@ export default function MarketPage() {
                 {events.map((e) => (
                   <li key={e.id} className="py-1.5 text-[13px]">
                     <div className="flex items-baseline gap-2">
-                      <span className="num text-muted">{new Date(e.at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</span>
+                      <span className="num text-muted">{new Date(e.at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", timeZone: displayZone() })}</span>
                       <span className="min-w-0 flex-1">{e.title}</span>
                     </div>
                     <p className="mt-0.5 text-[12.5px] text-muted">

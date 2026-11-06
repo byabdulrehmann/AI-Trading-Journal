@@ -66,7 +66,7 @@ export const PATTERN_RULES: Record<string, { title: string; rule: string; minSam
   },
 };
 
-export function detectPatterns(trades: Trade[]): PatternFinding[] {
+export function detectPatterns(trades: Trade[], tz?: string): PatternFinding[] {
   const closed = trades.filter(isClosed).sort((a, b) => Date.parse(a.openedAt) - Date.parse(b.openedAt));
   const found: (PatternFinding | null)[] = [
     holdingLosers(closed),
@@ -75,7 +75,7 @@ export function detectPatterns(trades: Trade[]): PatternFinding[] {
     earlyExit(closed),
     lossBeyondStop(closed),
     planDeviation(closed),
-    busyDays(closed),
+    busyDays(closed, tz),
   ];
   return found.filter((f): f is PatternFinding => f !== null);
 }
@@ -222,10 +222,10 @@ function planDeviation(closed: Closed[]): PatternFinding | null {
   };
 }
 
-function busyDays(closed: Closed[]): PatternFinding | null {
+function busyDays(closed: Closed[], tz?: string): PatternFinding | null {
   const days = new Map<string, Closed[]>();
   for (const t of closed) {
-    const k = localDateKey(t.openedAt);
+    const k = localDateKey(t.openedAt, tz);
     days.set(k, [...(days.get(k) ?? []), t]);
   }
   if (days.size < 5) return null;

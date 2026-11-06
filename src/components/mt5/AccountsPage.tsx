@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, fieldErrors } from "@/lib/client/api";
-import { dateTime, money, toneOf } from "@/lib/client/format";
+import { dateTime, money, toneOf, zoneName } from "@/lib/client/format";
 import { Badge, Button, EmptyState, Field, Notice, PageHeader, Spinner, cx, inputClass } from "@/components/ui";
 import type { ConnectionStatus } from "@/lib/server/repo/mt5";
 
@@ -195,7 +195,7 @@ function ConnectionCard({ c, onChange }: { c: ConnectionStatus; onChange: () => 
       </div>
       <div className="mt-3 space-y-3">
         <dl className="flex flex-wrap gap-x-6 gap-y-1 text-[13px]">
-          <div className="flex gap-1.5"><dt className="text-muted">Last successful sync, local time</dt><dd className="num text-ink">{dateTime(c.lastSuccessAt)}</dd></div>
+          <div className="flex gap-1.5"><dt className="text-muted">Last successful sync, {zoneName()}</dt><dd className="num text-ink">{dateTime(c.lastSuccessAt)}</dd></div>
           <div className="flex gap-1.5"><dt className="text-muted">Data age</dt><dd className={cx("num", c.stale ? "font-medium text-warn" : "text-ink")}>{age(c.dataAgeSeconds)}</dd></div>
           {!c.syncEnabled && connected && <div className="text-ink-soft">Automatic sync is off</div>}
         </dl>

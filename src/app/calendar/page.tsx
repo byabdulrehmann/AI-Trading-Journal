@@ -5,7 +5,8 @@ import type { Analytics } from "@/lib/client/analytics";
 import { dayKey, dayWindow, fromKey, monthKeyOf, weeksOf } from "@/lib/client/calendar";
 import { useApp } from "@/lib/client/app-state";
 import { useUrlFilters } from "@/lib/client/filters";
-import { compactMoney, dateTime, money, pct, toneOf } from "@/lib/client/format";
+import { compactMoney, dateTime, money, pct, toneOf, zoneName } from "@/lib/client/format";
+import { zoneDateKey } from "@/lib/domain/zone";
 import { useFetch } from "@/lib/client/use-fetch";
 import { addMoney } from "@/lib/domain/engine/position";
 import type { PeriodRow } from "@/lib/domain/metrics";
@@ -27,6 +28,8 @@ export default function CalendarPage() {
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const GRID = "grid grid-cols-7 md:grid-cols-[repeat(7,minmax(0,1fr))_5.5rem]";
 
+const todayIn = (tz?: string) => zoneDateKey(Date.now(), tz);
+
 function addDays(key: string, by: number) {
   const d = fromKey(key);
   return dayKey(new Date(d.getFullYear(), d.getMonth(), d.getDate() + by));
@@ -41,8 +44,9 @@ function addMonths(key: string, by: number) {
 
 function CalendarView() {
   const filters = useUrlFilters();
-  const { editTrade } = useApp();
-  const today = useMemo(() => dayKey(new Date()), []);
+  const { editTrade, settings } = useApp();
+  const tz = settings?.timeZone || undefined;
+  const today = useMemo(() => todayIn(tz), [tz]);
   // Whole history, because a day's total can't depend on when its trades were opened.
   const { data, error, loading, reload } = useFetch<Analytics>(`/api/analytics?${filters.apiQuery({ dates: false })}`);
 
@@ -118,7 +122,7 @@ function CalendarView() {
 
   return (
     <div className={cx("transition-opacity", loading && "opacity-70")}>
-      <PageHeader title="Calendar" description="Results land on the day a trade closed, in this computer's time zone." actions={<CurrencyPicker currency={cur} currencies={data.currencies} filters={filters} />} />
+      <PageHeader title="Calendar" description={`Results land on the day a trade closed, ${zoneName() === "local time" ? "in this computer's time zone" : zoneName()}.`} actions={<CurrencyPicker currency={cur} currencies={data.currencies} filters={filters} />} />
       <TradeFilters filters={filters} dates={false} />
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-x-8 gap-y-5 xl:grid-cols-[minmax(0,1fr)_19rem]">
@@ -281,7 +285,7 @@ function DayTrades({ day, row, currency, query }: { day: string; row?: PeriodRow
 
   return (
     <Card aria-live="polite" data-testid="day-trades">
-      <CardHeader title={label} subtitle={<>{row ? <>{row.trades} closed, {row.wins} won, {row.losses} lost. </> : null}Times are local time.</>} action={row && <span className={cx("num text-[14px]", toneOf(row.pnl))}>{money(row.pnl, currency, true)}</span>} />
+      <CardHeader title={label} subtitle={<>{row ? <>{row.trades} closed, {row.wins} won, {row.losses} lost. </> : null}Times are {zoneName()}.</>} action={row && <span className={cx("num text-[14px]", toneOf(row.pnl))}>{money(row.pnl, currency, true)}</span>} />
       {closed.loading && !closed.data ? (
         <Spinner />
       ) : list.length === 0 ? (

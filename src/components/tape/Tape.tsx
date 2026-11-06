@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { compactMoney, dateOnly, dateTime, money, toneOf } from "@/lib/client/format";
+import { compactMoney, dateOnly, dateTime, displayZone, money, toneOf, zoneName } from "@/lib/client/format";
 import { Button, DataTable, cx } from "@/components/ui";
 import { brushRange, buildPoints, nearestIndex, tickColumns, xPositions, type Brushed } from "./model";
 
@@ -12,7 +12,7 @@ const TOP = 12;
 const DRAG_PX = 5;
 const HOLD_MS = 350;
 
-const dayLabel = (ms: number, withYear: boolean) => new Date(ms).toLocaleDateString(undefined, withYear ? { month: "short", year: "numeric" } : { month: "short", day: "numeric" });
+const dayLabel = (ms: number, withYear: boolean) => new Date(ms).toLocaleDateString(undefined, { ...(withYear ? { month: "short", year: "numeric" } : { month: "short", day: "numeric" }), timeZone: displayZone() });
 
 type Gesture = { id: number; startX: number; touch: boolean; brushing: boolean; timer?: ReturnType<typeof setTimeout> };
 
@@ -228,7 +228,7 @@ export function Tape({
     setCursorId(points[step].tradeId);
   };
 
-  const valueText = current ? `Trade #${current.tradeId}, ${symbols.get(current.tradeId) ?? ""}, closed ${dateTime(current.iso)} local time, net ${money(current.net, currency, true)}, equity ${money(current.equity, currency, true)}` : "No trade chosen";
+  const valueText = current ? `Trade #${current.tradeId}, ${symbols.get(current.tradeId) ?? ""}, closed ${dateTime(current.iso)} ${zoneName()}, net ${money(current.net, currency, true)}, equity ${money(current.equity, currency, true)}` : "No trade chosen";
 
   const alternative = n === 0
     ? "No closed trades yet, so there is no equity line."
@@ -240,7 +240,7 @@ export function Tape({
         <tr>
           <th scope="col" className="sticky top-0 bg-canvas py-1 pr-3 font-normal">Trade</th>
           <th scope="col" className="sticky top-0 bg-canvas py-1 pr-3 font-normal">Symbol</th>
-          <th scope="col" className="sticky top-0 bg-canvas py-1 pr-3 font-normal whitespace-nowrap">Closed, local time</th>
+          <th scope="col" className="sticky top-0 bg-canvas py-1 pr-3 font-normal whitespace-nowrap">Closed, {zoneName()}</th>
           <th scope="col" className="sticky top-0 bg-canvas py-1 pr-3 text-right font-normal whitespace-nowrap">Net P&amp;L</th>
           <th scope="col" className="sticky top-0 bg-canvas py-1 pr-3 text-right font-normal">Equity</th>
           <th scope="col" className="sticky top-0 bg-canvas py-1 text-right font-normal">Drawdown</th>
@@ -284,7 +284,7 @@ export function Tape({
             <p className="flex flex-wrap items-baseline gap-x-3.5 gap-y-0">
               <span className="num text-muted">#{current.tradeId}</span>
               <span className="font-medium text-ink">{symbols.get(current.tradeId) ?? ""}</span>
-              <span className="num text-ink-soft">{dateTime(current.iso)} <span className="font-sans text-muted">local time</span></span>
+              <span className="num text-ink-soft">{dateTime(current.iso)} <span className="font-sans text-muted">{zoneName()}</span></span>
               <span className="whitespace-nowrap"><span className="text-muted">Net </span><span className={cx("num", toneOf(current.net))}>{money(current.net, currency, true)}</span></span>
               <span className="whitespace-nowrap"><span className="text-muted">Equity </span><span className="num text-ink">{money(current.equity, currency, true)}</span></span>
             </p>

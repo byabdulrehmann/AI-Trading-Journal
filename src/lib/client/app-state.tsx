@@ -4,6 +4,8 @@ import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Account, Settings } from "@/lib/domain/types";
 import { api, goToLogin } from "./api";
+import { setDisplayZone } from "./format";
+import { forgetFilters } from "./filters";
 import type { SettingsPatch } from "@/lib/server/repo/settings";
 
 export interface Toast {
@@ -118,6 +120,9 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per page load, wherever it started
   }, []);
 
+  // During render, so children format with the right zone on the render that first has it.
+  setDisplayZone(settings?.timeZone);
+
   useEffect(() => {
     if (!settings) return;
     const el = document.documentElement;
@@ -145,6 +150,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     await api("/api/auth/logout", { method: "POST" }).catch(() => {});
+    forgetFilters();
     goToLogin();
   }, []);
 

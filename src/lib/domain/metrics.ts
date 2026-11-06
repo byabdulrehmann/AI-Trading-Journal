@@ -2,6 +2,7 @@ import type { Account, Trade } from "./types";
 import { round } from "./trade-math";
 import { addMoney } from "./engine/position";
 import { computeStats } from "./engine/stats";
+import { zoneDateKey, zoneParts } from "./zone";
 
 /** Currencies that have trades, plus the one to report in first. Money in different currencies never adds up. */
 export function reportingCurrencies(accounts: Account[], trades: Trade[]): { currencies: string[]; primary: string | null } {
@@ -150,6 +151,46 @@ export const METRIC_DEFINITIONS = {
     formula: "longest run of losses, in closing order",
     meaning: "A breakeven trade ends the run.",
   },
+  payoffRatio: {
+    label: "Payoff ratio",
+    formula: "average win ÷ |average loss|",
+    meaning: "How much a typical win earns against what a typical loss costs. Needs at least one of each.",
+  },
+  recoveryFactor: {
+    label: "Recovery factor",
+    formula: "net P&L ÷ max drawdown",
+    meaning: "Profit made for each unit of the deepest drawdown. Blank until there has been a drawdown.",
+  },
+  avgPlannedR: {
+    label: "Average planned R",
+    formula: "mean of (target distance ÷ stop distance)",
+    meaning: "The reward you aimed for per unit of risk. Only trades with a stop and a target count.",
+  },
+  currentStreak: {
+    label: "Current streak",
+    formula: "wins (+) or losses (−) in a row, up to the latest closed trade",
+    meaning: "A breakeven trade resets it to zero.",
+  },
+  dayWinRate: {
+    label: "Winning days",
+    formula: "days with net P&L > 0 ÷ days with a closed trade",
+    meaning: "Results land on the day a trade closed.",
+  },
+  avgDailyPnl: {
+    label: "Average day",
+    formula: "net P&L ÷ days with a closed trade",
+    meaning: "Days with no closed trade aren't counted.",
+  },
+  bestDay: {
+    label: "Best day",
+    formula: "max(net P&L of a day)",
+    meaning: "The day with the largest total.",
+  },
+  worstDay: {
+    label: "Worst day",
+    formula: "min(net P&L of a day)",
+    meaning: "The day with the smallest total.",
+  },
 } satisfies Record<string, MetricDefinition>;
 
 export type MetricKey = keyof typeof METRIC_DEFINITIONS;
@@ -184,6 +225,18 @@ export interface Metrics {
   holdLosersMin: number | null;
   bestTrade: Trade | null;
   worstTrade: Trade | null;
+  payoffRatio: number | null;
+  recoveryFactor: number | null;
+  avgPlannedR: number | null;
+  /** Positive for wins in a row, negative for losses, zero after a breakeven or with no trades. */
+  currentStreak: number;
+  tradingDays: number;
+  winningDays: number;
+  losingDays: number;
+  dayWinRate: number | null;
+  avgDailyPnl: number | null;
+  bestDay: { date: string; pnl: number } | null;
+  worstDay: { date: string; pnl: number } | null;
 }
 
 export const isClosed = (t: Trade): t is Trade & { pnl: number; closedAt: string; exitPrice: number } =>
@@ -201,7 +254,7 @@ export function median(values: number[]): number | null {
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
 }
 
-export function computeMetrics(trades: Trade[]): Metrics {
+export function computeMetrics(trades: Trade[], tz?: string): Metrics {
   const closed = trades.filter(isClosed).sort((a, b) => Date.parse(a.closedAt) - Date.parse(b.closedAt));
   const s = computeStats(closed.map((t) => t.pnl));
   const winners = closed.filter((t) => t.pnl > 0);
@@ -210,6 +263,9 @@ export function computeMetrics(trades: Trade[]): Metrics {
   const planAnswered = trades.filter((t) => t.followedPlan !== null);
   const holds = closed.map((t) => holdMinutes(t) as number);
   const byPnl = [...closed].sort((a, b) => b.pnl - a.pnl);
+  const planned = closed.filter((t) => t.plannedR !== null).map((t) => t.plannedR as number);
+  const days = [...dailySummaries(closed, tz).values()].sort((a, b) => b.pnl - a.pnl);
+  const dayOf = (d: DaySummary | undefined) => (d ? { date: d.date, pnl: d.pnl } : null);
   return {
     totalTrades: trades.length,
     closedTrades: s.closed,
@@ -240,7 +296,26 @@ export function computeMetrics(trades: Trade[]): Metrics {
     holdLosersMin: median(losers.map((t) => holdMinutes(t) as number)),
     bestTrade: byPnl[0] ?? null,
     worstTrade: byPnl.at(-1) ?? null,
+    payoffRatio: s.avgWin !== null && s.avgLoss !== null ? round(s.avgWin / Math.abs(s.avgLoss), 2) : null,
+    recoveryFactor: s.maxDrawdown > 0 ? round(s.netPnl / s.maxDrawdown, 2) : null,
+    avgPlannedR: planned.length ? round(planned.reduce((a, b) => a + b, 0) / planned.length, 2) : null,
+    currentStreak: currentStreak(closed.map((t) => t.pnl)),
+    tradingDays: days.length,
+    winningDays: days.filter((d) => d.pnl > 0).length,
+    losingDays: days.filter((d) => d.pnl < 0).length,
+    dayWinRate: days.length ? days.filter((d) => d.pnl > 0).length / days.length : null,
+    avgDailyPnl: days.length ? round(s.netPnl / days.length, 2) : null,
+    bestDay: dayOf(days[0]),
+    worstDay: dayOf(days.at(-1)),
   };
+}
+
+function currentStreak(pnls: number[]): number {
+  const last = pnls.at(-1);
+  if (!last) return 0;
+  let run = 0;
+  for (let i = pnls.length - 1; i >= 0 && Math.sign(pnls[i]) === Math.sign(last); i--) run++;
+  return last > 0 ? run : -run;
 }
 
 export interface EquityPoint {
@@ -277,14 +352,13 @@ export function drawdownCurve(trades: Trade[]): DrawdownPoint[] {
 export type Period = "day" | "week" | "month" | "year";
 
 /** The bucket a local date falls in. Weeks start on Monday. */
-export function periodKey(iso: string, period: Period): string {
-  const day = localDateKey(iso);
+export function periodKey(iso: string, period: Period, tz?: string): string {
+  const day = localDateKey(iso, tz);
   if (period === "day") return day;
   if (period === "month") return day.slice(0, 7);
   if (period === "year") return day.slice(0, 4);
-  const d = new Date(iso);
-  const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7));
-  return localDateKey(monday.toISOString());
+  const p = zoneParts(Date.parse(iso), tz);
+  return new Date(Date.UTC(p.year, p.month - 1, p.day - ((p.weekday + 6) % 7))).toISOString().slice(0, 10);
 }
 
 export interface PeriodRow {
@@ -295,10 +369,10 @@ export interface PeriodRow {
   losses: number;
 }
 
-export function periodSummaries(trades: Trade[], period: Period): PeriodRow[] {
+export function periodSummaries(trades: Trade[], period: Period, tz?: string): PeriodRow[] {
   const rows = new Map<string, PeriodRow>();
   for (const t of trades.filter(isClosed)) {
-    const key = periodKey(t.closedAt, period);
+    const key = periodKey(t.closedAt, period, tz);
     const r = rows.get(key) ?? { key, pnl: 0, trades: 0, wins: 0, losses: 0 };
     r.pnl = addMoney([r.pnl, t.pnl]);
     r.trades += 1;
@@ -327,18 +401,15 @@ export interface DaySummary {
   tradeIds: number[];
 }
 
-export function localDateKey(iso: string): string {
-  const d = new Date(iso);
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${m}-${day}`;
+export function localDateKey(iso: string, tz?: string): string {
+  return zoneDateKey(iso, tz);
 }
 
 /** Groups closed trades by the local calendar day they closed. */
-export function dailySummaries(trades: Trade[]): Map<string, DaySummary> {
+export function dailySummaries(trades: Trade[], tz?: string): Map<string, DaySummary> {
   const days = new Map<string, DaySummary>();
   for (const t of trades.filter(isClosed)) {
-    const key = localDateKey(t.closedAt);
+    const key = localDateKey(t.closedAt, tz);
     const d = days.get(key) ?? { date: key, pnl: 0, trades: 0, tradeIds: [] };
     d.pnl = addMoney([d.pnl, t.pnl]);
     d.trades += 1;
@@ -364,13 +435,78 @@ export function breakdown(trades: Trade[], keyOf: (t: Trade) => string | null): 
     if (group) group.push(t);
     else groups.set(k, [t]);
   }
-  return [...groups.entries()]
-    .map(([key, ts]) => ({
-      key,
-      trades: ts.length,
-      netPnl: addMoney(ts.map((t) => t.pnl as number)),
-      winRate: ts.filter((t) => (t.pnl as number) > 0).length / ts.length,
-    }))
-    .sort((a, b) => b.netPnl - a.netPnl);
+  return [...groups.entries()].map(([key, ts]) => breakdownRow(key, ts)).sort((a, b) => b.netPnl - a.netPnl);
+}
+
+function breakdownRow(key: string, ts: Trade[]): BreakdownRow {
+  return {
+    key,
+    trades: ts.length,
+    netPnl: addMoney(ts.map((t) => t.pnl as number)),
+    winRate: ts.filter((t) => (t.pnl as number) > 0).length / ts.length,
+  };
+}
+
+/** For a field holding several values, such as tags: a trade counts once in each, so rows can add up to more than the total. */
+export function breakdownMany(trades: Trade[], keysOf: (t: Trade) => string[]): BreakdownRow[] {
+  const groups = new Map<string, Trade[]>();
+  for (const t of trades.filter(isClosed)) {
+    for (const k of new Set(keysOf(t))) groups.set(k, [...(groups.get(k) ?? []), t]);
+  }
+  return [...groups.entries()].map(([key, ts]) => breakdownRow(key, ts)).sort((a, b) => b.netPnl - a.netPnl);
+}
+
+/** A band from `from` up to, but not including, `to`. A missing end is open. */
+export interface Bucket {
+  key: string;
+  from?: number;
+  to?: number;
+}
+
+export const HOLD_BUCKETS: Bucket[] = [
+  { key: "Under 5 min", to: 5 },
+  { key: "5 to 15 min", from: 5, to: 15 },
+  { key: "15 to 60 min", from: 15, to: 60 },
+  { key: "1 to 4 hours", from: 60, to: 240 },
+  { key: "4 to 24 hours", from: 240, to: 1440 },
+  { key: "A day or more", from: 1440 },
+];
+
+export const R_BUCKETS: Bucket[] = [
+  { key: "Below −2R", to: -2 },
+  { key: "−2R to −1R", from: -2, to: -1 },
+  { key: "−1R to 0R", from: -1, to: 0 },
+  { key: "0R to 1R", from: 0, to: 1 },
+  { key: "1R to 2R", from: 1, to: 2 },
+  { key: "2R or more", from: 2 },
+];
+
+export const PRICE_BUCKETS: Bucket[] = [
+  { key: "Under 10", to: 10 },
+  { key: "10 to 50", from: 10, to: 50 },
+  { key: "50 to 200", from: 50, to: 200 },
+  { key: "200 to 1,000", from: 200, to: 1000 },
+  { key: "1,000 to 10,000", from: 1000, to: 10000 },
+  { key: "10,000 or more", from: 10000 },
+];
+
+export const SIZE_BUCKETS: Bucket[] = [
+  { key: "Under 1", to: 1 },
+  { key: "1 to 10", from: 1, to: 10 },
+  { key: "10 to 100", from: 10, to: 100 },
+  { key: "100 to 1,000", from: 100, to: 1000 },
+  { key: "1,000 or more", from: 1000 },
+];
+
+/** Rows in band order, skipping empty bands and trades with no value, such as no R without a stop. */
+export function bucketBreakdown(trades: Trade[], valueOf: (t: Trade) => number | null, buckets: Bucket[]): BreakdownRow[] {
+  const closed = trades.filter(isClosed);
+  return buckets.flatMap((b) => {
+    const ts = closed.filter((t) => {
+      const v = valueOf(t);
+      return v !== null && v >= (b.from ?? -Infinity) && v < (b.to ?? Infinity);
+    });
+    return ts.length ? [breakdownRow(b.key, ts)] : [];
+  });
 }
 

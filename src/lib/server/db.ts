@@ -3,6 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdirSync, unlinkSync } from "node:fs";
 import path from "node:path";
 import { migrateToJournalModel, JOURNAL_MODEL_SQL } from "./migrations/journal-model";
+import { zoneParts } from "../domain/zone";
 
 /**
  * Local SQLite store (Node's built-in node:sqlite).
@@ -98,6 +99,11 @@ export const MIGRATIONS: { version: number; name: string; sql: string; run?: (db
   },
   { version: 2, name: "journal model: users, executions, instruments, MT5, imports, attachments", sql: JOURNAL_MODEL_SQL, run: migrateToJournalModel },
   { version: 3, name: "index for finding the same trade across sources", sql: "CREATE INDEX trades_reconcile ON trades(account_id, symbol, side, opened_at);" },
+  {
+    version: 4,
+    name: "option details on trades",
+    sql: "ALTER TABLE trades ADD COLUMN option_right TEXT; ALTER TABLE trades ADD COLUMN strike REAL; ALTER TABLE trades ADD COLUMN expiry TEXT;",
+  },
 ];
 
 const globalForDb = globalThis as unknown as { __kestrelDb?: DatabaseSync };
@@ -116,6 +122,10 @@ function open(): DatabaseSync {
   mkdirSync(path.dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
   db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 3000; PRAGMA secure_delete = ON;");
+  db.function("zone_part", { deterministic: true }, (iso, tz, part) => {
+    const p = zoneParts(Date.parse(String(iso)), String(tz) || undefined);
+    return part === "weekday" ? p.weekday : p.hour;
+  });
   migrate(db);
   purgeDeletedTrades(db);
   return db;
@@ -140,8 +150,9 @@ function migrate(db: DatabaseSync) {
   const applied = new Set(
     (db.prepare("SELECT version FROM schema_migrations").all() as { version: number }[]).map((r) => r.version),
   );
-  for (const m of MIGRATIONS) {
-    if (applied.has(m.version)) continue;
+  const pending = MIGRATIONS.filter((m) => !applied.has(m.version));
+  if (pending.length && applied.size) backupBeforeMigrating(db, pending[0].version);
+  for (const m of pending) {
     transaction(db, () => {
       db.exec(m.sql);
       m.run?.(db);
@@ -152,6 +163,13 @@ function migrate(db: DatabaseSync) {
       );
     });
   }
+}
+
+/** A full copy of the existing journal, taken before its schema changes. */
+function backupBeforeMigrating(db: DatabaseSync, version: number) {
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const file = path.join(dataPath("backups"), `kestrel-before-migration-${version}-${stamp}.db`);
+  db.exec(`VACUUM INTO '${file.replace(/'/g, "''")}'`);
 }
 
 /** One connection per server process; reused across hot reloads in dev. */

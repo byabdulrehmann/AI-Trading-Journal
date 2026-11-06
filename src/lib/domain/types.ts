@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ASSET_CLASSES, SESSIONS, type AssetClass, type MarketSession } from "./engine/instruments";
+import { isValidZone } from "./zone";
 
 export const EMOTIONS = [
   "calm",
@@ -77,6 +78,9 @@ export const TradeInput = z
     /** Converts profit currency to account currency. Null: not needed, or derived by the engine. */
     fxRate: z.number().positive().nullable().default(null),
     assetClass: z.enum(ASSET_CLASSES).nullable().default(null),
+    optionRight: z.enum(["call", "put"]).nullable().default(null),
+    strike: z.number().positive("Strike must be above 0").nullable().default(null),
+    expiry: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter the expiry date").nullable().default(null),
     session: z.enum(SESSIONS).nullable().default(null),
     strategy: z.string().trim().max(60).default(""),
     strategyTags: z.array(z.string().trim().min(1).max(30)).max(12).default([]),
@@ -105,6 +109,11 @@ export const TradeInput = z
     ruleViolations: z.string().max(2000).default(""),
   })
   .superRefine((t, ctx) => {
+    if (t.assetClass === "option") {
+      if (!t.optionRight) ctx.addIssue({ code: "custom", path: ["optionRight"], message: "Choose call or put" });
+      if (t.strike === null) ctx.addIssue({ code: "custom", path: ["strike"], message: "Enter the strike" });
+      if (t.expiry === null) ctx.addIssue({ code: "custom", path: ["expiry"], message: "Enter the expiry date" });
+    }
     if (!t.executions?.length && (t.exitPrice === null) !== (t.closedAt === null)) {
       ctx.addIssue({
         code: "custom",
@@ -220,6 +229,10 @@ export const Settings = z.object({
       behaviouralInsights: true,
       reflectionPrompts: true,
     }),
+  /** IANA name. Empty means this computer's zone. */
+  timeZone: z.string().max(64).refine((v) => v === "" || isValidZone(v), "Unknown time zone").default(""),
+  /** Filled into a new manual trade, where they can still be changed. Never applied to imported or synced trades. */
+  feeDefaults: z.object({ commission: z.number().min(0).default(0), otherFees: z.number().min(0).default(0) }).default({ commission: 0, otherFees: 0 }),
   /** Explicit opt-in. Nothing is written to the activity log while false. */
   activityTracking: z.boolean().default(false),
 });

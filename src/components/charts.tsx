@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import type { BreakdownRow, PeriodRow } from "@/lib/domain/metrics";
-import { compactMoney, dateOnly, money, pct, toneOf } from "@/lib/client/format";
+import { compactMoney, dateOnly, money, pct, toneOf, zoneName } from "@/lib/client/format";
 import { niceTicks } from "@/lib/client/ladder";
 import { useBoxSize } from "@/lib/client/use-box-size";
 import { DataTable, cx } from "./ui";
@@ -312,7 +312,7 @@ export function Heatmap({ rows, currency, onOpen }: { rows: BreakdownRow[]; curr
   return (
     <div>
       <table ref={grid} className="w-full table-fixed border-separate border-spacing-px text-[11px]">
-        <caption className="sr-only">Net P&amp;L by weekday and hour of opening, local time</caption>
+        <caption className="sr-only">Net P&amp;L by weekday and hour of opening, {zoneName()}</caption>
         <thead>
           <tr>
             <th scope="col" className="w-9"><span className="sr-only">Day</span></th>
@@ -405,9 +405,9 @@ export function ValueBar({ value, max }: { value: number; max: number }) {
 }
 
 /** A comparison of groups: net P&L, win rate and what each trade averaged. `hrefFor` links a row where it has somewhere to go. */
-export function BreakdownTable({ rows, currency, group, label = (k) => k, hrefFor }: { rows: BreakdownRow[]; currency: string; group: string; label?: (key: string) => string; hrefFor?: (key: string) => string | null }) {
+export function BreakdownTable({ rows, currency, group, label = (k) => k, hrefFor, empty = "No closed trades to compare yet. This fills in as trades close." }: { empty?: string; rows: BreakdownRow[]; currency: string; group: string; label?: (key: string) => string; hrefFor?: (key: string) => string | null }) {
   const router = useRouter();
-  if (rows.length === 0) return <p className="text-[13.5px] text-muted">No closed trades to compare yet. This fills in as trades close.</p>;
+  if (rows.length === 0) return <p className="text-[13.5px] text-muted">{empty}</p>;
   const maxAbs = Math.max(0, ...rows.map((r) => Math.abs(r.netPnl)));
   return (
     <table className="w-full table-fixed text-[13.5px]">

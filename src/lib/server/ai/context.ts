@@ -80,11 +80,11 @@ export function buildContext(userId: number, settings: Settings, focusTradeId?: 
   const reported = tradesInCurrency(trades, accounts, currency);
   const otherCurrencies = currencies.filter((c) => c !== currency);
   const currencyOf = (t: Trade) => accounts.find((a) => a.id === t.accountId)?.currency ?? currency;
-  const { bestTrade, worstTrade, ...metrics } = computeMetrics(reported);
+  const { bestTrade, worstTrade, ...metrics } = computeMetrics(reported, settings.timeZone || undefined);
   const withTrades = sharing !== "metrics";
   const withNotes = sharing === "trades_with_notes";
   const patterns = behaviouralInsights
-    ? detectPatterns(reported).filter((p) => !settings.dismissedPatterns.includes(p.id))
+    ? detectPatterns(reported, settings.timeZone || undefined).filter((p) => !settings.dismissedPatterns.includes(p.id))
     : [];
   const memories = memoryEnabled ? listMemories(userId, true).map(({ id, kind, content }) => ({ id, kind, content })) : [];
   const focus = focusTradeId ? getTrade(userId, focusTradeId) : null;

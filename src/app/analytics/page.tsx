@@ -4,10 +4,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { Analytics } from "@/lib/client/analytics";
 import { useApp } from "@/lib/client/app-state";
 import { useUrlFilters } from "@/lib/client/filters";
-import { SESSION_LABELS, duration, money, pct, profitFactorText, rFmt, toneOf } from "@/lib/client/format";
+import { SESSION_LABELS, dateOnly, duration, money, pct, profitFactorText, rFmt, toneOf, zoneName } from "@/lib/client/format";
 import { journalHref, periodRange } from "@/lib/client/journal-links";
 import { useFetch } from "@/lib/client/use-fetch";
-import { METRIC_DEFINITIONS as D, type PeriodRow } from "@/lib/domain/metrics";
+import { HOLD_BUCKETS, METRIC_DEFINITIONS as D, R_BUCKETS, type Bucket, type PeriodRow } from "@/lib/domain/metrics";
 import { BarChart, BreakdownTable, Heatmap, Histogram, LineChart, MonthlyTable } from "@/components/charts";
 import { CurrencyPicker } from "@/components/CurrencyPicker";
 import { Suspended } from "@/components/Suspended";
@@ -33,6 +33,15 @@ type Period = (typeof PERIODS)[number]["value"];
 const WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const SIDE: Record<string, string> = { long: "Long", short: "Short" };
+
+const nice = (s: string) => {
+  const t = s.replace(/_/g, " ");
+  return t[0].toUpperCase() + t.slice(1);
+};
+const bandPatch = (buckets: Bucket[], key: string, min: string, max: string): Record<string, string> | null => {
+  const b = buckets.find((x) => x.key === key);
+  return b ? { ...(b.from === undefined ? {} : { [min]: String(b.from) }), ...(b.to === undefined ? {} : { [max]: String(b.to) }) } : null;
+};
 
 const barsOf = (rows: PeriodRow[]) => rows.map((r) => ({ label: r.key, value: r.pnl, detail: `${r.trades} trades, ${r.wins} won, ${r.losses} lost` }));
 
@@ -72,13 +81,17 @@ function AnalyticsView() {
   const fmt = (n: number) => money(n, cur, true);
   const b = data.breakdowns;
 
-  // Only what the journal can filter on gets a link. It has no side, session, weekday or hour filter yet.
+  // Only what the journal can filter on gets a link.
   const toPeriod = (p: Period, key: string) => {
     const range = periodRange(p, key);
     return range && journalHref(search, range);
   };
   const toSymbol = (key: string) => journalHref(search, { symbol: key });
   const toStrategy = (key: string) => (key === "(no strategy)" ? null : journalHref(search, { strategy: key }));
+  const toBand = (buckets: Bucket[], min: string, max: string) => (key: string) => {
+    const p = bandPatch(buckets, key, min, max);
+    return p && journalHref(search, p);
+  };
   const toAccount = (key: string) => {
     const same = accounts.filter((a) => a.name === key);
     return same.length === 1 ? journalHref(search, { accountId: String(same[0].id) }) : null;
@@ -101,7 +114,7 @@ function AnalyticsView() {
             <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 py-3">
               <div className="min-w-0">
                 <h2 id="lead" className="text-[15px] font-medium text-ink">P&amp;L by period</h2>
-                <p className="mt-0.5 text-[13px] text-muted">Net in {cur}, by the day trades closed, local time. A bar opens those trades.</p>
+                <p className="mt-0.5 text-[13px] text-muted">Net in {cur}, by the day trades closed, {zoneName()}. A bar opens those trades.</p>
               </div>
               <Segmented label="Period" value={period} onChange={(v) => filters.set({ period: v })} options={[...PERIODS]} />
             </div>
@@ -167,12 +180,62 @@ function AnalyticsView() {
                 <Metric def={D.profitFactor} value={profitFactorText(m)} />
                 <Metric def={D.expectancy} value={money(m.expectancy, cur, true)} tone={toneOf(m.expectancy)} />
                 <Metric def={D.winRate} value={pct(m.winRate, 1)} />
+                <Metric def={D.payoffRatio} value={m.payoffRatio === null ? "—" : m.payoffRatio.toFixed(2)} />
+                <Metric def={D.recoveryFactor} value={m.recoveryFactor === null ? "—" : m.recoveryFactor.toFixed(2)} />
+                <Metric def={D.avgPlannedR} value={m.avgPlannedR === null ? "—" : `${m.avgPlannedR.toFixed(2)}R`} />
+                <Metric def={D.currentStreak} value={m.currentStreak === 0 ? "None" : `${Math.abs(m.currentStreak)} ${m.currentStreak > 0 ? "won" : "lost"}`} tone={toneOf(m.currentStreak)} />
+              </dl>
+              <h3 className="mt-4 text-[13px] font-medium text-ink">Your days</h3>
+              <dl className="mt-1">
+                <Metric def={D.dayWinRate} value={`${m.winningDays} of ${m.tradingDays}, ${pct(m.dayWinRate)}`} />
+                <Metric def={D.avgDailyPnl} value={money(m.avgDailyPnl, cur, true)} tone={toneOf(m.avgDailyPnl)} />
+                <Metric def={D.bestDay} value={m.bestDay ? `${money(m.bestDay.pnl, cur, true)}, ${dateOnly(`${m.bestDay.date}T12:00:00Z`)}` : "—"} tone={toneOf(m.bestDay?.pnl)} />
+                <Metric def={D.worstDay} value={m.worstDay ? `${money(m.worstDay.pnl, cur, true)}, ${dateOnly(`${m.worstDay.date}T12:00:00Z`)}` : "—"} tone={toneOf(m.worstDay?.pnl)} />
               </dl>
             </Card>
           </div>
 
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-x-10 gap-y-8 xl:grid-cols-2">
+            <Card>
+              <CardHeader title="Mistakes" subtitle="A trade counts once under each mistake marked on it." />
+              <BreakdownTable rows={b.mistake} currency={cur} group="Mistake" label={nice} empty="No mistakes marked on these closed trades." hrefFor={(k) => journalHref(search, { mistake: k })} />
+            </Card>
+            <Card>
+              <CardHeader title="Tags" subtitle="A trade counts once under each of its tags." />
+              <BreakdownTable rows={b.tag} currency={cur} group="Tag" empty="No tags on these closed trades." hrefFor={(k) => journalHref(search, { tag: k })} />
+            </Card>
+            <Card>
+              <CardHeader title="Emotion before the trade" />
+              <BreakdownTable rows={b.emotion} currency={cur} group="Emotion" label={(k) => (k.startsWith("(") ? k : nice(k))} hrefFor={(k) => (k.startsWith("(") ? null : journalHref(search, { emotion: k }))} />
+            </Card>
+            <Card>
+              <CardHeader title="Grade" />
+              <BreakdownTable rows={b.grade} currency={cur} group="Grade" empty="No grades on these closed trades." hrefFor={(k) => journalHref(search, { grade: k })} />
+            </Card>
+            <Card>
+              <CardHeader title="R multiple" subtitle="Only trades with a stop have an R." />
+              <BreakdownTable rows={b.rMultiple} currency={cur} group="Result" empty="No closed trade here has a stop." hrefFor={toBand(R_BUCKETS, "rMin", "rMax")} />
+            </Card>
+            <Card>
+              <CardHeader title="Holding time" subtitle="From the first entry to the last exit." />
+              <BreakdownTable rows={b.hold} currency={cur} group="Held for" hrefFor={toBand(HOLD_BUCKETS, "holdMin", "holdMax")} />
+            </Card>
+            <Card>
+              <CardHeader title="Entry price" subtitle="Average entry, in the instrument's own price." />
+              <BreakdownTable rows={b.price} currency={cur} group="Price" />
+            </Card>
+            <Card>
+              <CardHeader title="Size" subtitle="Lots, shares or contracts, as recorded." />
+              <BreakdownTable rows={b.size} currency={cur} group="Size" />
+            </Card>
+            <Card>
+              <CardHeader title="Asset class" />
+              <BreakdownTable rows={b.assetClass} currency={cur} group="Asset class" label={nice} hrefFor={(k) => journalHref(search, { assetClass: k })} />
+            </Card>
+          </div>
+
           <Card>
-            <CardHeader title="When you trade" subtitle="Net P&L by weekday and hour of opening, local time." />
+            <CardHeader title="When you trade" subtitle={`Net P&L by weekday and hour of opening, ${zoneName()}.`} />
             <Heatmap rows={b.heatmap} currency={cur} onOpen={(day, hour) => router.push(journalHref(search, { weekday: String(day), hour: String(hour) }))} />
           </Card>
 

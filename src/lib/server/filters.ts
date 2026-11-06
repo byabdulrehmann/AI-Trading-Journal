@@ -1,5 +1,7 @@
 import "server-only";
 import { z } from "zod";
+import { ASSET_CLASSES } from "@/lib/domain/engine/instruments";
+import { EMOTIONS, GRADES, MISTAKES } from "@/lib/domain/types";
 import type { TradeFilters } from "./repo/journal";
 import { fail } from "./http";
 
@@ -20,6 +22,14 @@ const FilterQuery = z.object({
   hour: z.coerce.number().int().min(0).max(23).optional(),
   closedOnly: z.enum(["1"]).optional(),
   tag: z.string().trim().max(30).optional(),
+  mistake: z.enum(MISTAKES).optional(),
+  emotion: z.enum(EMOTIONS).optional(),
+  grade: z.enum(GRADES).optional(),
+  assetClass: z.enum(ASSET_CLASSES).optional(),
+  rMin: z.coerce.number().min(-1e6).max(1e6).optional(),
+  rMax: z.coerce.number().min(-1e6).max(1e6).optional(),
+  holdMin: z.coerce.number().min(0).max(1e9).optional(),
+  holdMax: z.coerce.number().min(0).max(1e9).optional(),
   q: z.string().trim().max(100).optional(),
   currency: z.string().trim().length(3).optional(),
   includeSample: z.enum(["1"]).optional(),

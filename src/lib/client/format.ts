@@ -1,3 +1,14 @@
+import { zoneInstant, zoneParts } from "@/lib/domain/zone";
+
+let zone: string | undefined;
+/** Set from Settings by the app state. Empty or missing means this computer's zone. */
+export const setDisplayZone = (tz?: string) => {
+  zone = tz || undefined;
+};
+export const displayZone = () => zone;
+/** Says which clock a time is on, as in "Opened, local time". */
+export const zoneName = () => (zone ? `${zone.split("/").at(-1)?.replace(/_/g, " ")} time` : "local time");
+
 export function money(n: number | null | undefined, currency = "USD", signed = false): string {
   if (n === null || n === undefined || Number.isNaN(n)) return "—";
   const abs = Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -17,11 +28,11 @@ export const rFmt = (r: number | null | undefined) =>
 
 export function dateTime(iso: string | null) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: zone });
 }
 
 export function dateOnly(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: zone });
 }
 
 export function duration(minutes: number | null) {
@@ -34,12 +45,20 @@ export function duration(minutes: number | null) {
 export const toneOf = (n: number | null | undefined) =>
   n === null || n === undefined || n === 0 ? "text-ink-soft" : n > 0 ? "text-profit" : "text-loss";
 
-/** "2026-11-03T09:30" for <input type="datetime-local"> in local time. */
+/** "2026-11-03T09:30" for <input type="datetime-local">, in the display zone. */
 export function toLocalInput(iso: string | null): string {
   if (!iso) return "";
-  const d = new Date(iso);
-  const off = d.getTimezoneOffset();
-  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 16);
+  const p = zoneParts(Date.parse(iso), zone);
+  const two = (n: number) => String(n).padStart(2, "0");
+  return `${String(p.year).padStart(4, "0")}-${two(p.month)}-${two(p.day)}T${two(p.hour)}:${two(p.minute)}`;
+}
+
+/** The instant a datetime-local value means in the display zone. Empty when it isn't one. */
+export function fromLocalInput(local: string): string {
+  const m = /^(\d{4,})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(local);
+  if (!m) return "";
+  const [y, mo, d, h, min] = m.slice(1).map(Number);
+  return new Date(zoneInstant(y, mo, d, h, min, zone)).toISOString();
 }
 
 /** Whole-unit shorthand for tight spots such as a phone-width calendar cell. */

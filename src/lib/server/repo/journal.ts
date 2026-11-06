@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { dataPath, db, now, purgeDeletedTrades, transaction } from "../db";
 import { audit } from "./audit";
+import { getSettings } from "./settings";
 import { unlinkSync } from "node:fs";
 import path from "node:path";
 import type { Account, AccountInput, Attachment, Execution, Trade, TradeData, TradeSource } from "@/lib/domain/types";
@@ -160,6 +161,9 @@ function toTrade(r: Row): Trade {
     symbol: r.symbol as string,
     side: r.side as "long" | "short",
     assetClass: r.asset_class as AssetClass,
+    optionRight: (r.option_right as Trade["optionRight"]) ?? null,
+    strike: (r.strike as number | null) ?? null,
+    expiry: (r.expiry as string | null) ?? null,
     session: r.session as Trade["session"],
     openedAt: r.opened_at as string,
     closedAt: (r.closed_at as string | null) ?? null,
@@ -223,7 +227,7 @@ export interface TradeFilters {
   outcome?: "win" | "loss" | "breakeven" | "open" | "pending";
   /** Close-time window, for a calendar day. `from` and `to` are open-time. */
   side?: "long" | "short";
-  /** Local to this computer, of the open time. Sunday is 0. */
+  /** In the zone chosen in Settings, of the open time. Sunday is 0. */
   weekday?: number;
   hour?: number;
   /** The trades analytics counts: closed, with a known result. */
@@ -233,6 +237,15 @@ export interface TradeFilters {
   plan?: "on" | "off" | "unanswered";
   session?: string;
   tag?: string;
+  mistake?: string;
+  emotion?: string;
+  grade?: string;
+  assetClass?: string;
+  /** From is included, below is not, so bands next to each other never share a trade. */
+  rMin?: number;
+  rMax?: number;
+  holdMin?: number;
+  holdMax?: number;
   q?: string;
   currency?: string;
   /** Sample trades stay out of results unless asked for, so they can't pass as real figures. */
@@ -255,8 +268,8 @@ function whereClause(userId: number, f: TradeFilters): { sql: string; args: (str
   else if (!f.includeSample && !f.accountId) add("t.source != 'sample'");
   if (f.session) add("t.session = ?", f.session);
   if (f.side) add("t.side = ?", f.side);
-  if (f.weekday !== undefined) add("CAST(strftime('%w', t.opened_at, 'localtime') AS INTEGER) = ?", f.weekday);
-  if (f.hour !== undefined) add("CAST(strftime('%H', t.opened_at, 'localtime') AS INTEGER) = ?", f.hour);
+  if (f.weekday !== undefined) add("zone_part(t.opened_at, ?, 'weekday') = ?", getSettings(userId).timeZone, f.weekday);
+  if (f.hour !== undefined) add("zone_part(t.opened_at, ?, 'hour') = ?", getSettings(userId).timeZone, f.hour);
   if (f.closedOnly) add("t.status = 'closed' AND t.pnl_status = 'ok'");
   if (f.currency) add("t.account_id IN (SELECT id FROM accounts WHERE user_id = ? AND currency = ?)", userId, f.currency);
   if (f.outcome === "win") add("t.status = 'closed' AND t.net_pnl > 0");
@@ -270,6 +283,14 @@ function whereClause(userId: number, f: TradeFilters): { sql: string; args: (str
   if (f.plan === "off") add("t.followed_plan = 0");
   if (f.plan === "unanswered") add("t.followed_plan IS NULL");
   if (f.tag) add("t.id IN (SELECT tt.trade_id FROM trade_tags tt JOIN tags g ON g.id = tt.tag_id WHERE g.name = ?)", f.tag);
+  if (f.mistake) add("EXISTS (SELECT 1 FROM json_each(t.mistakes) WHERE value = ?)", f.mistake);
+  if (f.emotion) add("t.emotion_before = ?", f.emotion);
+  if (f.grade) add("t.grade = ?", f.grade);
+  if (f.assetClass) add("t.asset_class = ?", f.assetClass);
+  if (f.rMin !== undefined) add("t.r_multiple >= ?", f.rMin);
+  if (f.rMax !== undefined) add("t.r_multiple < ?", f.rMax);
+  if (f.holdMin !== undefined) add("t.holding_minutes >= ?", f.holdMin);
+  if (f.holdMax !== undefined) add("t.holding_minutes < ?", f.holdMax);
   if (f.q) {
     const like = `%${f.q.replace(/[\\%_]/g, "\\$&")}%`;
     const idMatch = /^#?(\d+)$/.exec(f.q.trim());
@@ -410,11 +431,12 @@ function annotationValues(userId: number, t: TradeData) {
     t.confidence, t.discipline, t.fear, t.greed, bool(t.revengeTrade), bool(t.overtrading), bool(t.impulsiveEntry), bool(t.earlyExit), t.ruleViolations, strategyId(userId, t.strategy)];
 }
 
-const MARKET = ["account_id", "symbol", "side", "asset_class", "session", "opened_at", "closed_at", "entry_price", "exit_price", "quantity", "multiplier", "stop_price", "target_price", "commission", "swap", "other_fees", "fx_rate"];
+const MARKET = ["account_id", "symbol", "side", "asset_class", "option_right", "strike", "expiry", "session", "opened_at", "closed_at", "entry_price", "exit_price", "quantity", "multiplier", "stop_price", "target_price", "commission", "swap", "other_fees", "fx_rate"];
 
 function marketValues(t: TradeData) {
   const assetClass = t.assetClass ?? classifySymbol(t.symbol);
-  return [t.accountId, t.symbol, t.side, assetClass, t.session ?? sessionFor(t.openedAt), iso(t.openedAt), t.closedAt ? iso(t.closedAt) : null, t.entryPrice, t.exitPrice, t.quantity, t.multiplier,
+  const option = assetClass === "option";
+  return [t.accountId, t.symbol, t.side, assetClass, option ? t.optionRight : null, option ? t.strike : null, option ? t.expiry : null, t.session ?? sessionFor(t.openedAt), iso(t.openedAt), t.closedAt ? iso(t.closedAt) : null, t.entryPrice, t.exitPrice, t.quantity, t.multiplier,
     t.stopPrice, t.targetPrice, t.commission, t.swap, t.otherFees, t.fxRate];
 }
 
@@ -439,6 +461,13 @@ function insertTrade(userId: number, t: TradeData, origin: TradeOrigin): number 
   rememberInstrument(t.accountId, t.symbol, t.assetClass ?? classifySymbol(t.symbol), t.multiplier);
   recalculateTrade(id);
   return id;
+}
+
+/** All or nothing, and one audit-free transaction: hundreds of sample trades would otherwise take a commit each. */
+export function insertSampleTrades(userId: number, trades: TradeData[]) {
+  transaction(db(), () => {
+    for (const t of trades) insertTrade(userId, t, { source: "sample" });
+  });
 }
 
 export function createTrade(userId: number, t: TradeData, origin: TradeOrigin = {}): Trade {

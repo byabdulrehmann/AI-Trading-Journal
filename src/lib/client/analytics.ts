@@ -11,7 +11,7 @@ export interface Analytics {
   drawdown: DrawdownPoint[];
   periods: Record<"day" | "week" | "month" | "year", PeriodRow[]>;
   distribution: { from: number; to: number; count: number }[];
-  breakdowns: Record<"symbol" | "strategy" | "side" | "session" | "weekday" | "hour" | "account" | "setup" | "emotion" | "heatmap", BreakdownRow[]>;
+  breakdowns: Record<"symbol" | "strategy" | "side" | "session" | "weekday" | "hour" | "account" | "setup" | "emotion" | "heatmap" | "assetClass" | "grade" | "tag" | "mistake" | "hold" | "rMultiple" | "price" | "size", BreakdownRow[]>;
   patterns: PatternFinding[];
   avgR: { winners: number | null; losers: number | null };
 }

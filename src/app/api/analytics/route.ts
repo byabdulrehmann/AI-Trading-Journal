@@ -1,13 +1,14 @@
-import { breakdown, computeMetrics, drawdownCurve, equityCurve, isClosed, periodSummaries, pnlDistribution, reportingCurrencies } from "@/lib/domain/metrics";
+import { HOLD_BUCKETS, PRICE_BUCKETS, R_BUCKETS, SIZE_BUCKETS, breakdown, breakdownMany, bucketBreakdown, computeMetrics, drawdownCurve, equityCurve, holdMinutes, isClosed, periodSummaries, pnlDistribution, reportingCurrencies } from "@/lib/domain/metrics";
 import { detectPatterns } from "@/lib/domain/patterns";
 import type { Trade } from "@/lib/domain/types";
+import { zoneParts } from "@/lib/domain/zone";
 import { requireUser } from "@/lib/server/auth";
 import { filtersFrom } from "@/lib/server/filters";
 import { json } from "@/lib/server/http";
 import { getAccount, hasSampleData, listAccounts, listTrades } from "@/lib/server/repo/journal";
+import { getSettings } from "@/lib/server/repo/settings";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const hour = (iso: string) => `${String(new Date(iso).getHours()).padStart(2, "0")}:00`;
 
 function meanR(trades: Trade[], side: (pnl: number) => boolean): number | null {
   const rs = trades.filter(isClosed).filter((t) => side(t.pnl) && t.rMultiple !== null).map((t) => t.rMultiple as number);
@@ -33,30 +34,40 @@ export async function GET(req: Request) {
   const ids = new Set(accounts.filter((a) => a.currency === currency).map((a) => a.id));
   const trades = unscoped.filter((t) => ids.has(t.accountId));
 
+  const tz = getSettings(user.id).timeZone || undefined;
+  const opened = (t: Trade) => zoneParts(Date.parse(t.openedAt), tz);
   const by = (keyOf: (t: Trade) => string | null) => breakdown(trades, keyOf);
   return json({
     currency,
     currencies,
     sampleHidden: !filters.includeSample && filters.source !== "sample" && !filters.accountId && hasSampleData(user.id),
-    metrics: computeMetrics(trades),
+    metrics: computeMetrics(trades, tz),
     equity: equityCurve(trades),
     drawdown: drawdownCurve(trades),
-    periods: { day: periodSummaries(trades, "day"), week: periodSummaries(trades, "week"), month: periodSummaries(trades, "month"), year: periodSummaries(trades, "year") },
+    periods: { day: periodSummaries(trades, "day", tz), week: periodSummaries(trades, "week", tz), month: periodSummaries(trades, "month", tz), year: periodSummaries(trades, "year", tz) },
     distribution: pnlDistribution(trades),
     breakdowns: {
       symbol: by((t) => t.symbol),
       strategy: by((t) => t.strategy || "(no strategy)"),
       side: by((t) => t.side),
       session: by((t) => t.session ?? "(unknown)"),
-      weekday: by((t) => WEEKDAYS[new Date(t.openedAt).getDay()]),
-      hour: by((t) => hour(t.openedAt)),
+      weekday: by((t) => WEEKDAYS[opened(t).weekday]),
+      hour: by((t) => `${String(opened(t).hour).padStart(2, "0")}:00`),
       account: by((t) => accounts.find((a) => a.id === t.accountId)?.name ?? "(unknown)"),
       setup: by((t) => t.setup || "(no setup)"),
       emotion: by((t) => t.emotionBefore ?? "(not recorded)"),
-      // "weekday-hour" of the open time, local to this computer, Sunday = 0.
-      heatmap: by((t) => `${new Date(t.openedAt).getDay()}-${new Date(t.openedAt).getHours()}`),
+      assetClass: by((t) => t.assetClass),
+      grade: by((t) => t.grade),
+      tag: breakdownMany(trades, (t) => [...t.tags, ...t.strategyTags]),
+      mistake: breakdownMany(trades, (t) => t.mistakes),
+      hold: bucketBreakdown(trades, holdMinutes, HOLD_BUCKETS),
+      rMultiple: bucketBreakdown(trades, (t) => t.rMultiple, R_BUCKETS),
+      price: bucketBreakdown(trades, (t) => t.entryPrice, PRICE_BUCKETS),
+      size: bucketBreakdown(trades, (t) => t.quantity, SIZE_BUCKETS),
+      // "weekday-hour" of the open time, in the chosen zone, Sunday = 0.
+      heatmap: by((t) => `${opened(t).weekday}-${opened(t).hour}`),
     },
-    patterns: detectPatterns(trades),
+    patterns: detectPatterns(trades, tz),
     avgR: { winners: meanR(trades, (p) => p > 0), losers: meanR(trades, (p) => p < 0) },
   });
 }

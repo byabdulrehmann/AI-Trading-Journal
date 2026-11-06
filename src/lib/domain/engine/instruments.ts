@@ -2,7 +2,7 @@
  * Instrument conventions. Nothing here assumes a broker's contract size: that always comes
  * from the broker's symbol spec (MT5 symbol_info) or from what the user entered.
  */
-export const ASSET_CLASSES = ["forex", "metal", "index", "stock", "future", "cfd", "crypto", "other"] as const;
+export const ASSET_CLASSES = ["forex", "metal", "index", "stock", "option", "future", "cfd", "crypto", "other"] as const;
 export type AssetClass = (typeof ASSET_CLASSES)[number];
 
 const CURRENCIES = new Set(["USD", "EUR", "GBP", "JPY", "CHF", "AUD", "NZD", "CAD", "SEK", "NOK", "DKK", "SGD", "HKD", "ZAR", "MXN", "TRY", "PLN", "CNH"]);
