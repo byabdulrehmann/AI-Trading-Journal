@@ -20,6 +20,7 @@ const PAGES: [string, string][] = [
   ["/journal", "Journal"],
   ["/day", "Daily journal"],
   ["/playbooks", "Playbooks"],
+  ["/notebook", "Notebook"],
   ["/calendar", "Calendar"],
   ["/analytics", "Analytics"],
   ["/patterns", "Patterns"],

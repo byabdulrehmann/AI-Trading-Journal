@@ -15,6 +15,7 @@ import type { DailyEntry } from "@/lib/domain/types";
 import { zoneDateKey } from "@/lib/domain/zone";
 import { LineChart } from "@/components/charts";
 import { DayTrades } from "@/components/journal/DayTrades";
+import { LinkedNotes } from "@/components/notebook/LinkedNotes";
 import { Rating } from "@/components/journal/TradeForm";
 import { Suspended } from "@/components/Suspended";
 import { TradeFilters } from "@/components/TradeFilters";
@@ -187,6 +188,7 @@ function DayView() {
             <Spinner label="Loading your notes" />
           )}
 
+          <LinkedNotes day={date} title={`Notes for ${date}`} sample={includeSample} />
           {data && <DayTrades key={date} day={date} row={data.periods.day[0]} currency={display} query={filters.apiQuery} />}
         </div>
 

@@ -241,6 +241,26 @@ function seedPlaybooks(userId: number, before: Set<string>, today: Date) {
   });
 }
 
+/** A folder of made-up notes, linked to sample days and trades. */
+function seedNotes(userId: number) {
+  const conn = db();
+  transaction(conn, () => {
+    if (conn.prepare("SELECT 1 FROM note_folders WHERE user_id = ? AND name = 'Sample notes'").get(userId)) return;
+    const folder = Number(conn.prepare("INSERT INTO note_folders (user_id, name, is_sample, created_at) VALUES (?, 'Sample notes', 1, ?)").run(userId, now()).lastInsertRowid);
+    const trades = conn.prepare("SELECT id, symbol, net_pnl FROM trades WHERE user_id = ? AND source = 'sample' AND status = 'closed' ORDER BY net_pnl LIMIT 2").all(userId) as { id: number; symbol: string }[];
+    const days = conn.prepare("SELECT date FROM daily_journal WHERE user_id = ? AND is_sample = 1 ORDER BY date DESC LIMIT 2").all(userId) as { date: string }[];
+    const write = conn.prepare("INSERT INTO notes (user_id, folder_id, title, body, tags, is_sample, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?)");
+    const link = conn.prepare("INSERT INTO note_links (note_id, trade_id, day) VALUES (?, ?, ?)");
+    const add = (title: string, body: string, tags: string[]) => Number(write.run(userId, folder, title, body, JSON.stringify(tags), now(), now()).lastInsertRowid);
+    const plan = PLAYBOOK_TEMPLATES[0];
+    add("Sample: my trading plan", `## Setups I take\n\n- ${plan.name}\n- Trend continuation\n\n## Most I can lose\n\n- Per trade: **1%**\n- Per day: **3%**\n\n## When I stop for the day\n\n- [ ] Two losses in a row\n- [x] Daily limit reached`, ["plan"]);
+    const loss = add("Sample: recap of my worst trade", `## What happened\n\nMade-up example. I moved my stop on [#${trades[0]?.id ?? 0}] and it cost far more than planned.\n\n## What changes next time\n\n- [ ] The stop stays where the plan put it`, ["recap", "discipline"]);
+    for (const t of trades.slice(0, 1)) link.run(loss, t.id, null);
+    const week = add("Sample: weekly review", "## Best trade\n\nMade-up example. Waited for the close and let it run.\n\n## What I'll work on\n\n- [ ] Fewer trades on Mondays", ["review"]);
+    for (const d of days) link.run(week, null, d.date);
+  });
+}
+
 /** Made-up notes for most recent weekdays, so the daily journal has something to show. */
 export function buildSampleDays(today: Date): DailyInput[] {
   const rand = rng(20261104);
@@ -267,5 +287,6 @@ export function loadSampleData(userId: number): number {
   insertSampleTrades(userId, trades);
   insertSampleDays(userId, buildSampleDays(new Date()));
   seedPlaybooks(userId, before, new Date());
+  seedNotes(userId);
   return trades.length;
 }

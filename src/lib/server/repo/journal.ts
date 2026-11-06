@@ -736,6 +736,11 @@ export function exportAll(userId: number) {
     activityLog: byUser("activity_log"),
     dailyJournal: byUser("daily_journal"),
     missedTrades: byUser("missed_trades"),
+    notes: byUser("notes"),
+    noteFolders: byUser("note_folders"),
+    noteTemplates: byUser("note_templates"),
+    noteVersions: conn.prepare("SELECT v.* FROM note_versions v JOIN notes n ON n.id = v.note_id WHERE n.user_id = ?").all(userId),
+    noteLinks: conn.prepare("SELECT l.* FROM note_links l JOIN notes n ON n.id = l.note_id WHERE n.user_id = ?").all(userId),
     strategyRules: conn.prepare("SELECT r.* FROM strategy_rules r JOIN strategies s ON s.id = r.strategy_id WHERE s.user_id = ?").all(userId),
     tradeRuleChecks: conn.prepare("SELECT c.* FROM trade_rule_checks c JOIN trades t ON t.id = c.trade_id WHERE t.user_id = ?").all(userId),
   };
@@ -759,7 +764,7 @@ export function deleteAllData(userId: number) {
   const accountSettings = (conn.prepare("SELECT id FROM accounts WHERE user_id = ?").all(userId) as { id: number }[]).map((a) => `mt5:${a.id}`);
   transaction(conn, () => {
     for (const key of accountSettings) conn.prepare("DELETE FROM settings WHERE key = ?").run(key);
-    for (const table of ["missed_trades", "daily_journal", "jarvis_conversations", "jarvis_memories", "activity_log", "import_batches", "attachments", "reconciliations", "trades", "tags", "strategies", "accounts"])
+    for (const table of ["notes", "note_folders", "note_templates", "missed_trades", "daily_journal", "jarvis_conversations", "jarvis_memories", "activity_log", "import_batches", "attachments", "reconciliations", "trades", "tags", "strategies", "accounts"])
       conn.prepare(`DELETE FROM ${table} WHERE user_id = ?`).run(userId);
     conn.prepare("DELETE FROM settings WHERE key = ?").run(`app:${userId}`);
     audit(userId, "data.deleted_all");
@@ -777,6 +782,9 @@ export function removeSampleData(userId: number): number {
     const n = Number(conn.prepare("DELETE FROM trades WHERE source = 'sample' AND user_id = ?").run(userId).changes);
     conn.prepare("DELETE FROM daily_journal WHERE is_sample = 1 AND user_id = ?").run(userId);
     conn.prepare("DELETE FROM missed_trades WHERE is_sample = 1 AND user_id = ?").run(userId);
+    conn.prepare("DELETE FROM notes WHERE is_sample = 1 AND user_id = ?").run(userId);
+    // A folder the user's own notes came to use stays.
+    conn.prepare("DELETE FROM note_folders WHERE is_sample = 1 AND user_id = ? AND id NOT IN (SELECT folder_id FROM notes WHERE user_id = ? AND folder_id IS NOT NULL)").run(userId, userId);
     // A sample playbook the user's own trades came to use is theirs now.
     conn.prepare("DELETE FROM strategies WHERE is_sample = 1 AND user_id = ? AND id NOT IN (SELECT strategy_id FROM trades WHERE user_id = ? AND strategy_id IS NOT NULL)").run(userId, userId);
     conn.prepare("DELETE FROM accounts WHERE is_sample = 1 AND user_id = ? AND id NOT IN (SELECT account_id FROM trades)").run(userId);

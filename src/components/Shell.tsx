@@ -16,6 +16,7 @@ const NAV = [
   { href: "/journal", label: "Journal", icon: "M6 4h12v16H6zM9.5 9h5M9.5 13h5" },
   { href: "/day", label: "Daily journal", icon: "M5 4h14v16H5zM9 4v16M12 9h4M12 13h4" },
   { href: "/playbooks", label: "Playbooks", icon: "M6 3h12v18l-6-4-6 4zM10 8h4M10 12h4" },
+  { href: "/notebook", label: "Notebook", icon: "M5 3h14v18H5zM9 3v18M12 8h4M12 12h4" },
   { href: "/calendar", label: "Calendar", icon: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4" },
   { href: "/analytics", label: "Analytics", icon: "M4 20V11M10 20V5M16 20v-6M3 20h18" },
   { href: "/patterns", label: "Patterns", icon: "M4 16l5-5 4 4 7-8" },

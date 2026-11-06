@@ -8,6 +8,7 @@ import type { Trade } from "@/lib/domain/types";
 import type { InstrumentSpec } from "@/lib/server/repo/journal";
 import { RowsSkeleton } from "../tape/Skeletons";
 import { Button, Dialog, cx } from "../ui";
+import { LinkedNotes } from "@/components/notebook/LinkedNotes";
 import { PlaybookChecklist } from "./Checklist";
 import { PnlIssue, SideBadge, SourceBadge, StatusBadge } from "./badges";
 import { useTradeActions } from "./useTradeActions";
@@ -226,6 +227,7 @@ function TradeDetail({ trade: t }: { trade: Trade }) {
       )}
 
       <PlaybookChecklist key={t.id} tradeId={t.id} />
+      <LinkedNotes tradeId={t.id} title={`${t.symbol}, trade #${t.id}`} sample={t.source === "sample"} onLeave={() => openTrade(null)} />
 
       {hasPsych ? (
         <section className="space-y-2.5 border-t border-line pt-4">

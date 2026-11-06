@@ -153,6 +153,57 @@ export const MIGRATIONS: { version: number; name: string; sql: string; run?: (db
     );
     CREATE INDEX missed_trades_user ON missed_trades(user_id);`,
   },
+  {
+    version: 7,
+    name: "notebook",
+    sql: `CREATE TABLE note_folders (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      is_sample INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      UNIQUE (user_id, name)
+    );
+    CREATE TABLE notes (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      folder_id INTEGER REFERENCES note_folders(id) ON DELETE SET NULL,
+      title TEXT NOT NULL DEFAULT '',
+      body TEXT NOT NULL DEFAULT '',
+      tags TEXT NOT NULL DEFAULT '[]',
+      is_sample INTEGER NOT NULL DEFAULT 0,
+      deleted_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX notes_user ON notes(user_id, updated_at);
+    CREATE TABLE note_versions (
+      id INTEGER PRIMARY KEY,
+      note_id INTEGER NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX note_versions_note ON note_versions(note_id);
+    CREATE TABLE note_links (
+      id INTEGER PRIMARY KEY,
+      note_id INTEGER NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+      trade_id INTEGER REFERENCES trades(id) ON DELETE CASCADE,
+      day TEXT
+    );
+    CREATE UNIQUE INDEX note_links_trade ON note_links(note_id, trade_id) WHERE trade_id IS NOT NULL;
+    CREATE UNIQUE INDEX note_links_day ON note_links(note_id, day) WHERE day IS NOT NULL;
+    CREATE INDEX note_links_by_trade ON note_links(trade_id);
+    CREATE INDEX note_links_by_day ON note_links(day);
+    CREATE TABLE note_templates (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      body TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      UNIQUE (user_id, name)
+    );`,
+  },
 ];
 
 const globalForDb = globalThis as unknown as { __kestrelDb?: DatabaseSync };
@@ -182,6 +233,7 @@ function open(): DatabaseSync {
 
 /** Deleted trades stay for undo, then go for good, notes included. */
 export function purgeDeletedTrades(conn: DatabaseSync) {
+  conn.exec("DELETE FROM notes WHERE deleted_at < strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-30 days')");
   const expired = "SELECT id FROM trades WHERE deleted_at < strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-30 days')";
   const files = conn.prepare(`SELECT stored_name FROM attachments WHERE trade_id IN (${expired})`).all() as { stored_name: string }[];
   conn.exec(`DELETE FROM trades WHERE id IN (${expired})`);
