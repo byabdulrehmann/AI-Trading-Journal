@@ -40,6 +40,8 @@ export const COLUMN_DEFS: Record<JournalColumn, ColumnDef> = {
   exit: { label: "Exit", show: "hidden lg:table-cell", numeric: true, cell: (t) => <span className={mono}>{price(t.exitPrice)}</span> },
   size: { label: "Size", sort: "quantity", show: "hidden lg:table-cell", numeric: true, cell: (t) => <span className={mono}>{t.quantity}</span> },
   fees: { label: "Costs", show: "hidden lg:table-cell", numeric: true, cell: (t, { accounts }) => <span className={mono}>{money(t.commission + t.swap + t.otherFees, accounts.find((a) => a.id === t.accountId)?.currency)}</span> },
+  mae: { label: "MAE", show: "hidden lg:table-cell", numeric: true, cell: (t, { accounts }) => <span className={mono}>{t.mae === null ? "—" : money(-t.mae * t.quantity * t.multiplier * (t.fxRate ?? 1), accounts.find((a) => a.id === t.accountId)?.currency)}</span> },
+  mfe: { label: "MFE", show: "hidden lg:table-cell", numeric: true, cell: (t, { accounts }) => <span className={mono}>{t.mfe === null ? "—" : money(t.mfe * t.quantity * t.multiplier * (t.fxRate ?? 1), accounts.find((a) => a.id === t.accountId)?.currency)}</span> },
   plannedR: { label: "Planned R", show: "hidden lg:table-cell", numeric: true, cell: (t) => <span className={mono}>{t.plannedR === null ? "—" : `${t.plannedR.toFixed(2)}R`}</span> },
 };
 

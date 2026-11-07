@@ -1,4 +1,4 @@
-import { HOLD_BUCKETS, PRICE_BUCKETS, R_BUCKETS, SIZE_BUCKETS, UNITS, breakdown, breakdownMany, bucketBreakdown, computeMetrics, computeScore, drawdownCurve, riskReport, streakRuns, winLossProfile, equityCurve, holdMinutes, isClosed, periodSummaries, pnlDistribution, tradesInUnit, type Unit } from "@/lib/domain/metrics";
+import { HOLD_BUCKETS, PRICE_BUCKETS, R_BUCKETS, SIZE_BUCKETS, UNITS, breakdown, breakdownMany, bucketBreakdown, computeMetrics, computeScore, drawdownCurve, excursionStats, riskReport, streakRuns, winLossProfile, equityCurve, holdMinutes, isClosed, periodSummaries, pnlDistribution, tradesInUnit, type Unit } from "@/lib/domain/metrics";
 import { detectPatterns } from "@/lib/domain/patterns";
 import type { Account, Trade } from "@/lib/domain/types";
 import { zoneParts } from "@/lib/domain/zone";
@@ -92,7 +92,7 @@ export async function GET(req: Request) {
       heatmap: by((t) => `${opened(t).weekday}-${opened(t).hour}`),
     },
     patterns: detectPatterns(real, tz),
-    report: { profile: winLossProfile(trades), streaks: streakRuns(trades), risk: riskReport(real) },
+    report: { profile: winLossProfile(trades), streaks: streakRuns(trades), risk: riskReport(real), excursions: excursionStats(real), unread: real.filter((t) => isClosed(t) && t.mae === null).length },
     avgR: { winners: meanR(real, (p) => p > 0), losers: meanR(real, (p) => p < 0) },
   });
 }

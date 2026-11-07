@@ -204,6 +204,32 @@ export const MIGRATIONS: { version: number; name: string; sql: string; run?: (db
       UNIQUE (user_id, name)
     );`,
   },
+  {
+    version: 8,
+    name: "price bars and excursions",
+    sql: `CREATE TABLE market_bars (
+      account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      symbol TEXT NOT NULL,
+      timeframe TEXT NOT NULL,
+      time INTEGER NOT NULL,
+      open REAL NOT NULL,
+      high REAL NOT NULL,
+      low REAL NOT NULL,
+      close REAL NOT NULL,
+      PRIMARY KEY (account_id, symbol, timeframe, time)
+    ) WITHOUT ROWID;
+    CREATE TABLE bar_fetches (
+      account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      symbol TEXT NOT NULL,
+      timeframe TEXT NOT NULL,
+      from_time INTEGER NOT NULL,
+      to_time INTEGER NOT NULL
+    );
+    CREATE INDEX bar_fetches_lookup ON bar_fetches(account_id, symbol, timeframe);
+    ALTER TABLE trades ADD COLUMN mae REAL;
+    ALTER TABLE trades ADD COLUMN mfe REAL;
+    ALTER TABLE trades ADD COLUMN excursion_note TEXT;`,
+  },
 ];
 
 const globalForDb = globalThis as unknown as { __kestrelDb?: DatabaseSync };

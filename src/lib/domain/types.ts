@@ -191,6 +191,9 @@ export interface Trade extends Omit<TradeData, "assetClass" | "session" | "execu
   rMultiple: number | null;
   /** Planned reward:risk from stop and target, when both are set. */
   plannedR: number | null;
+  /** Price distances from entry, read from bars. Null until read, or when no prices could be found. */
+  mae: number | null;
+  mfe: number | null;
   holdingMinutes: number | null;
   /** Present on single-trade reads only. */
   executions?: Execution[];
@@ -198,7 +201,7 @@ export interface Trade extends Omit<TradeData, "assetClass" | "session" | "execu
 }
 
 /** Everything the trade log can show, in the order it shows them. */
-export const JOURNAL_COLUMNS = ["side", "opened", "closed", "hold", "strategy", "setup", "tags", "mistakes", "emotion", "grade", "account", "assetClass", "source", "status", "entry", "exit", "size", "fees", "plannedR"] as const;
+export const JOURNAL_COLUMNS = ["side", "opened", "closed", "hold", "strategy", "setup", "tags", "mistakes", "emotion", "grade", "account", "assetClass", "source", "status", "entry", "exit", "size", "fees", "plannedR", "mae", "mfe"] as const;
 export type JournalColumn = (typeof JOURNAL_COLUMNS)[number];
 export const DEFAULT_COLUMNS: JournalColumn[] = ["side", "opened", "closed", "strategy", "source", "status", "size"];
 

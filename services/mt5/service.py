@@ -27,6 +27,9 @@ LOGIN_TIMEOUT_MS = 60_000
 HISTORY_SETTLE_SECONDS = 25
 # Deal times can run ahead of UTC by the broker's offset, so "now" alone could miss the newest deals.
 TO_MARGIN_SECONDS = 2 * 86400
+# Read-only price history. Keys are what Node may ask for.
+TIMEFRAMES = {"M1": mt5.TIMEFRAME_M1, "M5": mt5.TIMEFRAME_M5, "M15": mt5.TIMEFRAME_M15, "H1": mt5.TIMEFRAME_H1}
+MAX_SYMBOL = 32
 SYMBOL_FIELDS = ("name", "trade_contract_size", "digits", "point", "trade_tick_size", "trade_tick_value", "currency_base", "currency_profit")
 
 # Seen on 5.0.6180 build 6254 with fake logins:
@@ -153,34 +156,61 @@ def read_account(login, start, terminal):
     }
 
 
-def run_session(login, server, password, start):
+def sign_in(login, server, password):
+    """Reaches the dedicated terminal, signed in to this account and no other. The caller shuts down."""
     global _last_login
     if not os.path.isfile(TERMINAL) or not os.path.isfile(os.path.join(TERMINAL_DIR, "portable.txt")):
         raise SessionError("terminal_missing", "The dedicated MT5 terminal is missing. Run: node scripts/setup-mt5.mjs")
     start_terminal()
+    # The login goes in here, not afterwards: a terminal with no account sits at its first-run
+    # screen, and without credentials initialize times out waiting for it.
+    if not mt5.initialize(path=TERMINAL, portable=True, login=login, password=password, server=server, timeout=INIT_TIMEOUT_MS):
+        code, message = mt5.last_error()
+        raise SessionError(login_category(code), f"Could not sign in: {message}", code)
+
+    terminal = mt5.terminal_info()
+    if terminal is None or not is_dedicated(terminal.path):
+        raise SessionError("terminal_missing", "Reached a different terminal than the dedicated one, so no login was attempted.")
+
+    # A server list copied from another terminal once signed this one in to that terminal's account.
+    # Setup no longer copies it, but fail closed and read nothing if anything like that happens again.
+    current = mt5.account_info()
+    if current is not None and current.login not in (login, _last_login):
+        stop_terminal()
+        raise SessionError("other", "The dedicated terminal signed in to another account by itself, so nothing was read.")
+
+    _last_login = login
+    return terminal
+
+
+def run_session(login, server, password, start):
     try:
-        # The login goes in here, not afterwards: a terminal with no account sits at its first-run
-        # screen, and without credentials initialize times out waiting for it.
-        if not mt5.initialize(path=TERMINAL, portable=True, login=login, password=password, server=server, timeout=INIT_TIMEOUT_MS):
-            code, message = mt5.last_error()
-            raise SessionError(login_category(code), f"Could not sign in: {message}", code)
-
-        terminal = mt5.terminal_info()
-        if terminal is None or not is_dedicated(terminal.path):
-            raise SessionError("terminal_missing", "Reached a different terminal than the dedicated one, so no login was attempted.")
-
-        # A server list copied from another terminal once signed this one in to that terminal's account.
-        # Setup no longer copies it, but fail closed and read nothing if anything like that happens again.
-        current = mt5.account_info()
-        if current is not None and current.login not in (login, _last_login):
-            stop_terminal()
-            raise SessionError("other", "The dedicated terminal signed in to another account by itself, so nothing was read.")
-
-        _last_login = login
-        return read_account(login, start, terminal)
+        return read_account(login, start, sign_in(login, server, password))
     except SessionError as e:
         if e.code in IPC_ERRORS:
             stop_terminal()  # Once a call times out, the terminal stays unresponsive to the next one.
+        raise
+    finally:
+        mt5.shutdown()
+
+
+def run_bars(login, server, password, symbol, timeframe, start, end):
+    """Price history in the broker's own clock. Node takes the offset off. Reads only, like everything here."""
+    try:
+        sign_in(login, server, password)
+        account = mt5.account_info()
+        if account is None or account.login != login:
+            raise SessionError("other", "The terminal is on a different account than requested.")
+        if not mt5.symbol_select(symbol, True):
+            raise SessionError("no_symbol", "The broker doesn't list that symbol.")
+        rates = mt5.copy_rates_range(symbol, TIMEFRAMES[timeframe], start, end)
+        if rates is None and mt5.last_error()[0] != 1:
+            fail("other", "Could not read prices")
+        bars = [] if rates is None else [[int(r["time"]), float(r["open"]), float(r["high"]), float(r["low"]), float(r["close"]), int(r["tick_volume"])] for r in rates]
+        return {"ok": True, "bars": bars}
+    except SessionError as e:
+        if e.code in IPC_ERRORS:
+            stop_terminal()
         raise
     finally:
         mt5.shutdown()
@@ -196,6 +226,19 @@ def parse_request(raw):
         and type(start) in (int, float) and start >= 0
     )
     return (login, server, password, int(start)) if valid else None
+
+
+def parse_bars(raw):
+    data = json.loads(raw)
+    base = parse_request(raw)
+    symbol, timeframe, end = data.get("symbol"), data.get("timeframe"), data.get("to")
+    valid = (
+        base is not None
+        and isinstance(symbol, str) and 0 < len(symbol) <= MAX_SYMBOL
+        and timeframe in TIMEFRAMES
+        and type(end) in (int, float) and end > base[3]
+    )
+    return (base[0], base[1], base[2], symbol, timeframe, base[3], int(end)) if valid else None
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -228,20 +271,20 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not self.authorized():
             return
-        if self.path != "/session":
+        if self.path not in ("/session", "/bars"):
             return self.reply(404, {"ok": False})
         length = int(self.headers.get("content-length") or 0)
         if length <= 0 or length > MAX_BODY:
             return self.reply(413, {"ok": False, "category": "other", "message": "Bad request size"})
         try:
-            parsed = parse_request(self.rfile.read(length))
+            parsed = (parse_bars if self.path == "/bars" else parse_request)(self.rfile.read(length))
         except ValueError:
             parsed = None
         if parsed is None:
             return self.reply(422, {"ok": False, "category": "other", "message": "Invalid request"})
         password = parsed[2]
         try:
-            self.reply(200, run_session(*parsed))
+            self.reply(200, (run_bars if self.path == "/bars" else run_session)(*parsed))
         except SessionError as e:
             self.reply(200, {"ok": False, "category": e.category, "message": e.message.replace(password, "***"), "code": e.code})
         except Exception as e:  # The message could echo arguments, so only the type goes back.

@@ -118,6 +118,17 @@ export function findAccountId(userId: number, login: string, server: string): nu
   return r?.account_id ?? null;
 }
 
+/** The stored offset of the broker's clock from UTC, in seconds. Zero when it was never measured. */
+export const brokerOffset = (accountId: number): number => readMeta(accountId).offsetSeconds ?? 0;
+
+/** Connections that can be asked for prices: a stored password, not stopped by refusals. Its own account first. */
+export function connectionsForPrices(userId: number, preferred?: number): number[] {
+  const rows = db()
+    .prepare("SELECT c.account_id FROM mt5_connections c JOIN accounts a ON a.id = c.account_id WHERE a.user_id = ? AND c.password_cipher IS NOT NULL AND c.status != 'auth_failed' ORDER BY c.account_id")
+    .all(userId) as { account_id: number }[];
+  return rows.map((r) => r.account_id).sort((a, b) => Number(b === preferred) - Number(a === preferred));
+}
+
 /** Everything the sync needs, including the cipher. Server code only, never returned from a route. */
 export function readForSync(accountId: number) {
   return db()
@@ -253,7 +264,7 @@ function writeTrade(userId: number, accountId: number, t: NormalizedTrade, contr
   }
   // A deal the broker later cancelled drops out of the fills, so its row must go too.
   conn.prepare("DELETE FROM executions WHERE trade_id = ? AND broker_deal_id IS NOT NULL AND broker_deal_id NOT IN (SELECT value FROM json_each(?))").run(tradeId, JSON.stringify(t.fills.map((f) => f.brokerDealId)));
-  if (newDeals > 0) conn.prepare("UPDATE trades SET updated_at = ? WHERE id = ?").run(at, tradeId);
+  if (newDeals > 0) conn.prepare("UPDATE trades SET updated_at = ?, mae = NULL, mfe = NULL, excursion_note = NULL WHERE id = ?").run(at, tradeId);
   recalculateTrade(tradeId);
   return { created: !existing, newDeals };
 }

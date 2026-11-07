@@ -9,6 +9,7 @@ import type { InstrumentSpec } from "@/lib/server/repo/journal";
 import { RowsSkeleton } from "../tape/Skeletons";
 import { Button, Dialog, cx } from "../ui";
 import { LinkedNotes } from "@/components/notebook/LinkedNotes";
+import { TradePriceChart } from "@/components/charts/TradePriceChart";
 import { PlaybookChecklist } from "./Checklist";
 import { PnlIssue, SideBadge, SourceBadge, StatusBadge } from "./badges";
 import { useTradeActions } from "./useTradeActions";
@@ -226,6 +227,7 @@ function TradeDetail({ trade: t }: { trade: Trade }) {
         <p className="border-t border-line pt-4 text-[13.5px] text-muted">No analysis yet. Edit the trade to note why you took it and how it went.</p>
       )}
 
+      <TradePriceChart key={`chart-${t.id}`} tradeId={t.id} onReplay={() => openTrade(null)} />
       <PlaybookChecklist key={t.id} tradeId={t.id} />
       <LinkedNotes tradeId={t.id} title={`${t.symbol}, trade #${t.id}`} sample={t.source === "sample"} onLeave={() => openTrade(null)} />
 

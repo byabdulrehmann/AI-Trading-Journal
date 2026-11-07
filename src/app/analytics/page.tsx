@@ -12,6 +12,7 @@ import { HOLD_BUCKETS, METRIC_DEFINITIONS as D, R_BUCKETS, type Bucket, type Per
 import { BarChart, BreakdownTable, Heatmap, Histogram, LineChart, MonthlyTable } from "@/components/charts";
 import { CurrencyPicker } from "@/components/CurrencyPicker";
 import { CompareReport } from "@/components/reports/CompareReport";
+import { ExcursionCard } from "@/components/reports/ExcursionCard";
 import { Suspended } from "@/components/Suspended";
 import { TradeFilters } from "@/components/TradeFilters";
 import { Button, Card, CardHeader, EmptyState, Metric, PageHeader, Segmented, Spinner, cx } from "@/components/ui";
@@ -296,6 +297,7 @@ function ReportsView() {
                 <Metric def={D.maxDrawdown} value={money(-data.moneyMetrics.maxDrawdown, data.currency)} tone={data.moneyMetrics.maxDrawdown ? "text-loss" : undefined} />
               </dl>
             </Card>
+            <ExcursionCard stats={r.excursions} unread={r.unread} query={filters.apiQuery({ dates: false })} onDone={reload} />
             <Card>
               <CardHeader title="R multiple" subtitle="Only trades with a stop have an R." />
               <BreakdownTable compact rows={b.rMultiple} currency={cur} group="Result" empty="No closed trade here has a stop." hrefFor={toBand(R_BUCKETS, "rMin", "rMax")} />

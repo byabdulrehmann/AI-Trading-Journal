@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { computePosition } from "./engine/position";
-import { HOLD_BUCKETS, R_BUCKETS, breakdownMany, bucketBreakdown, computeMetrics, computeScore, dailySummaries, holdMinutes, compareMetrics, missedSummary, periodKey, periodSummaries, playbookStats, ramp, riskReport, streakRuns, tradesInUnit, winLossProfile, type Metrics } from "./metrics";
+import { HOLD_BUCKETS, R_BUCKETS, breakdownMany, bucketBreakdown, computeMetrics, computeScore, dailySummaries, holdMinutes, compareMetrics, excursionStats, excursions, missedSummary, replayPnl, timeframeFor, periodKey, periodSummaries, playbookStats, ramp, riskReport, streakRuns, tradesInUnit, winLossProfile, type Metrics } from "./metrics";
 import { MissedInput, PLAYBOOK_TEMPLATES, PlaybookInput, missedR } from "./playbooks";
+import { simulatedBars } from "./bars";
 import type { Trade } from "./types";
 import { zoneDateKey, zoneInstant, zoneParts } from "./zone";
 
@@ -457,5 +458,91 @@ describe("reports, by hand", () => {
     assert.equal(row("winRate").diff, -0.5);
     assert.equal(row("closedTrades").diff, 1);
     assert.deepEqual([row("profitFactor").a, row("profitFactor").b, row("profitFactor").diff], [2, null, null]);
+  });
+});
+
+describe("excursions and replay, by hand", () => {
+  const bars = [{ high: 102, low: 99 }, { high: 105, low: 98 }, { high: 104, low: 100 }];
+
+  test("a long's best is above entry, its worst below", () => {
+    assert.deepEqual(excursions("long", 100, bars), { mae: 2, mfe: 5 });
+  });
+
+  test("a short's are the other way round", () => {
+    assert.deepEqual(excursions("short", 100, bars), { mae: 5, mfe: 2 });
+  });
+
+  test("never below zero, when price never went that way", () => {
+    assert.deepEqual(excursions("long", 90, bars), { mae: 0, mfe: 15 });
+  });
+
+  test("no bars, no reading", () => {
+    assert.equal(excursions("long", 100, []), null);
+  });
+
+  test("stats in R, with left on the table from winners only", () => {
+    const t = (pnl: number, over: Partial<Trade>) => closed("2026-03-02T10:00:00Z", pnl, { side: "long", entryPrice: 100, stopPrice: 98, ...over });
+    const s = excursionStats([
+      t(100, { exitPrice: 104, mae: 1, mfe: 6 }), // stop distance 2: MAE 0.5R, MFE 3R, exit 2R, 1R left behind
+      t(-50, { exitPrice: 98, mae: 2, mfe: 1 }), // MAE 1R, MFE 0.5R, a loser: not in left behind
+      t(10, { exitPrice: 101, mae: null, mfe: null }), // no reading
+      t(10, { exitPrice: 101, stopPrice: null, mae: 1, mfe: 1 }), // no stop
+    ]);
+    assert.equal(s.sample, 2);
+    assert.equal(s.avgMaeR, 0.75);
+    assert.equal(s.avgMfeR, 1.75);
+    assert.equal(s.leftBehindR, 1);
+  });
+
+  test("no readings, blanks", () => {
+    assert.deepEqual(excursionStats([closed("2026-03-02T10:00:00Z", 5)]), { sample: 0, avgMaeR: null, avgMfeR: null, leftBehindR: null });
+  });
+
+  test("replay: a scaled position, step by step", () => {
+    // Long 2 at 100, add 2 at 104 (average 102), out 2 at 106, out 2 at 101. 100 per point.
+    const p = [{ side: "long" as const, perPoint: 100, fills: [
+      { role: "entry" as const, price: 100, quantity: 2, at: 10 },
+      { role: "entry" as const, price: 104, quantity: 2, at: 20 },
+      { role: "exit" as const, price: 106, quantity: 2, at: 30 },
+      { role: "exit" as const, price: 101, quantity: 2, at: 40 },
+    ] }];
+    assert.deepEqual(replayPnl(p, 5, 99), { realized: 0, open: 0, size: 0 }); // before anything
+    assert.deepEqual(replayPnl(p, 15, 101), { realized: 0, open: 200, size: 2 }); // +1 x 2 x 100
+    assert.deepEqual(replayPnl(p, 25, 103), { realized: 0, open: 400, size: 4 }); // (103 - 102) x 4 x 100
+    assert.deepEqual(replayPnl(p, 35, 100), { realized: 800, open: -400, size: 2 }); // (106 - 102) x 2 x 100, then -2 x 2 x 100
+    assert.deepEqual(replayPnl(p, 45, 50), { realized: 600, open: 0, size: 0 }); // 800 + (101 - 102) x 2 x 100, and flat ignores price
+  });
+
+  test("replay of a short, and two positions together", () => {
+    const short = { side: "short" as const, perPoint: 1, fills: [{ role: "entry" as const, price: 50, quantity: 10, at: 1 }, { role: "exit" as const, price: 40, quantity: 10, at: 2 }] };
+    const long = { side: "long" as const, perPoint: 1, fills: [{ role: "entry" as const, price: 10, quantity: 1, at: 1 }] };
+    assert.deepEqual(replayPnl([short], 1, 45), { realized: 0, open: 50, size: -10 });
+    assert.deepEqual(replayPnl([short, long], 2, 12), { realized: 100, open: 2, size: 1 });
+  });
+
+  test("the bar size follows the span", () => {
+    assert.deepEqual([timeframeFor(3600), timeframeFor(8 * 3600), timeframeFor(8 * 3600 + 1), timeframeFor(4 * 86400), timeframeFor(20 * 86400)], ["M1", "M1", "M5", "M15", "H1"]);
+  });
+});
+
+describe("simulated bars", () => {
+  const anchors = [{ t: 1000, price: 100 }, { t: 1600, price: 104 }];
+
+  test("every fill falls inside its bar, and it's repeatable", () => {
+    const a = simulatedBars(anchors, 700, 1900, 60, 7);
+    for (const f of anchors) {
+      const bar = a.find((b) => b.t <= f.t && f.t < b.t + 60)!;
+      assert.ok(bar.l <= f.price && f.price <= bar.h, `${f.price} in ${bar.l}-${bar.h}`);
+    }
+    assert.deepEqual(a, simulatedBars(anchors, 700, 1900, 60, 7));
+    assert.notDeepEqual(a, simulatedBars(anchors, 700, 1900, 60, 8));
+  });
+
+  test("candles are well formed", () => {
+    for (const b of simulatedBars(anchors, 700, 1900, 60, 3)) assert.ok(b.l <= b.o && b.l <= b.c && b.h >= b.o && b.h >= b.c && b.l > 0);
+  });
+
+  test("no fills, no bars", () => {
+    assert.deepEqual(simulatedBars([], 0, 100, 60, 1), []);
   });
 });

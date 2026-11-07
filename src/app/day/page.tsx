@@ -144,6 +144,7 @@ function DayView() {
         <input type="date" aria-label="Date" className={cx(inputClass, "num h-8 w-40! text-[13px] max-sm:h-11")} value={date} onChange={(e) => e.target.value && goTo(e.target.value)} />
         <Button size="sm" className="max-sm:h-11" onClick={() => goTo(shift(date, 1))}>Next day</Button>
         {date !== today && <Button size="sm" variant="ghost" className="max-sm:h-11" onClick={() => goTo(today)}>Today</Button>}
+        <Link href={`/replay?day=${date}${includeSample ? "&includeSample=1" : ""}`} className="inline-flex h-8 items-center border border-line-strong px-3 text-[13px] font-medium hover:bg-raised max-sm:h-11">Replay this day</Link>
       </div>
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-x-10 gap-y-6 xl:grid-cols-[minmax(0,1fr)_18rem]">

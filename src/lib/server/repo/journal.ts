@@ -213,6 +213,8 @@ function toTrade(r: Row): Trade {
     riskAmount: r.risk_amount as number | null,
     rMultiple: r.r_multiple as number | null,
     plannedR: r.planned_r as number | null,
+    mae: (r.mae as number | null) ?? null,
+    mfe: (r.mfe as number | null) ?? null,
     holdingMinutes: r.holding_minutes as number | null,
   };
 }
@@ -492,6 +494,8 @@ export function updateTrade(userId: number, id: number, t: TradeData): Trade | n
   const values = synced ? [t.stopPrice, t.targetPrice, ...annotationValues(userId, t)] : [...marketValues(t), ...annotationValues(userId, t)];
   transaction(db(), () => {
     db().prepare(`UPDATE trades SET ${cols.map((c) => `${c} = ?`).join(", ")}, updated_at = ? WHERE id = ? AND user_id = ?`).run(...values, now(), id, userId);
+    // Prices or times may have moved, so what was read from the bars no longer holds.
+    if (!synced) db().prepare("UPDATE trades SET mae = NULL, mfe = NULL, excursion_note = NULL WHERE id = ?").run(id);
     if (!synced) writeFills(id, t.accountId, existing.source, t);
     setTags(userId, id, t.tags, "custom");
     setTags(userId, id, t.strategyTags, "strategy");

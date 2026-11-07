@@ -152,6 +152,21 @@ export const METRIC_DEFINITIONS = {
     formula: "longest run of losses, in closing order",
     meaning: "A breakeven trade ends the run.",
   },
+  avgMfe: {
+    label: "Average best point",
+    formula: "mean of MFE ÷ stop distance",
+    meaning: "How far trades went your way at their best, in R. Maximum favourable excursion, read from price bars.",
+  },
+  avgMae: {
+    label: "Average worst point",
+    formula: "mean of MAE ÷ stop distance",
+    meaning: "How far trades went against you at their worst, in R. Maximum adverse excursion, read from price bars.",
+  },
+  leftBehind: {
+    label: "Left on the table",
+    formula: "mean of (MFE in R − R at exit), on winners",
+    meaning: "How much more winners had at their best than they closed with, before costs.",
+  },
   stopShare: {
     label: "Trades with a stop",
     formula: "closed trades with a stop ÷ closed trades",
@@ -852,4 +867,95 @@ export function compareMetrics(a: Metrics, b: Metrics): CompareRow[] {
     const [x, y] = [a[key] as number | null, b[key] as number | null];
     return { key, label, kind, a: x, b: y, diff: x === null || y === null ? null : Math.round((x - y) * 1e8) / 1e8 };
   });
+}
+
+// ---------- excursions and replay ----------
+
+/** One bar's range. */
+export interface PriceRange {
+  high: number;
+  low: number;
+}
+
+/**
+ * How far price went for and against a position while it was open, as distances from the entry, never below zero.
+ * Bars can't say what came first inside themselves, so the entry bar's range may hold moves from before the entry.
+ */
+export function excursions(side: "long" | "short", entry: number, bars: PriceRange[]): { mae: number; mfe: number } | null {
+  if (bars.length === 0) return null;
+  const high = Math.max(...bars.map((b) => b.high));
+  const low = Math.min(...bars.map((b) => b.low));
+  const [up, down] = [Math.max(0, high - entry), Math.max(0, entry - low)];
+  return side === "long" ? { mae: round(down, 8), mfe: round(up, 8) } : { mae: round(up, 8), mfe: round(down, 8) };
+}
+
+export interface ExcursionStats {
+  /** Closed trades with both a reading and a stop. */
+  sample: number;
+  avgMaeR: number | null;
+  avgMfeR: number | null;
+  /** Winners only: what they had at their best beyond what they kept. */
+  leftBehindR: number | null;
+}
+
+export function excursionStats(trades: Trade[]): ExcursionStats {
+  const usable = trades.filter(isClosed).filter((t) => t.mae !== null && t.mfe !== null && t.stopPrice !== null && t.entryPrice !== t.stopPrice);
+  const dist = (t: Trade) => Math.abs(t.entryPrice - (t.stopPrice as number));
+  const mean = (xs: number[]) => (xs.length ? round(xs.reduce((a, b) => a + b, 0) / xs.length, 2) : null);
+  const exitR = (t: Trade) => ((t.side === "long" ? 1 : -1) * ((t.exitPrice as number) - t.entryPrice)) / dist(t);
+  return {
+    sample: usable.length,
+    avgMaeR: mean(usable.map((t) => (t.mae as number) / dist(t))),
+    avgMfeR: mean(usable.map((t) => (t.mfe as number) / dist(t))),
+    leftBehindR: mean(usable.filter((t) => t.pnl > 0).map((t) => Math.max(0, (t.mfe as number) / dist(t) - exitR(t)))),
+  };
+}
+
+export interface ReplayFill {
+  role: "entry" | "exit";
+  price: number;
+  quantity: number;
+  /** Epoch seconds. */
+  at: number;
+}
+
+export interface ReplayPosition {
+  side: "long" | "short";
+  /** Money per one point of price: size aside, the contract's multiplier and any conversion. */
+  perPoint: number;
+  fills: ReplayFill[];
+}
+
+/**
+ * Where a set of positions stood at a moment, from their fills up to then and a price for what's still open.
+ * Before costs. Once everything has closed, realized is the trades' gross result.
+ */
+export function replayPnl(positions: ReplayPosition[], at: number, price: number): { realized: number; open: number; size: number } {
+  let [realized, open, size] = [0, 0, 0];
+  for (const p of positions) {
+    const dir = p.side === "long" ? 1 : -1;
+    let [held, avg] = [0, 0];
+    for (const f of p.fills.filter((x) => x.at <= at).sort((a, b) => a.at - b.at || (a.role === "entry" ? -1 : 1))) {
+      if (f.role === "entry") {
+        avg = (avg * held + f.price * f.quantity) / (held + f.quantity);
+        held += f.quantity;
+      } else {
+        realized += dir * (f.price - avg) * f.quantity * p.perPoint;
+        held -= f.quantity;
+      }
+    }
+    if (held > 1e-9) {
+      open += dir * (price - avg) * held * p.perPoint;
+      size += dir * held;
+    }
+  }
+  return { realized: round(realized, 2), open: round(open, 2), size: round(size, 8) };
+}
+
+/** The bar size that shows a span of time well without asking for too many. Seconds. */
+export function timeframeFor(spanSeconds: number): "M1" | "M5" | "M15" | "H1" {
+  if (spanSeconds <= 8 * 3600) return "M1";
+  if (spanSeconds <= 3 * 86400) return "M5";
+  if (spanSeconds <= 15 * 86400) return "M15";
+  return "H1";
 }
