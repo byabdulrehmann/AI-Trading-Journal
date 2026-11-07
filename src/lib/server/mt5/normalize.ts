@@ -204,6 +204,30 @@ export function normalizeDeals(deals: RawDeal[], orders: RawOrder[], offsetSecon
   return result;
 }
 
+export interface OffsetCandidate {
+  value: number;
+  /** The quote time it was last seen with. */
+  quoteTime: number;
+  seen: number;
+}
+
+/** Times a different offset must be measured, with quotes moving each time, before it replaces the stored one. */
+export const OFFSET_CONFIRMATIONS = 3;
+
+/**
+ * Which offset to use after a measurement. The first one is taken as it comes. After that a change must be seen
+ * ${OFFSET_CONFIRMATIONS} times in a row, each with a newer quote than the last: with markets shut, the newest quote is
+ * hours old and looks like a wrong offset, and on 2026-11-07 that moved every MT5 trade's times by up to 11 hours.
+ */
+export function settleOffset(stored: number | null, candidate: OffsetCandidate | null | undefined, measured: number | null, quoteTime: number | null | undefined): { offset: number | null; candidate: OffsetCandidate | null; changed: boolean } {
+  if (measured === null || quoteTime == null) return { offset: stored, candidate: candidate ?? null, changed: false };
+  if (stored === null) return { offset: measured, candidate: null, changed: false };
+  if (measured === stored) return { offset: stored, candidate: null, changed: false };
+  const seen = candidate && candidate.value === measured && quoteTime > candidate.quoteTime ? candidate.seen + 1 : candidate && candidate.value === measured ? candidate.seen : 1;
+  if (seen >= OFFSET_CONFIRMATIONS) return { offset: measured, candidate: null, changed: true };
+  return { offset: stored, candidate: { value: measured, quoteTime: Math.max(quoteTime, candidate?.value === measured ? candidate.quoteTime : 0), seen }, changed: false };
+}
+
 const MAX_OFFSET = 14 * 3600;
 const FRESH_SECONDS = 120;
 

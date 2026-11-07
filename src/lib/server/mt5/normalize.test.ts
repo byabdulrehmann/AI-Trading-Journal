@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { brokerOffsetSeconds, normalizeDeals, type RawDeal, type RawOrder } from "./normalize";
+import { brokerOffsetSeconds, normalizeDeals, settleOffset, type RawDeal, type RawOrder } from "./normalize";
 
 const T0 = 1_780_000_000;
 let ticket = 1000;
@@ -178,6 +178,49 @@ describe("normalizeDeals", () => {
     const f = normalizeDeals([d], [], 7200).trades[0].fills[0];
     assert.deepEqual(JSON.parse(f.raw), d);
     assert.equal(f.executedAt, new Date((T0 - 7200) * 1000 + 250).toISOString());
+  });
+});
+
+describe("settling the broker's offset", () => {
+  const q = 1_780_000_000;
+  test("the first measurement is taken as it comes", () => {
+    assert.deepEqual(settleOffset(null, null, 7200, q), { offset: 7200, candidate: null, changed: false });
+  });
+
+  test("weekend quotes that never move can't change it, however often they're seen", () => {
+    let state = { offset: 7200 as number | null, candidate: null as ReturnType<typeof settleOffset>["candidate"] };
+    for (let i = 0; i < 20; i++) {
+      const r = settleOffset(state.offset, state.candidate, -32400, q);
+      assert.equal(r.offset, 7200);
+      assert.equal(r.changed, false);
+      state = { offset: r.offset, candidate: r.candidate };
+    }
+  });
+
+  test("a real change, seen three times with moving quotes, is taken", () => {
+    const a = settleOffset(7200, null, 10800, q);
+    const b = settleOffset(a.offset, a.candidate, 10800, q + 60);
+    assert.deepEqual([a.offset, b.offset, b.changed], [7200, 7200, false]);
+    const c = settleOffset(b.offset, b.candidate, 10800, q + 120);
+    assert.deepEqual([c.offset, c.changed, c.candidate], [10800, true, null]);
+  });
+
+  test("a different reading in between starts the count again", () => {
+    const a = settleOffset(7200, null, 10800, q);
+    const b = settleOffset(a.offset, a.candidate, 14400, q + 60);
+    const c = settleOffset(b.offset, b.candidate, 10800, q + 120);
+    assert.equal(c.candidate?.seen, 1);
+    assert.equal(c.offset, 7200);
+  });
+
+  test("measuring the stored value again clears a pending candidate", () => {
+    const a = settleOffset(7200, null, 10800, q);
+    assert.equal(settleOffset(a.offset, a.candidate, 7200, q + 60).candidate, null);
+  });
+
+  test("no measurement keeps everything as it was", () => {
+    const pending = { value: 10800, quoteTime: q, seen: 2 };
+    assert.deepEqual(settleOffset(7200, pending, null, null), { offset: 7200, candidate: pending, changed: false });
   });
 });
 

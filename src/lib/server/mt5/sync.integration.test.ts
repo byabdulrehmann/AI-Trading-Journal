@@ -175,6 +175,27 @@ describe("idempotent sync", () => {
     assert.equal(J.listInstruments(userId, id)[0].source, "mt5");
   });
 
+  test("stale quotes with markets shut never move stored times, and a confirmed change re-reads the history", async () => {
+    const id = await connected(2099, session({ deals: [deal({ position_id: 154, time: T0 + 7200 })] }, 2099));
+    const stored = () => (db().prepare("SELECT executed_at FROM executions WHERE account_id = ?").get(id) as { executed_at: string }).executed_at;
+    const first = stored();
+    // A Saturday: the newest quote is hours old, and stays the same each sync.
+    for (let i = 0; i < 5; i++) {
+      fakes.__mt5Fake.next = session({ deals: [deal({ position_id: 154, time: T0 + 7200 })], quote_time: T0 - 32400, utc_now: T0 }, 2099);
+      assert.equal((await syncAccount(id)).ok, true);
+    }
+    assert.equal(stored(), first);
+    assert.ok(R.readForSync(id)?.history_synced_to);
+
+    // The broker really moved to +3h: three syncs with quotes moving on.
+    for (let i = 0; i < 3; i++) {
+      fakes.__mt5Fake.next = session({ deals: [deal({ position_id: 154, time: T0 + 7200 })], quote_time: T0 + 10800 + i * 60, utc_now: T0 + i * 60 }, 2099);
+      await syncAccount(id);
+    }
+    assert.equal(R.readForSync(id)?.history_synced_to, null);
+    assert.equal(stored(), new Date((T0 + 7200 - 10800) * 1000 + Date.parse(first) % 1000).toISOString());
+  });
+
   test("broker clock offset is taken off the stored times", async () => {
     const id = await connected(2003, session({ deals: [deal({ position_id: 52, time: T0 + 7200 })] }, 2003));
     assert.equal(tradesOf(id)[0].openedAt, new Date(T0 * 1000).toISOString());

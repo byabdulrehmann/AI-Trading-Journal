@@ -2,7 +2,7 @@ import "server-only";
 import { db, now } from "../db";
 import { classifySymbol, sessionFor } from "@/lib/domain/engine/instruments";
 import { recalculateTrade, saveBrokerInstrument } from "./journal";
-import { brokerOffsetSeconds, normalizeDeals, type NormalizedTrade, type RawDeal, type RawOrder } from "../mt5/normalize";
+import { brokerOffsetSeconds, settleOffset, type OffsetCandidate, normalizeDeals, type NormalizedTrade, type RawDeal, type RawOrder } from "../mt5/normalize";
 import type { SessionPayload } from "../mt5/client";
 
 type Row = Record<string, unknown>;
@@ -56,6 +56,8 @@ export function isStale(lastSuccessAt: string | null, lastAttemptAt: string | nu
 interface Mt5Meta {
   offsetSeconds: number | null;
   masterPasswordWarning: boolean;
+  /** A different offset seen lately, waiting to be confirmed. */
+  offsetCandidate?: OffsetCandidate | null;
 }
 
 function readMeta(accountId: number): Mt5Meta {
@@ -277,7 +279,8 @@ export function applyPayload(userId: number, accountId: number, payload: Session
   const conn = db();
   const previous = readMeta(accountId);
   const measured = brokerOffsetSeconds(payload.quote_time, payload.utc_now);
-  const offset = measured ?? previous.offsetSeconds ?? 0;
+  const settled = settleOffset(previous.offsetSeconds, previous.offsetCandidate, measured, payload.quote_time);
+  const offset = settled.offset ?? 0;
 
   for (const s of Object.values(payload.symbols)) {
     saveBrokerInstrument(accountId, {
@@ -323,13 +326,16 @@ export function applyPayload(userId: number, accountId: number, payload: Session
       balance = ?, equity = ?, margin = ?, margin_free = ?, margin_level = ?, floating_pnl = ?, leverage = ?, currency = ?, broker = ?, margin_mode = ?, snapshot_at = ? WHERE account_id = ?`)
     .run(at, at, at, a.balance, a.equity, a.margin, a.margin_free, a.margin_level, a.profit, a.leverage, a.currency, a.company, a.margin_mode, at, accountId);
   // Docs: trade_allowed is off under an investor password. On means the stored password can trade.
-  writeMeta(accountId, { offsetSeconds: measured ?? previous.offsetSeconds, masterPasswordWarning: a.trade_allowed === true });
+  writeMeta(accountId, { offsetSeconds: settled.offset, offsetCandidate: settled.candidate, masterPasswordWarning: a.trade_allowed === true });
+  // Older deals were stored with the old offset, so the next sync reads the whole history again.
+  if (settled.changed) conn.prepare("UPDATE mt5_connections SET history_synced_to = NULL WHERE account_id = ?").run(accountId);
 
   const notes = [
     normalized.incomplete.length && `${normalized.incomplete.length} position(s) skipped because their history is incomplete: ${normalized.incomplete.map((i) => `#${i.positionId}`).slice(0, 10).join(", ")}.`,
     normalized.cancelled.length && `The broker cancelled deals on position(s) ${[...new Set(normalized.cancelled)].slice(0, 10).map((p) => `#${p}`).join(", ")}. Please review those trades.`,
     noSpec.size && `No contract size from the broker for ${[...noSpec].join(", ")}, so risk and R are blank on those trades.`,
     measured === null && previous.offsetSeconds === null && "Broker time offset unknown, so times are shown as the broker reported them.",
+    settled.changed && "The broker's clock changed, so trade times are being read again.",
   ].filter(Boolean);
   result.note = notes.length ? notes.join(" ") : null;
   return result;
