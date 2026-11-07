@@ -14,7 +14,7 @@ test("a filter set on one page follows you to the others, until cleared", async 
   await importCsv(page, SET);
   // Journal first: a page already visited must pick the filter up when you come back to it.
   await open(page, "/journal");
-  await nav(page, "Analytics");
+  await nav(page, "Reports");
   await page.getByRole("button", { name: "More filters" }).click();
   await page.getByRole("combobox", { name: "Direction" }).selectOption("short");
   await expect(page).toHaveURL(/side=short/);
@@ -127,8 +127,9 @@ test("the sample journal is large, spans accounts, and a mistake row opens match
   for (const c of ["option", "stock", "future", "forex", "crypto"]) expect(a.breakdowns.assetClass.map((r: { key: string }) => r.key)).toContain(c);
 
   await open(page, "/analytics?includeSample=1");
-  await expect(page.getByRole("heading", { name: "Mistakes" })).toBeVisible();
   await expect(figure(page, "Closed trades")).toHaveText(String(a.metrics.closedTrades));
+  await open(page, "/analytics?includeSample=1&tab=behaviour");
+  await expect(page.getByRole("heading", { name: "Mistakes" })).toBeVisible();
   const row = a.breakdowns.mistake[0];
   await page.locator(`[data-row="${row.key}"]`).first().click();
   await expect(page).toHaveURL(new RegExp(`/journal\\?.*mistake=${row.key}`));

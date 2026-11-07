@@ -24,10 +24,14 @@ test("at 375 px the dashboard, journal, analytics and calendar don't overflow si
   await expect(dialog(page).getByRole("heading", { name: /trade #\d+/ })).toBeVisible();
   await fits(page, "journal with a trade open");
 
-  await open(page, "/analytics?includeSample=1");
-  await expect(page.getByRole("heading", { name: "Analytics", level: 1 })).toBeVisible();
+  for (const tab of ["overview", "instruments", "playbooks", "behaviour", "risk", "wins", "compare"]) {
+    await open(page, `/analytics?includeSample=1&tab=${tab}`);
+    await expect(page.getByRole("heading", { name: "Reports", level: 1 })).toBeVisible();
+    await fits(page, `reports: ${tab}`);
+  }
+  await open(page, "/analytics?includeSample=1&tab=time");
   await expect(page.locator("td[data-cell]").first()).toBeAttached();
-  await fits(page, "analytics");
+  await fits(page, "reports: time");
 
   await open(page, "/calendar?includeSample=1");
   await expect(page.getByRole("grid")).toBeVisible();

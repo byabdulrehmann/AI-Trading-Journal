@@ -4,7 +4,7 @@ const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.ge
 /** Links to the journal keep the filters already on screen. `period` and the calendar's own params mean nothing there. */
 export function journalHref(search: string, patch: Record<string, string>): string {
   const next = new URLSearchParams(search);
-  for (const k of ["period", "month", "day", "page"]) next.delete(k);
+  for (const k of ["period", "month", "day", "page", "tab"]) next.delete(k);
   // Analytics counts closed trades, so the list it opens must too.
   next.set("closedOnly", "1");
   for (const [k, v] of Object.entries(patch)) next.set(k, v);

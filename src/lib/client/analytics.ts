@@ -1,4 +1,4 @@
-import type { BreakdownRow, DrawdownPoint, EquityPoint, Metrics, PeriodRow, Score, Unit } from "@/lib/domain/metrics";
+import type { BreakdownRow, DrawdownPoint, EquityPoint, Metrics, PeriodRow, RiskReport, Score, SideProfile, Unit } from "@/lib/domain/metrics";
 import type { PatternFinding } from "@/lib/domain/patterns";
 
 /** What /api/analytics returns. */
@@ -18,8 +18,9 @@ export interface Analytics {
   drawdown: DrawdownPoint[];
   periods: Record<"day" | "week" | "month" | "year", PeriodRow[]>;
   distribution: { from: number; to: number; count: number }[];
-  breakdowns: Record<"symbol" | "strategy" | "side" | "session" | "weekday" | "hour" | "account" | "setup" | "emotion" | "heatmap" | "assetClass" | "grade" | "tag" | "mistake" | "hold" | "rMultiple" | "price" | "size", BreakdownRow[]>;
+  breakdowns: Record<"symbol" | "strategy" | "side" | "session" | "weekday" | "hour" | "account" | "setup" | "emotion" | "heatmap" | "month" | "plan" | "assetClass" | "grade" | "tag" | "mistake" | "hold" | "rMultiple" | "price" | "size", BreakdownRow[]>;
   patterns: PatternFinding[];
+  report: { profile: { wins: SideProfile; losses: SideProfile }; streaks: { length: number; wins: number; losses: number }[]; risk: RiskReport };
   avgR: { winners: number | null; losers: number | null };
 }
 

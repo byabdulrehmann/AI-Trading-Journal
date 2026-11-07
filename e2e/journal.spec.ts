@@ -435,10 +435,10 @@ test("Ctrl-K navigates to a screen and finds a trade", async ({ page }) => {
   await expect(palette.getByRole("heading", { name: "Go to" })).toBeVisible();
   const search = palette.getByLabel("Search screens and trades");
   await expect(search).toBeFocused();
-  await search.fill("Analytics");
+  await search.fill("Reports");
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/analytics$/);
-  await expect(page.getByRole("heading", { name: "Analytics", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Reports", level: 1 })).toBeVisible();
 
   await page.keyboard.press("Control+k");
   await search.fill("eurusd");

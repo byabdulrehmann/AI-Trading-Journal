@@ -1,4 +1,4 @@
-import { HOLD_BUCKETS, PRICE_BUCKETS, R_BUCKETS, SIZE_BUCKETS, UNITS, breakdown, breakdownMany, bucketBreakdown, computeMetrics, computeScore, drawdownCurve, equityCurve, holdMinutes, isClosed, periodSummaries, pnlDistribution, tradesInUnit, type Unit } from "@/lib/domain/metrics";
+import { HOLD_BUCKETS, PRICE_BUCKETS, R_BUCKETS, SIZE_BUCKETS, UNITS, breakdown, breakdownMany, bucketBreakdown, computeMetrics, computeScore, drawdownCurve, riskReport, streakRuns, winLossProfile, equityCurve, holdMinutes, isClosed, periodSummaries, pnlDistribution, tradesInUnit, type Unit } from "@/lib/domain/metrics";
 import { detectPatterns } from "@/lib/domain/patterns";
 import type { Account, Trade } from "@/lib/domain/types";
 import { zoneParts } from "@/lib/domain/zone";
@@ -16,6 +16,7 @@ function meanR(trades: Trade[], side: (pnl: number) => boolean): number | null {
   return rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null;
 }
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const UNIT_CODE: Record<Exclude<Unit, "money">, string> = { percent: "%", r: "R", pips: "pips" };
 const LEFT_OUT: Record<Exclude<Unit, "money">, string> = {
   percent: "their account has no starting balance",
@@ -77,6 +78,8 @@ export async function GET(req: Request) {
       account: by((t) => accounts.find((a) => a.id === t.accountId)?.name ?? "(unknown)"),
       setup: by((t) => t.setup || "(no setup)"),
       emotion: by((t) => t.emotionBefore ?? "(not recorded)"),
+      month: by((t) => MONTHS[opened(t).month - 1]),
+      plan: by((t) => (t.followedPlan === null ? "unanswered" : t.followedPlan ? "on" : "off")),
       assetClass: by((t) => t.assetClass),
       grade: by((t) => t.grade),
       tag: breakdownMany(trades, (t) => [...t.tags, ...t.strategyTags]),
@@ -89,6 +92,7 @@ export async function GET(req: Request) {
       heatmap: by((t) => `${opened(t).weekday}-${opened(t).hour}`),
     },
     patterns: detectPatterns(real, tz),
+    report: { profile: winLossProfile(trades), streaks: streakRuns(trades), risk: riskReport(real) },
     avgR: { winners: meanR(real, (p) => p > 0), losers: meanR(real, (p) => p < 0) },
   });
 }

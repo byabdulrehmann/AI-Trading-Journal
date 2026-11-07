@@ -22,7 +22,7 @@ const PAGES: [string, string][] = [
   ["/playbooks", "Playbooks"],
   ["/notebook", "Notebook"],
   ["/calendar", "Calendar"],
-  ["/analytics", "Analytics"],
+  ["/analytics", "Reports"],
   ["/patterns", "Patterns"],
   ["/market", "Market context"],
   ["/jarvis", "AI Coach"],

@@ -68,7 +68,7 @@ export interface LinePoint {
 }
 
 /** Equity or drawdown over closed trades. Point or arrow keys for a value; click or Enter opens the trade when onSelect is given. */
-export function LineChart({ points, currency, label, onSelect, tone, height = 220, formatAt = dateOnly }: { points: LinePoint[]; currency: string; label: string; onSelect?: (tradeId: number) => void; tone?: "profit" | "loss"; height?: number; formatAt?: (iso: string) => string }) {
+export function LineChart({ points, currency, label, onSelect, tone, height = 220, formatAt = dateOnly, domain }: { points: LinePoint[]; currency: string; label: string; onSelect?: (tradeId: number) => void; tone?: "profit" | "loss"; height?: number; formatAt?: (iso: string) => string; domain?: [number, number] }) {
   const [box, { width }] = useBoxSize<HTMLElement>({ width: 720, height: 0 });
   const select = (i: number) => {
     const id = points[i]?.tradeId;
@@ -77,8 +77,8 @@ export function LineChart({ points, currency, label, onSelect, tone, height = 22
   const { active, setActive, focusProps } = useScrub(points.length, select);
   const pad = { l: 44, r: 8, t: 8, b: 20 };
   const values = points.map((p) => p.value);
-  const min = Math.min(0, ...values);
-  const max = Math.max(0, ...values);
+  const min = Math.min(0, ...values, domain?.[0] ?? 0);
+  const max = Math.max(0, ...values, domain?.[1] ?? 0);
   const span = max - min || 1;
   const last = points.at(-1)?.value ?? 0;
   const x = (i: number) => pad.l + (points.length > 1 ? i / (points.length - 1) : 0.5) * (width - pad.l - pad.r);

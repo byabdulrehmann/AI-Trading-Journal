@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { computePosition } from "./engine/position";
-import { HOLD_BUCKETS, R_BUCKETS, breakdownMany, bucketBreakdown, computeMetrics, computeScore, dailySummaries, holdMinutes, missedSummary, periodKey, periodSummaries, playbookStats, ramp, tradesInUnit, type Metrics } from "./metrics";
+import { HOLD_BUCKETS, R_BUCKETS, breakdownMany, bucketBreakdown, computeMetrics, computeScore, dailySummaries, holdMinutes, compareMetrics, missedSummary, periodKey, periodSummaries, playbookStats, ramp, riskReport, streakRuns, tradesInUnit, winLossProfile, type Metrics } from "./metrics";
 import { MissedInput, PLAYBOOK_TEMPLATES, PlaybookInput, missedR } from "./playbooks";
 import type { Trade } from "./types";
 import { zoneDateKey, zoneInstant, zoneParts } from "./zone";
@@ -383,5 +383,79 @@ describe("playbook figures, by hand", () => {
     assert.ok(PLAYBOOK_TEMPLATES.length >= 5);
     for (const t of PLAYBOOK_TEMPLATES) assert.ok(PlaybookInput.safeParse(t).success, t.name);
     assert.equal(new Set(PLAYBOOK_TEMPLATES.map((t) => t.name)).size, PLAYBOOK_TEMPLATES.length);
+  });
+});
+
+describe("reports, by hand", () => {
+  const at = (day: number, pnl: number, over: Partial<Trade> = {}) => closed(`2026-03-${String(day).padStart(2, "0")}T10:00:00Z`, pnl, over);
+
+  test("winners against losers", () => {
+    const r = winLossProfile([at(2, 100), at(3, 300), at(4, 50), at(5, -40), at(6, -80), at(7, 0)]);
+    assert.deepEqual([r.wins.trades, r.wins.total, r.wins.avg, r.wins.median, r.wins.largest], [3, 450, 150, 100, 300]);
+    assert.deepEqual([r.losses.trades, r.losses.total, r.losses.avg, r.losses.median, r.losses.largest], [2, -120, -60, -60, -80]);
+    assert.equal(r.wins.avgHoldMin, 30);
+  });
+
+  test("no trades on a side leaves blanks", () => {
+    const r = winLossProfile([at(2, 100)]);
+    assert.deepEqual([r.losses.trades, r.losses.total, r.losses.avg, r.losses.median, r.losses.largest, r.losses.avgHoldMin], [0, 0, null, null, null, null]);
+  });
+
+  test("streak runs: W W L W W W L L, then a breakeven splits two wins", () => {
+    const pnls = [10, 10, -5, 10, 10, 10, -5, -5, 10, 0, 10];
+    const rows = streakRuns(pnls.map((p, i) => at(i + 2, p)));
+    assert.deepEqual(rows, [
+      { length: 1, wins: 2, losses: 1 }, // the two wins around the breakeven, and one lone loss
+      { length: 2, wins: 1, losses: 1 },
+      { length: 3, wins: 1, losses: 0 },
+    ]);
+  });
+
+  test("streak runs go by closing order, not list order", () => {
+    assert.deepEqual(streakRuns([at(4, 10), at(2, 10), at(3, -5)]), [{ length: 1, wins: 2, losses: 1 }]);
+  });
+
+  test("no trades, no runs", () => {
+    assert.deepEqual(streakRuns([]), []);
+  });
+
+  test("risk: stops, planned against actual, and what going past the stop cost", () => {
+    const r = riskReport([
+      at(2, 200, { rMultiple: 2, riskAmount: 100, plannedR: 3 }),
+      at(3, -100, { rMultiple: -1, riskAmount: 100, grossPnl: -100, plannedR: 2 }), // exactly the stop: not past it
+      at(4, -150, { rMultiple: -1.5, riskAmount: 100, grossPnl: -150 }), // 50 past
+      at(5, -80, { rMultiple: -2, riskAmount: 40, grossPnl: -80 }), // 40 past
+      at(6, 10),
+    ]);
+    assert.equal(r.withStop, 4);
+    assert.equal(r.stopShare, 0.8);
+    assert.equal(r.avgRisk, 85); // (100 + 100 + 100 + 40) / 4
+    assert.equal(r.avgPlannedR, 2.5);
+    assert.equal(r.avgActualR, -0.62); // (2 - 1 - 1.5 - 2) / 4 = -0.625, rounded toward zero at the half
+    assert.deepEqual(r.beyondPlan, { count: 2, cost: 90 });
+  });
+
+  test("a loss at the stop isn't past it because of commission, and rounding doesn't count either", () => {
+    const r = riskReport([
+      at(2, -107, { rMultiple: -1.07, riskAmount: 100, grossPnl: -100 }), // 7 of commission
+      at(3, -100.5, { rMultiple: -1.01, riskAmount: 100, grossPnl: -100.5 }), // half a percent of rounding
+    ]);
+    assert.deepEqual(r.beyondPlan, { count: 0, cost: 0 });
+  });
+
+  test("risk with no trades or no stops is blank, not NaN", () => {
+    assert.deepEqual(riskReport([]), { withStop: 0, stopShare: null, avgRisk: null, avgPlannedR: null, avgActualR: null, beyondPlan: { count: 0, cost: 0 } });
+    assert.equal(riskReport([at(2, 10)]).stopShare, 0);
+  });
+
+  test("comparing: A minus B, blank when either side is", () => {
+    const a = computeMetrics([at(2, 100), at(3, -50)], UTC); // net 50, 50%, PF 2
+    const b = computeMetrics([at(2, 30)], UTC); // net 30, 100%, no PF
+    const rows = compareMetrics(a, b);
+    const row = (k: string) => rows.find((r) => r.key === k)!;
+    assert.deepEqual([row("netPnl").a, row("netPnl").b, row("netPnl").diff], [50, 30, 20]);
+    assert.equal(row("winRate").diff, -0.5);
+    assert.equal(row("closedTrades").diff, 1);
+    assert.deepEqual([row("profitFactor").a, row("profitFactor").b, row("profitFactor").diff], [2, null, null]);
   });
 });

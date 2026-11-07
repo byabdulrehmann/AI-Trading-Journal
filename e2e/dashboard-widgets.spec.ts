@@ -138,7 +138,7 @@ test("results in R and percent match the API on the screen, and the score doesn'
   await expect(page.getByTestId("unit-note")).toContainText("115,000 combined starting balance");
 
   // The unit follows you to the other result pages.
-  await page.getByRole("navigation").getByRole("link", { name: "Analytics", exact: true }).click();
+  await page.getByRole("navigation").getByRole("link", { name: "Reports", exact: true }).click();
   await expect(page).toHaveURL(/unit=percent/);
   await expect(figure(page, "Net P&L")).toContainText("%");
 });

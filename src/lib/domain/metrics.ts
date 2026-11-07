@@ -152,6 +152,21 @@ export const METRIC_DEFINITIONS = {
     formula: "longest run of losses, in closing order",
     meaning: "A breakeven trade ends the run.",
   },
+  stopShare: {
+    label: "Trades with a stop",
+    formula: "closed trades with a stop ÷ closed trades",
+    meaning: "A trade with no stop has no defined risk, so it has no R.",
+  },
+  avgRisk: {
+    label: "Average planned risk",
+    formula: "mean of |entry − stop| × size × multiplier",
+    meaning: "What a trade stood to lose at its stop. Only trades with a stop count.",
+  },
+  beyondPlan: {
+    label: "Losses past the stop",
+    formula: "closed trades whose loss before costs is over 1% past their planned risk",
+    meaning: "Price went further than the stop allowed for, through slippage or moving the stop. Costs alone don't count.",
+  },
   ruleAdherence: {
     label: "Rule adherence",
     formula: "rules followed ÷ rules answered, on reviewed trades",
@@ -712,4 +727,129 @@ export function missedSummary(missed: { r: number | null }[]): MissedSummary {
   const rs = missed.flatMap((m) => (m.r === null ? [] : [m.r]));
   const totalR = round(rs.reduce((a, b) => a + b, 0), 2);
   return { count: missed.length, rSample: rs.length, totalR, avgR: rs.length ? round(totalR / rs.length, 2) : null };
+}
+
+// ---------- reports ----------
+
+export interface SideProfile {
+  trades: number;
+  total: number;
+  avg: number | null;
+  median: number | null;
+  /** Furthest from zero. */
+  largest: number | null;
+  avgHoldMin: number | null;
+}
+
+function sideProfile(trades: (Trade & { pnl: number })[]): SideProfile {
+  const pnls = trades.map((t) => t.pnl);
+  const holds = trades.map((t) => holdMinutes(t) as number);
+  const total = addMoney(pnls);
+  return {
+    trades: trades.length,
+    total,
+    avg: trades.length ? round(total / trades.length, 2) : null,
+    median: median(pnls),
+    largest: trades.length ? pnls.reduce((a, b) => (Math.abs(b) > Math.abs(a) ? b : a)) : null,
+    avgHoldMin: holds.length ? holds.reduce((a, b) => a + b, 0) / holds.length : null,
+  };
+}
+
+export function winLossProfile(trades: Trade[]): { wins: SideProfile; losses: SideProfile } {
+  const closed = trades.filter(isClosed);
+  return { wins: sideProfile(closed.filter((t) => t.pnl > 0)), losses: sideProfile(closed.filter((t) => t.pnl < 0)) };
+}
+
+/** How many runs of each length, in closing order. A breakeven trade ends a run and starts none. */
+export function streakRuns(trades: Trade[]): { length: number; wins: number; losses: number }[] {
+  const closed = trades.filter(isClosed).sort((a, b) => Date.parse(a.closedAt) - Date.parse(b.closedAt));
+  const counts = new Map<number, { wins: number; losses: number }>();
+  const close = (kind: "wins" | "losses", length: number) => {
+    if (!length) return;
+    const row = counts.get(length) ?? { wins: 0, losses: 0 };
+    row[kind]++;
+    counts.set(length, row);
+  };
+  let [wins, losses] = [0, 0];
+  for (const t of closed) {
+    if (t.pnl <= 0) {
+      close("wins", wins);
+      wins = 0;
+    }
+    if (t.pnl >= 0) {
+      close("losses", losses);
+      losses = 0;
+    }
+    if (t.pnl > 0) wins++;
+    if (t.pnl < 0) losses++;
+  }
+  close("wins", wins);
+  close("losses", losses);
+  return [...counts].map(([length, c]) => ({ length, ...c })).sort((a, b) => a.length - b.length);
+}
+
+const PAST_STOP = 1.01;
+
+export interface RiskReport {
+  withStop: number;
+  stopShare: number | null;
+  avgRisk: number | null;
+  avgPlannedR: number | null;
+  avgActualR: number | null;
+  /** Lost more than the stop allowed for, before costs. The cost is how much more. */
+  beyondPlan: { count: number; cost: number };
+}
+
+export function riskReport(trades: Trade[]): RiskReport {
+  const closed = trades.filter(isClosed);
+  const stopped = closed.filter((t) => t.rMultiple !== null);
+  const risks = stopped.flatMap((t) => (t.riskAmount === null ? [] : [t.riskAmount]));
+  const planned = closed.flatMap((t) => (t.plannedR === null ? [] : [t.plannedR]));
+  // Before costs, or every loss at its stop would count once commission took it just under -1R. The 1% is rounding.
+  const past = stopped.filter((t) => t.grossPnl !== null && t.riskAmount ? t.grossPnl / t.riskAmount < -PAST_STOP : false);
+  return {
+    withStop: stopped.length,
+    stopShare: closed.length ? stopped.length / closed.length : null,
+    avgRisk: risks.length ? round(risks.reduce((a, b) => a + b, 0) / risks.length, 2) : null,
+    avgPlannedR: planned.length ? round(planned.reduce((a, b) => a + b, 0) / planned.length, 2) : null,
+    avgActualR: stopped.length ? round(stopped.reduce((a, t) => a + (t.rMultiple as number), 0) / stopped.length, 2) : null,
+    beyondPlan: { count: past.length, cost: addMoney(past.map((t) => -((t.grossPnl as number) + (t.riskAmount as number)))) },
+  };
+}
+
+export type CompareKind = "money" | "percent" | "ratio" | "r" | "minutes" | "count";
+
+export interface CompareRow {
+  key: string;
+  label: string;
+  kind: CompareKind;
+  a: number | null;
+  b: number | null;
+  /** A minus B. Blank when either side is. */
+  diff: number | null;
+}
+
+const COMPARE: [keyof Metrics, string, CompareKind][] = [
+  ["netPnl", "Net P&L", "money"],
+  ["closedTrades", "Closed trades", "count"],
+  ["winRate", "Win rate", "percent"],
+  ["profitFactor", "Profit factor", "ratio"],
+  ["expectancy", "Expectancy", "money"],
+  ["avgWin", "Average win", "money"],
+  ["avgLoss", "Average loss", "money"],
+  ["payoffRatio", "Payoff ratio", "ratio"],
+  ["avgR", "Average R", "r"],
+  ["maxDrawdown", "Max drawdown", "money"],
+  ["recoveryFactor", "Recovery factor", "ratio"],
+  ["dayWinRate", "Winning days", "percent"],
+  ["avgHoldMin", "Average hold", "minutes"],
+  ["maxConsecutiveLosses", "Longest losing run", "count"],
+  ["totalFees", "Total fees", "money"],
+];
+
+export function compareMetrics(a: Metrics, b: Metrics): CompareRow[] {
+  return COMPARE.map(([key, label, kind]) => {
+    const [x, y] = [a[key] as number | null, b[key] as number | null];
+    return { key, label, kind, a: x, b: y, diff: x === null || y === null ? null : Math.round((x - y) * 1e8) / 1e8 };
+  });
 }

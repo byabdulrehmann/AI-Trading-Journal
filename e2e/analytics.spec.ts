@@ -14,7 +14,7 @@ test("an instrument row and a direction row land on a journal with the same coun
   const a = await analytics(page);
 
   for (const [key, link, param] of [[a.breakdowns.symbol[0].key, a.breakdowns.symbol[0].key, "symbol"], ["long", "Long", "side"]] as const) {
-    await open(page, "/analytics?includeSample=1");
+    await open(page, "/analytics?includeSample=1&tab=instruments");
     const expected = a.breakdowns[param === "side" ? "side" : "symbol"].find((x: { key: string }) => x.key === key);
     await page.locator(`tr[data-row="${key}"]`).getByRole("link", { name: link }).click();
     await expect(page).toHaveURL(new RegExp(`/journal\\?.*${param}=${key}`));
@@ -32,7 +32,7 @@ test("a heatmap cell lands on a journal whose total equals its count", async ({ 
   const [day, hour] = cell.key.split("-");
   expect(cell.trades).toBeGreaterThan(0);
 
-  await open(page, "/analytics?includeSample=1");
+  await open(page, "/analytics?includeSample=1&tab=time");
   const td = page.locator(`td[data-cell="${cell.key}"]`);
   await td.hover();
   await expect(page.locator("p > span.num").filter({ hasText: `${cell.trades} ${cell.trades === 1 ? "trade" : "trades"}, ${usd(cell.netPnl)}` })).toBeVisible();
@@ -44,7 +44,7 @@ test("a heatmap cell lands on a journal whose total equals its count", async ({ 
 
   // The second-busiest cell, by keyboard this time.
   const other = cells[1] as { key: string; trades: number };
-  await open(page, "/analytics?includeSample=1");
+  await open(page, "/analytics?includeSample=1&tab=time");
   await page.locator(`td[data-cell="${other.key}"]`).focus();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/journal\?/);
