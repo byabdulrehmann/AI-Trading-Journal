@@ -230,6 +230,29 @@ export const MIGRATIONS: { version: number; name: string; sql: string; run?: (db
     ALTER TABLE trades ADD COLUMN mfe REAL;
     ALTER TABLE trades ADD COLUMN excursion_note TEXT;`,
   },
+  {
+    version: 9,
+    name: "backtesting sessions",
+    sql: `CREATE TABLE backtest_sessions (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      account_id INTEGER NOT NULL UNIQUE REFERENCES accounts(id) ON DELETE CASCADE,
+      price_account_id INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
+      symbol TEXT NOT NULL,
+      timeframe TEXT NOT NULL,
+      start_time INTEGER NOT NULL,
+      end_time INTEGER NOT NULL,
+      cursor_time INTEGER NOT NULL,
+      strategy TEXT NOT NULL DEFAULT '',
+      simulated INTEGER NOT NULL DEFAULT 0,
+      seed INTEGER NOT NULL DEFAULT 1,
+      anchor_price REAL,
+      is_sample INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX backtest_sessions_user ON backtest_sessions(user_id);`,
+  },
 ];
 
 const globalForDb = globalThis as unknown as { __kestrelDb?: DatabaseSync };

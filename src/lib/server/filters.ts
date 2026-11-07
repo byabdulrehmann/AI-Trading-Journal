@@ -11,7 +11,7 @@ const FilterQuery = z.object({
   strategy: z.string().trim().max(60).optional(),
   from: z.iso.datetime().optional(),
   to: z.iso.datetime().optional(),
-  source: z.enum(["manual", "csv", "sample", "mt5"]).optional(),
+  source: z.enum(["manual", "csv", "sample", "mt5", "backtest"]).optional(),
   outcome: z.enum(["win", "loss", "breakeven", "open", "pending"]).optional(),
   closedFrom: z.iso.datetime().optional(),
   closedTo: z.iso.datetime().optional(),

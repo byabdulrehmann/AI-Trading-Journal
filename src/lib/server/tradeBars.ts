@@ -4,6 +4,7 @@ import { excursions, timeframeFor, type ReplayPosition } from "@/lib/domain/metr
 import type { Trade } from "@/lib/domain/types";
 import { db } from "./db";
 import { barsFor } from "./mt5/bars";
+import { barsForBacktestTrade } from "./backtests";
 
 export interface TradeBars {
   source: BarSource | null;
@@ -31,6 +32,12 @@ function positionOf(t: Trade): ReplayPosition {
 /** Sample trades get made-up prices, labelled as such. Everything else gets the broker's or none: nothing is ever invented for a real trade. */
 async function barsForRange(userId: number, trades: Trade[], symbol: string, from: number, to: number, seed: number): Promise<Pick<TradeBars, "source" | "reason" | "timeframe" | "bars">> {
   const timeframe = timeframeFor(to - from);
+  // A backtest trade is drawn on its session's own prices, so the chart matches what the session filled at.
+  if (trades.length && trades.every((t) => t.source === "backtest")) {
+    const session = await barsForBacktestTrade(userId, trades[0]);
+    if (!session) return { source: null, reason: "This backtest's prices can't be read just now.", timeframe, bars: [] };
+    return { source: session.simulated ? "simulated" : "mt5", reason: null, timeframe: session.timeframe, bars: session.bars.filter((b) => b.t >= from && b.t <= to) };
+  }
   if (trades.length && trades.every((t) => t.source === "sample")) {
     const anchors = trades.flatMap((t) => (t.executions ?? []).map((e) => ({ t: seconds(e.executedAt), price: e.price })));
     return { source: "simulated", reason: null, timeframe, bars: simulatedBars(anchors, from, to, TIMEFRAME_SECONDS[timeframe], seed) };

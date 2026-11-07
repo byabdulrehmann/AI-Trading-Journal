@@ -22,6 +22,7 @@ const PAGES: [string, string][] = [
   ["/playbooks", "Playbooks"],
   ["/notebook", "Notebook"],
   ["/replay", "Replay"],
+  ["/backtest", "Backtesting"],
   ["/calendar", "Calendar"],
   ["/analytics", "Reports"],
   ["/patterns", "Patterns"],

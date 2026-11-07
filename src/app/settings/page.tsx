@@ -239,7 +239,7 @@ function Accounts() {
   return (
     <Section id="accounts" title="Trading accounts" description={<>MetaTrader 5 connections are managed under <Link href="/accounts" className="text-ink underline">Accounts &amp; MT5</Link>.</>}>
       <ul className="divide-y divide-line border-y border-line">
-        {accounts.map((a) => (
+        {accounts.filter((a) => a.source !== "backtest").map((a) => (
           <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
             <div className="min-w-0 flex-1 basis-48">
               <p className="font-medium">{a.name} {a.isSample && <Badge tone="info">Sample</Badge>} {a.archived && <Badge>Archived</Badge>}</p>

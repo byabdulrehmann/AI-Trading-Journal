@@ -273,7 +273,7 @@ export function AccountsPage() {
   }, [load]);
 
   const linked = new Set(connections?.map((c) => c.accountId));
-  const others = accounts.filter((a) => !linked.has(a.id));
+  const others = accounts.filter((a) => !linked.has(a.id) && a.source !== "backtest");
 
   return (
     <>

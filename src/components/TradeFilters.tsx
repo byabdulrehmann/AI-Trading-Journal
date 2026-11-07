@@ -16,6 +16,7 @@ const SOURCES = [
   ["csv", "Imported"],
   ["mt5", "MT5"],
   ["sample", "Sample"],
+  ["backtest", "Backtest"],
 ];
 const OUTCOMES = [
   ["", "Any outcome"],
@@ -168,7 +169,7 @@ export function TradeFilters({ filters, dates = true, source, outcome, plan, uni
               <input type="date" aria-label="To date" className="num h-11 min-w-0 flex-1 border-b border-line-strong bg-transparent px-1 text-[16px] text-ink sm:h-8 sm:flex-none sm:text-[13px]" value={get("to")} min={get("from") || undefined} onChange={(e) => set({ to: e.target.value })} />
             </span>
           )}
-          <Select label="Account" value={accountId} onChange={(v) => set({ accountId: v })} options={[["", "All accounts"], ...accounts.map((a) => [String(a.id), a.name + (a.isSample ? " (sample)" : "") + (a.archived ? " (archived)" : "")])]} />
+          <Select label="Account" value={accountId} onChange={(v) => set({ accountId: v })} options={[["", "All accounts"], ...accounts.map((a) => [String(a.id), a.name + (a.source === "backtest" ? " (backtest)" : "") + (a.isSample ? " (sample)" : "") + (a.archived ? " (archived)" : "")])]} />
           <Select label="Instrument" value={get("symbol")} onChange={(v) => set({ symbol: v })} options={[["", "All instruments"], ...(facets?.symbols ?? []).map((s) => [s, s])]} />
           <Select label="Strategy" value={get("strategy")} onChange={(v) => set({ strategy: v })} options={[["", "All strategies"], ...(facets?.strategies ?? []).map((s) => [s, s])]} />
           {source && <Select label="Source" value={get("source")} onChange={(v) => set({ source: v })} options={SOURCES} />}

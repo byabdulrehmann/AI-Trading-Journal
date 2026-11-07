@@ -80,6 +80,17 @@ How Jarvis should treat the awkward cases. These are judgment calls for a single
 - **Scaling back in after a partial exit, without going flat:** same trade. The average entry then depends on order of events, whereas the simple formula pools all entries. The vectors use the pooled formula, so document the choice in the engine.
 - **Server-side re-open for swap:** the ticket may change while the identifier does not. Group by identifier.
 
+## Backtest fills
+
+A backtest is practice on the broker's past bars, so its fills follow fixed rules, stated on the page:
+
+- **Entries and manual closes** fill at the close of the bar the session is on, the last price it has seen. The time is that bar's last second.
+- **Stops and targets** are checked only on bars after the fill. A bar that reaches one fills at the level. A bar that opens past it fills at the open, so a gap through a stop costs more than the stop.
+- **Both levels in one bar:** the stop is assumed first. It's the cautious reading, and the trade's exit reason says so.
+- **Prices are MT5 bid bars.** The spread isn't added, and costs come from the fee defaults in Settings.
+- **No peeking:** the page only ever receives bars up to the session's position, and a session only moves forward.
+- **Kept apart:** each session's trades sit in an account of their own, with source `backtest`. They're left out of every live figure unless that session or source is asked for.
+
 ## Feature checklist
 
 From the public pages https://www.tradezella.com/ and https://www.tradezella.com/features, both fetched successfully, functionality only and in my own wording. These are marketing-level claims: nothing was tested in the product.
@@ -93,7 +104,7 @@ From the public pages https://www.tradezella.com/ and https://www.tradezella.com
 - [ ] Notes, screenshots, journal templates, notebook linked to stats
 - [ ] Playbooks: strategy rules and per-strategy performance
 - [ ] Trade replay with fills on the chart
-- [ ] Backtesting
+- [x] Backtesting
 - [ ] AI pattern and behaviour insights
 - [ ] Prop firm rule tracking (daily drawdown, profit target, consistency)
 - [ ] Sharing and mentor spaces

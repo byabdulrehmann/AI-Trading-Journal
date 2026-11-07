@@ -31,7 +31,9 @@ export async function POST(req: Request) {
   if (user instanceof Response) return user;
   const data = await body(req, TradeInput);
   if (data instanceof Response) return data;
-  if (!getAccount(user.id, data.accountId)) return fail("That account doesn't exist.", 422);
+  const account = getAccount(user.id, data.accountId);
+  if (!account) return fail("That account doesn't exist.", 422);
+  if (account.source === "backtest") return fail("Backtest trades come from their session, and stay in it.", 422);
   const trade = createTrade(user.id, data);
   recordActivity(user.id, "trade.created", { tradeId: trade.id, symbol: trade.symbol });
   return json({ trade }, 201);

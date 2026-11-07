@@ -2,10 +2,10 @@ import type { Trade } from "@/lib/domain/types";
 
 const label = "text-[12.5px] whitespace-nowrap";
 
-const SOURCE: Record<Trade["source"], string> = { manual: "Manual", csv: "Imported", mt5: "MT5", sample: "Sample" };
+const SOURCE: Record<Trade["source"], string> = { manual: "Manual", csv: "Imported", mt5: "MT5", sample: "Sample", backtest: "Backtest" };
 
 /** Quiet words, not pills. Sky blue marks sample data and a position still running, the second state; green and red stay with money. */
-export const SourceBadge = ({ source }: { source: Trade["source"] }) => <span className={`${label} ${source === "sample" ? "text-info" : "text-muted"}`}>{SOURCE[source]}</span>;
+export const SourceBadge = ({ source }: { source: Trade["source"] }) => <span className={`${label} ${source === "sample" || source === "backtest" ? "text-info" : "text-muted"}`}>{SOURCE[source]}</span>;
 
 export function StatusBadge({ status }: { status: Trade["status"] }) {
   if (status === "closed") return <span className={`${label} text-muted`}>Closed</span>;

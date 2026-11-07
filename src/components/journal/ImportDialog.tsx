@@ -121,7 +121,7 @@ function History({ batches, onUndo, busy }: { batches: Batch[]; onUndo: (id: str
 
 export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { accounts, refresh, toast } = useApp();
-  const active = accounts.filter((a) => !a.archived);
+  const active = accounts.filter((a) => !a.archived && a.source !== "backtest");
   const [file, setFile] = useState<File | null>(null);
   const [accountId, setAccountId] = useState<number | null>(null);
   const [preview, setPreview] = useState<ImportPreview | null>(null);

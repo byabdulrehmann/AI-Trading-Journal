@@ -48,7 +48,7 @@ const groupQuery = (g: Group): Record<string, string> => {
 
 const control = "h-8 min-w-0 w-full border-b border-line bg-transparent px-1 text-[13px] text-ink-soft max-sm:h-11";
 
-function GroupEditor({ name, group, onChange, accounts, facets }: { name: string; group: Group; onChange: (k: Key, v: string) => void; accounts: { id: number; name: string }[]; facets: Facets | undefined }) {
+function GroupEditor({ name, group, onChange, accounts, facets }: { name: string; group: Group; onChange: (k: Key, v: string) => void; accounts: { id: number; name: string; source?: string }[]; facets: Facets | undefined }) {
   const tagNames = [...new Set((facets?.tags ?? []).map((t) => t.name))];
   const select = (key: Key, label: string, options: string[][]) => (
     <select aria-label={`${name}: ${label}`} className={cx(control, group[key] && "text-ink shadow-[inset_0_-2px_0_var(--accent)]")} value={group[key] ?? ""} onChange={(e) => onChange(key, e.target.value)}>
@@ -62,7 +62,7 @@ function GroupEditor({ name, group, onChange, accounts, facets }: { name: string
       <div className="grid grid-cols-2 gap-x-3 gap-y-1">
         <label className="flex flex-col text-[12px] text-muted">From<input type="date" aria-label={`${name}: from`} className={cx(control, "num")} value={group.from ?? ""} max={group.to || undefined} onChange={(e) => onChange("from", e.target.value)} /></label>
         <label className="flex flex-col text-[12px] text-muted">To<input type="date" aria-label={`${name}: to`} className={cx(control, "num")} value={group.to ?? ""} min={group.from || undefined} onChange={(e) => onChange("to", e.target.value)} /></label>
-        {select("accountId", "Account", accounts.map((a) => [String(a.id), a.name]))}
+        {select("accountId", "Account", accounts.map((a) => [String(a.id), a.name + (a.source === "backtest" ? " (backtest)" : "")]))}
         {select("symbol", "Instrument", (facets?.symbols ?? []).map((s) => [s, s]))}
         {select("strategy", "Strategy", (facets?.strategies ?? []).map((s) => [s, s]))}
         {select("side", "Direction", [["long", "Long"], ["short", "Short"]])}

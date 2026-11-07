@@ -58,7 +58,8 @@ export function updateAccount(userId: number, id: number, a: Partial<AccountInpu
 }
 
 export function ensureDefaultAccount(userId: number): Account {
-  const existing = listAccounts(userId, false).find((a) => !a.isSample) ?? listAccounts(userId, false)[0];
+  const usable = listAccounts(userId, false).filter((a) => a.source !== "backtest");
+  const existing = usable.find((a) => !a.isSample) ?? usable[0];
   if (existing) return existing;
   return createAccount(userId, { name: "Main account", broker: "", currency: "USD", startingBalance: 0 });
 }
@@ -250,7 +251,7 @@ export interface TradeFilters {
   holdMax?: number;
   q?: string;
   currency?: string;
-  /** Sample trades stay out of results unless asked for, so they can't pass as real figures. */
+  /** Sample trades stay out of results unless asked for, so they can't pass as real figures. Backtests stay out too. */
   includeSample?: boolean;
 }
 
@@ -267,7 +268,8 @@ function whereClause(userId: number, f: TradeFilters): { sql: string; args: (str
   if (f.from) add("t.opened_at >= ?", f.from);
   if (f.to) add("t.opened_at <= ?", f.to);
   if (f.source) add("t.source = ?", f.source);
-  else if (!f.includeSample && !f.accountId) add("t.source != 'sample'");
+  // Backtests are practice: they never mix into live figures unless their session or source is asked for.
+  else if (!f.accountId) add(f.includeSample ? "t.source != 'backtest'" : "t.source NOT IN ('sample', 'backtest')");
   if (f.session) add("t.session = ?", f.session);
   if (f.side) add("t.side = ?", f.side);
   if (f.weekday !== undefined) add("zone_part(t.opened_at, ?, 'weekday') = ?", getSettings(userId).timeZone, f.weekday);
@@ -566,6 +568,10 @@ export function bulkUpdateTrades(userId: number, ids: number[], action: BulkActi
           skip("synced from MT5, so it stays in its broker account");
           continue;
         }
+        if (t.source === "backtest" || to.source === "backtest") {
+          skip("backtest trades stay in their session");
+          continue;
+        }
         if (Boolean(t.is_sample) !== to.isSample) {
           skip("sample and real trades can't share an account");
           continue;
@@ -750,7 +756,7 @@ export function exportAll(userId: number) {
   };
 }
 
-function removeStoredFiles(folder: string, names: string[]) {
+export function removeStoredFiles(folder: string, names: string[]) {
   for (const name of names) {
     try {
       unlinkSync(path.join(dataPath(folder), name));
@@ -783,7 +789,7 @@ export function removeSampleData(userId: number): number {
   const conn = db();
   const attachments = (conn.prepare("SELECT a.stored_name FROM attachments a JOIN trades t ON t.id = a.trade_id WHERE t.source = 'sample' AND t.user_id = ?").all(userId) as { stored_name: string }[]).map((r) => r.stored_name);
   const removed = transaction(conn, () => {
-    const n = Number(conn.prepare("DELETE FROM trades WHERE source = 'sample' AND user_id = ?").run(userId).changes);
+    const n = Number(conn.prepare("DELETE FROM trades WHERE user_id = ? AND (source = 'sample' OR account_id IN (SELECT account_id FROM backtest_sessions WHERE is_sample = 1))").run(userId).changes);
     conn.prepare("DELETE FROM daily_journal WHERE is_sample = 1 AND user_id = ?").run(userId);
     conn.prepare("DELETE FROM missed_trades WHERE is_sample = 1 AND user_id = ?").run(userId);
     conn.prepare("DELETE FROM notes WHERE is_sample = 1 AND user_id = ?").run(userId);

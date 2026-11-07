@@ -63,7 +63,7 @@ export function BulkBar({ ids, maxBulk, onDone, onDelete, onClear }: { ids: numb
       {type === "moveAccount" && (
         <select aria-label="Move to" className={control} value={accountId} onChange={(e) => setAccountId(e.target.value)}>
           <option value="">Choose an account</option>
-          {accounts.filter((a) => !a.archived).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          {accounts.filter((a) => !a.archived && a.source !== "backtest").map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
       )}
       <Button size="sm" className="max-sm:h-11" disabled={!ready} onClick={() => void apply()}>Apply</Button>

@@ -155,7 +155,10 @@ describe("sample journal", () => {
     const own = computeMetrics(J.listTrades(owner));
     const added = loadSampleData(owner);
     assert.ok(added >= 300);
-    assert.equal(J.listAccounts(owner).filter((a) => a.isSample).length, 3);
+    assert.equal(J.listAccounts(owner).filter((a) => a.isSample && a.source !== "backtest").length, 3);
+    // The sample backtest session: its own account, and its trades kept out of live figures too.
+    const practice = J.listTrades(owner, { source: "backtest" }).length;
+    assert.ok(practice > 0);
     assert.deepEqual(computeMetrics(J.listTrades(owner)).netPnl, own.netPnl);
     const sample = J.listTrades(owner, { source: "sample" });
     assert.equal(sample.length, added);
@@ -163,7 +166,8 @@ describe("sample journal", () => {
     assert.ok(sample.filter((t) => t.status === "closed").every((t) => t.pnl !== null));
     assert.equal(loadSampleData(owner), 0, "loading twice adds nothing");
 
-    assert.equal(J.removeSampleData(owner), added);
+    assert.equal(J.removeSampleData(owner), added + practice);
+    assert.equal(J.listTrades(owner, { source: "backtest" }).length, 0);
     assert.equal(J.listAccounts(owner).filter((a) => a.isSample).length, 0);
     assert.equal(computeMetrics(J.listTrades(owner)).netPnl, own.netPnl);
   });

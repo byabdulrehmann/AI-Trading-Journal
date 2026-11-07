@@ -306,7 +306,7 @@ const area = cx(inputClass, "h-auto py-1.5");
 
 function TradeFormBody({ trade }: { trade: Trade | null }) {
   const { editTrade, accounts, settings, refresh, toast, openTrade } = useApp();
-  const selectable = accounts.filter((a) => !a.archived || a.id === trade?.accountId);
+  const selectable = accounts.filter((a) => a.id === trade?.accountId || (!a.archived && a.source !== "backtest"));
   const defaultAccount = selectable.find((a) => a.id === settings?.defaultAccountId && !a.isSample) ?? selectable.find((a) => !a.isSample) ?? selectable[0];
   const [form, setForm] = useState<FormState>(() => (trade ? fromTrade(trade) : blank(defaultAccount?.id, settings?.feeDefaults)));
   const [errors, setErrors] = useState<Record<string, string>>({});

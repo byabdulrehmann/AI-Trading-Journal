@@ -21,7 +21,9 @@ export async function PUT(req: Request, ctx: RouteContext<"/api/trades/[id]">) {
   if (!before) return fail("Trade not found.", 404);
   const data = await body(req, TradeInput);
   if (data instanceof Response) return data;
-  if (!getAccount(user.id, data.accountId)) return fail("That account doesn't exist.", 422);
+  const account = getAccount(user.id, data.accountId);
+  if (!account) return fail("That account doesn't exist.", 422);
+  if (data.accountId !== before.accountId && (before.source === "backtest" || account.source === "backtest")) return fail("Backtest trades come from their session, and stay in it.", 422);
   const trade = updateTrade(user.id, id, data);
   const changed = Object.keys(data).filter(
     (k) => JSON.stringify((before as unknown as Record<string, unknown>)[k]) !== JSON.stringify((data as Record<string, unknown>)[k]),
@@ -35,6 +37,7 @@ export async function POST(_req: Request, ctx: RouteContext<"/api/trades/[id]">)
   const user = await requireUser();
   if (user instanceof Response) return user;
   const id = idParam((await ctx.params).id);
+  if (id && getTrade(user.id, id)?.source === "backtest") return fail("Backtest trades come from their session, and stay in it.", 422);
   const trade = id ? duplicateTrade(user.id, id) : null;
   return trade ? json({ trade }, 201) : fail("Trade not found.", 404);
 }

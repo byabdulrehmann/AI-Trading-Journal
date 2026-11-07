@@ -1,5 +1,6 @@
 import "server-only";
 import { insertSampleDays } from "./repo/daily";
+import { createSampleSession } from "./backtests";
 import { createAccount, hasSampleData, insertSampleTrades, listStrategies } from "./repo/journal";
 import { db, now, transaction } from "./db";
 import { MissedInput, PLAYBOOK_TEMPLATES } from "@/lib/domain/playbooks";
@@ -288,5 +289,6 @@ export function loadSampleData(userId: number): number {
   insertSampleDays(userId, buildSampleDays(new Date()));
   seedPlaybooks(userId, before, new Date());
   seedNotes(userId);
+  createSampleSession(userId, new Date());
   return trades.length;
 }

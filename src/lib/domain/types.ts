@@ -53,7 +53,7 @@ export interface Account extends AccountInput {
   id: number;
   archived: boolean;
   isSample: boolean;
-  source: "manual" | "mt5";
+  source: "manual" | "mt5" | "backtest";
   createdAt: string;
 }
 
@@ -169,7 +169,7 @@ export interface Attachment {
   createdAt: string;
 }
 
-export type TradeSource = "manual" | "csv" | "sample" | "mt5";
+export type TradeSource = "manual" | "csv" | "sample" | "mt5" | "backtest";
 
 export interface Trade extends Omit<TradeData, "assetClass" | "session" | "executions"> {
   id: number;
