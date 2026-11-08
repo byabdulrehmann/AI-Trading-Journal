@@ -253,6 +253,71 @@ export const MIGRATIONS: { version: number; name: string; sql: string; run?: (db
     );
     CREATE INDEX backtest_sessions_user ON backtest_sessions(user_id);`,
   },
+  {
+    version: 10,
+    name: "prop challenges, spending, routine and goals",
+    sql: `CREATE TABLE challenges (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      firm TEXT NOT NULL DEFAULT '',
+      start_date TEXT NOT NULL,
+      end_date TEXT,
+      account_size REAL NOT NULL,
+      profit_target REAL,
+      daily_loss REAL,
+      max_loss REAL,
+      max_loss_type TEXT NOT NULL DEFAULT 'static',
+      min_days INTEGER NOT NULL DEFAULT 0,
+      consistency_pct REAL,
+      reset_zone TEXT NOT NULL DEFAULT '',
+      reset_hour INTEGER NOT NULL DEFAULT 0,
+      archived INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX challenges_user ON challenges(user_id);
+    CREATE TABLE prop_expenses (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      challenge_id INTEGER REFERENCES challenges(id) ON DELETE SET NULL,
+      firm TEXT NOT NULL DEFAULT '',
+      date TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      amount REAL NOT NULL,
+      currency TEXT NOT NULL,
+      note TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX prop_expenses_user ON prop_expenses(user_id);
+    CREATE TABLE routine_items (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      label TEXT NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      from_date TEXT NOT NULL,
+      archived_date TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE routine_checks (
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      date TEXT NOT NULL,
+      item_id INTEGER NOT NULL REFERENCES routine_items(id) ON DELETE CASCADE,
+      checked_at TEXT NOT NULL,
+      PRIMARY KEY (user_id, date, item_id)
+    );
+    CREATE TABLE goals (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL,
+      period TEXT NOT NULL,
+      target REAL NOT NULL,
+      currency TEXT,
+      account_id INTEGER REFERENCES accounts(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL
+    );`,
+  },
 ];
 
 const globalForDb = globalThis as unknown as { __kestrelDb?: DatabaseSync };

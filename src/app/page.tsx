@@ -11,6 +11,7 @@ import { zoneInstant, zoneParts } from "@/lib/domain/zone";
 import { useFetch } from "@/lib/client/use-fetch";
 import type { Trade } from "@/lib/domain/types";
 import { CurrencyPicker } from "@/components/CurrencyPicker";
+import { ChallengeAlerts } from "@/components/progress/ChallengeAlerts";
 import { DashboardGrid } from "@/components/dashboard/DashboardGrid";
 import { DashboardSkeleton } from "@/components/tape/Skeletons";
 import { useSymbols } from "@/components/tape/use-symbols";
@@ -68,6 +69,7 @@ function Dashboard() {
         <h1 className="text-[18px] leading-tight font-medium text-ink">{settings?.displayName ? `Welcome back, ${settings.displayName}` : "Dashboard"}</h1>
         <CurrencyPicker currency={data.currency} currencies={data.currencies} filters={filters} />
       </div>
+      <ChallengeAlerts includeSample={filters.get("includeSample") === "1"} />
       <TradeFilters filters={filters} units unitNote={data.unitNote} />
 
       {none && filters.active && <EmptyState title="No trades match these filters" body="Widen the date range or clear the filters to see more." action={<Button onClick={filters.clear}>Clear filters</Button>} />}

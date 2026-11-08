@@ -19,6 +19,7 @@ const NAV = [
   { href: "/notebook", label: "Notebook", icon: "M5 3h14v18H5zM9 3v18M12 8h4M12 12h4" },
   { href: "/replay", label: "Replay", icon: "M6 4l13 8-13 8z" },
   { href: "/backtest", label: "Backtesting", icon: "M4 4v16h16M8 15l3-4 3 2 5-6" },
+  { href: "/progress", label: "Progress", icon: "M4 20h16M7 16v-4M12 16V8M17 16v-7M5 9l5-4 4 3 5-4" },
   { href: "/calendar", label: "Calendar", icon: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4" },
   { href: "/analytics", label: "Reports", icon: "M4 20V11M10 20V5M16 20v-6M3 20h18" },
   { href: "/patterns", label: "Patterns", icon: "M4 16l5-5 4 4 7-8" },

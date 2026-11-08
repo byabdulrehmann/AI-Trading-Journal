@@ -91,6 +91,19 @@ A backtest is practice on the broker's past bars, so its fills follow fixed rule
 - **No peeking:** the page only ever receives bars up to the session's position, and a session only moves forward.
 - **Kept apart:** each session's trades sit in an account of their own, with source `backtest`. They're left out of every live figure unless that session or source is asked for.
 
+## Prop challenge rules
+
+Firms word their rules differently. Jarvis reads them this way, and the Progress page says so beside each challenge.
+
+- **Trades counted:** closed trades on the challenge's account whose firm trading day falls between its start and end dates. Trades still waiting on a conversion rate or fills are left out and counted on the card.
+- **Trading day:** starts at the challenge's reset hour in its time zone. With a 17:00 reset, 18:00 on Monday counts as Tuesday.
+- **Daily loss:** measured from the balance at the start of the trading day, at every closed trade. A day that fell past the limit and came back is still a breach. For today, the open positions' result from an MT5 sync taken today is added.
+- **Max loss:** static keeps the floor at the account size minus the max loss. Trailing moves the floor up with the highest closed balance (never down) and stops at the account size. It trails closed balance, not intraday equity.
+- **A limit reached exactly counts as breached.** That is the safe reading when a firm's wording is unclear.
+- **Passed:** the profit target is reached, there are enough trading days (days with a closed trade), the consistency rule holds when set (the best day is at most the given share of total profit), and nothing was breached.
+- **Warnings:** a limit at 80% or more of its size shows on the dashboard and the Progress page.
+- **Spending** is kept per currency and never added across currencies.
+
 ## Feature checklist
 
 From the public pages https://www.tradezella.com/ and https://www.tradezella.com/features, both fetched successfully, functionality only and in my own wording. These are marketing-level claims: nothing was tested in the product.
@@ -106,7 +119,7 @@ From the public pages https://www.tradezella.com/ and https://www.tradezella.com
 - [ ] Trade replay with fills on the chart
 - [x] Backtesting
 - [ ] AI pattern and behaviour insights
-- [ ] Prop firm rule tracking (daily drawdown, profit target, consistency)
+- [x] Prop firm rule tracking (daily drawdown, profit target, consistency)
 - [ ] Sharing and mentor spaces
 
 Likely out of scope for a local single-user app: community spaces, mentor mode, tick-level replay data.

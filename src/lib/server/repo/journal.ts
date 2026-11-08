@@ -753,6 +753,12 @@ export function exportAll(userId: number) {
     noteLinks: conn.prepare("SELECT l.* FROM note_links l JOIN notes n ON n.id = l.note_id WHERE n.user_id = ?").all(userId),
     strategyRules: conn.prepare("SELECT r.* FROM strategy_rules r JOIN strategies s ON s.id = r.strategy_id WHERE s.user_id = ?").all(userId),
     tradeRuleChecks: conn.prepare("SELECT c.* FROM trade_rule_checks c JOIN trades t ON t.id = c.trade_id WHERE t.user_id = ?").all(userId),
+    backtestSessions: byUser("backtest_sessions"),
+    challenges: byUser("challenges"),
+    propExpenses: byUser("prop_expenses"),
+    routineItems: byUser("routine_items"),
+    routineChecks: byUser("routine_checks"),
+    goals: byUser("goals"),
   };
 }
 
@@ -774,7 +780,7 @@ export function deleteAllData(userId: number) {
   const accountSettings = (conn.prepare("SELECT id FROM accounts WHERE user_id = ?").all(userId) as { id: number }[]).map((a) => `mt5:${a.id}`);
   transaction(conn, () => {
     for (const key of accountSettings) conn.prepare("DELETE FROM settings WHERE key = ?").run(key);
-    for (const table of ["notes", "note_folders", "note_templates", "missed_trades", "daily_journal", "jarvis_conversations", "jarvis_memories", "activity_log", "import_batches", "attachments", "reconciliations", "trades", "tags", "strategies", "accounts"])
+    for (const table of ["goals", "routine_checks", "routine_items", "prop_expenses", "challenges", "notes", "note_folders", "note_templates", "missed_trades", "daily_journal", "jarvis_conversations", "jarvis_memories", "activity_log", "import_batches", "attachments", "reconciliations", "trades", "tags", "strategies", "accounts"])
       conn.prepare(`DELETE FROM ${table} WHERE user_id = ?`).run(userId);
     conn.prepare("DELETE FROM settings WHERE key = ?").run(`app:${userId}`);
     audit(userId, "data.deleted_all");
