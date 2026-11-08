@@ -131,6 +131,12 @@ export function connectionsForPrices(userId: number, preferred?: number): number
   return rows.map((r) => r.account_id).sort((a, b) => Number(b === preferred) - Number(a === preferred));
 }
 
+/** True when a connection exists but is paused because MT5 refused its logins. */
+export const loginRefused = (userId: number): boolean =>
+  Boolean(db().prepare("SELECT 1 FROM mt5_connections c JOIN accounts a ON a.id = c.account_id WHERE a.user_id = ? AND c.password_cipher IS NOT NULL AND c.status = 'auth_failed'").get(userId));
+
+export const REFUSED_REASON = "MT5 refused the last logins, so Jarvis stopped reading from that account. Open Accounts & MT5 and press Sync to try again; if it's refused again, check the investor password.";
+
 /** Everything the sync needs, including the cipher. Server code only, never returned from a route. */
 export function readForSync(accountId: number) {
   return db()

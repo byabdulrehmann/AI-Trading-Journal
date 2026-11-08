@@ -73,6 +73,14 @@ describe("backtest sessions", () => {
     assert.equal(B.listSessions(other, true).length, 0);
   });
 
+  test("when MT5 refused the logins, it says that, not that nothing is connected", async () => {
+    R.recordFailure(live, new Date().toISOString(), "refused", true);
+    const r = await B.createSession(owner, input);
+    assert.match((r as { reason: string }).reason, /refused the last logins/);
+    assert.equal(B.listSessions(owner, true).length, 0);
+    R.saveConnection(live, "1234", "Demo-Server", encrypt("investor-pw"));
+  });
+
   test("a session opens on the warm-up, and the page never gets a bar past it", async () => {
     const r = await B.createSession(owner, input);
     assert.ok(r.ok);

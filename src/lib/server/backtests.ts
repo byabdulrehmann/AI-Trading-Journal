@@ -6,7 +6,7 @@ import { excursions } from "@/lib/domain/metrics";
 import { TradeInput, type Trade, type TradeData } from "@/lib/domain/types";
 import { db, now, transaction } from "./db";
 import { barsFor } from "./mt5/bars";
-import { connectionsForPrices } from "./repo/mt5";
+import { REFUSED_REASON, connectionsForPrices, loginRefused } from "./repo/mt5";
 import { createAccount, createTrade, getAccount, getTrade, listInstruments, listTrades, saveBrokerInstrument, updateTrade } from "./repo/journal";
 import { getSettings } from "./repo/settings";
 
@@ -134,6 +134,7 @@ const startCursor = (bars: Bar[], start: number) => [...bars].reverse().find((b)
  */
 export async function createSession(userId: number, input: z.output<typeof SessionInput>): Promise<{ ok: true; session: BacktestSession } | { ok: false; reason: string }> {
   const priceAccount = connectionsForPrices(userId)[0];
+  if (!priceAccount && loginRefused(userId)) return { ok: false, reason: REFUSED_REASON };
   if (!priceAccount) return { ok: false, reason: "Backtesting runs on your broker's past prices, read from a connected MT5 account, and none is connected. Connect one under Accounts & MT5." };
   const step = TIMEFRAME_SECONDS[input.timeframe];
   const [start, end] = [seconds(input.start), seconds(input.end)];

@@ -1,6 +1,6 @@
 import "server-only";
 import { db, transaction } from "../db";
-import { brokerOffset, connectionsForPrices, readForSync } from "../repo/mt5";
+import { REFUSED_REASON, brokerOffset, connectionsForPrices, loginRefused, readForSync } from "../repo/mt5";
 import { TIMEFRAME_SECONDS, type Bar, type Timeframe } from "@/lib/domain/bars";
 import { fetchBars } from "./client";
 import { decrypt } from "./crypto";
@@ -30,7 +30,7 @@ const alreadyFetched = (accountId: number, symbol: string, tf: Timeframe, from: 
  */
 export async function barsFor(userId: number, symbol: string, tf: Timeframe, from: number, to: number, preferredAccount?: number, nowSeconds = Date.now() / 1000): Promise<BarsAnswer> {
   const accounts = connectionsForPrices(userId, preferredAccount);
-  if (accounts.length === 0) return { ok: false, reason: NO_CONNECTION };
+  if (accounts.length === 0) return { ok: false, reason: loginRefused(userId) ? REFUSED_REASON : NO_CONNECTION };
   let last = "";
 
   for (const accountId of accounts) {
