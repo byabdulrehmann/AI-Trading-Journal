@@ -104,6 +104,16 @@ Firms word their rules differently. Jarvis reads them this way, and the Progress
 - **Warnings:** a limit at 80% or more of its size shows on the dashboard and the Progress page.
 - **Spending** is kept per currency and never added across currencies.
 
+## Economic calendar, auto-tags and reviews
+
+- **Events** come only from the user: typed in, or imported from a CSV they downloaded. Jarvis fetches no news. Times in a file are read in the zone the user picks for that file; a row with no time (or "All day", "Tentative") is an all-day event. The same event at the same time and currency is stored once, so a file can be imported twice.
+- **Which events count for a symbol:** those whose currency the symbol names (USD and EUR for EURUSD, USD for XAUUSD). A symbol naming no currency code, such as a stock or an index, counts every currency. All-day events never count as news.
+- **News trade:** opened within N minutes, before or after, of a timed high-impact event that counts for its symbol.
+- **Auto-tag rules** need every condition to match. Hours and weekdays are the open time in the user's time zone. Rules about hold time, R or P&L wait until the trade closes; a closed trade without a stop has no R, so an R condition is false. A rule tags a trade once, recorded per rule and trade: a tag the user removes stays removed, and deleting a rule leaves its tags. A trade already at 12 tags gets no more.
+- **Reviews** count closed trades whose close falls in the period (week Monday to Sunday, or calendar month) in the user's time zone, per account currency. The numbers come from the record. The written review is optional, needs a connected AI model (never the demo responder), sends only what the Privacy setting allows, and is labelled with the model that wrote it.
+- **Share pictures** are drawn in the browser and never uploaded. Money amounts are off by default; notes, account name and broker details are never on them.
+- **Backups** are whole-database copies, owner only: one automatic copy a day while Jarvis runs, the last seven kept, plus copies made by hand. Restoring is done by hand with Jarvis stopped.
+
 ## Feature checklist
 
 From the public pages https://www.tradezella.com/ and https://www.tradezella.com/features, both fetched successfully, functionality only and in my own wording. These are marketing-level claims: nothing was tested in the product.

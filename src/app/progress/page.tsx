@@ -4,9 +4,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { api, fieldErrors } from "@/lib/client/api";
 import { useApp } from "@/lib/client/app-state";
-import { dateTime, money, toneOf } from "@/lib/client/format";
+import { dateTime, money, pct, rFmt, toneOf } from "@/lib/client/format";
+import type { ReviewFacts } from "@/lib/domain/review";
+import { RichText } from "@/components/jarvis/RichText";
 import { useFetch } from "@/lib/client/use-fetch";
-import { GOAL_KINDS, type ChallengeResult, type GoalKind, type GoalResult, type RuleCheck, type RuleState, type Streak } from "@/lib/domain/progress";
+import { addDays, GOAL_KINDS, type ChallengeResult, type GoalKind, type GoalResult, type RuleCheck, type RuleState, type Streak } from "@/lib/domain/progress";
 import { zoneDateKey } from "@/lib/domain/zone";
 import { ChallengeAlerts } from "@/components/progress/ChallengeAlerts";
 import { Suspended } from "@/components/Suspended";
@@ -80,6 +82,7 @@ const TABS = [
   { value: "challenges", label: "Challenges" },
   { value: "routine", label: "Routine and goals" },
   { value: "spending", label: "Spending" },
+  { value: "reviews", label: "Reviews" },
 ] as const;
 type Tab = (typeof TABS)[number]["value"];
 
@@ -108,7 +111,7 @@ function Progress() {
   };
   return (
     <div>
-      <PageHeader title="Progress" description="Prop firm challenges and their rules, what they cost you, and the habits behind your trading: a daily routine, streaks and goals." />
+      <PageHeader title="Progress" description="Prop firm challenges and their rules, what they cost you, the habits behind your trading, and a review of each week or month." />
       <ChallengeAlerts includeSample={sample} link={false} />
       <div className="mb-4">
         <Segmented label="Section" value={tab} onChange={go} options={[...TABS]} />
@@ -116,6 +119,7 @@ function Progress() {
       {tab === "challenges" && <Challenges sample={sample} />}
       {tab === "routine" && <RoutineAndGoals sample={sample} />}
       {tab === "spending" && <SpendingTab />}
+      {tab === "reviews" && <Reviews sample={sample} />}
     </div>
   );
 }
@@ -609,6 +613,109 @@ function SpendingTab() {
             </table>
           </div>
         </Card>
+      )}
+    </div>
+  );
+}
+
+// ---------- reviews ----------
+
+interface Review {
+  period: "week" | "month";
+  from: string;
+  to: string;
+  currencies: { currency: string; facts: ReviewFacts }[];
+  hasSample: boolean;
+  saved: { provider: string; model: string; text: string; shared: string[]; createdAt: string } | null;
+  ai: { available: boolean; label: string; reason: string | null; external: boolean };
+}
+
+const MISTAKE_WORDS = (m: string) => m.replace(/_/g, " ");
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+function Reviews({ sample }: { sample: boolean }) {
+  const { settings, openTrade, toast } = useApp();
+  const [period, setPeriod] = useState<"week" | "month">("week");
+  const [date, setDate] = useState(() => zoneDateKey(Date.now(), settings?.timeZone || undefined));
+  const { data, error, reload } = useFetch<Review>(`/api/reviews?period=${period}&date=${date}${sample ? "&includeSample=1" : ""}`);
+  const [writing, setWriting] = useState(false);
+  const title = data ? (period === "week" ? `Week of ${dayLabel(data.from)}` : new Date(`${data.from}T00:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", month: "long", year: "numeric" })) : "";
+  const anyTrades = data?.currencies.some((c) => c.facts.closedTrades > 0);
+
+  const write = async () => {
+    setWriting(true);
+    try {
+      await api(`/api/reviews${sample ? "?includeSample=1" : ""}`, { method: "POST", json: { period, date } });
+      reload();
+    } catch (err) {
+      toast({ message: toast$(err, "Couldn't write the review."), tone: "error" });
+    } finally {
+      setWriting(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <Segmented label="Period" value={period} onChange={setPeriod} options={[{ value: "week", label: "Week" }, { value: "month", label: "Month" }]} />
+        <div className="flex items-center gap-1">
+          <Button size="sm" aria-label={`Previous ${period}`} onClick={() => data && setDate(addDays(data.from, -1))}>Previous</Button>
+          <Button size="sm" aria-label={`Next ${period}`} onClick={() => data && setDate(addDays(data.to, 1))}>Next</Button>
+        </div>
+        <h2 className="text-[15.5px] font-medium" data-testid="review-title">{title}</h2>
+      </div>
+
+      {error && !data ? (
+        <EmptyState title="Couldn't load the review" body={error} action={<Button onClick={reload}>Try again</Button>} />
+      ) : !data ? (
+        <Spinner label="Loading the review" />
+      ) : !anyTrades ? (
+        <EmptyState title={`No closed trades this ${period}`} body="The review fills in from the trades you close in it." />
+      ) : (
+        <>
+          {data.currencies.filter((c) => c.facts.closedTrades > 0 || c.facts.previous.closedTrades > 0).map(({ currency, facts: f }) => (
+            <Card key={currency} data-testid="review">
+              <CardHeader title={data.currencies.length > 1 ? `In ${currency}` : "The numbers"} subtitle={data.hasSample ? "Includes sample trades." : "Counted from your closed trades. Nothing here is estimated."} />
+              <dl className="grid grid-cols-2 gap-4 text-[13.5px] sm:grid-cols-4">
+                <div><dt className="text-[12.5px] text-muted">Net P&amp;L</dt><dd className={cx("num text-lg", toneOf(f.netPnl))} data-testid="review-net">{money(f.netPnl, currency, true)}</dd></div>
+                <div><dt className="text-[12.5px] text-muted">Trades</dt><dd className="num text-lg">{f.closedTrades}<span className="text-[13px] text-muted"> ({f.wins} won, {f.losses} lost)</span></dd></div>
+                <div><dt className="text-[12.5px] text-muted">Win rate</dt><dd className="num text-lg">{pct(f.winRate)}</dd></div>
+                <div><dt className="text-[12.5px] text-muted">Average R</dt><dd className="num text-lg">{rFmt(f.avgR)}{f.rSample > 0 && f.rSample < f.closedTrades && <span className="text-[13px] text-muted"> from {f.rSample}</span>}</dd></div>
+              </dl>
+              <ul className="mt-4 space-y-1.5 border-t border-line pt-3 text-[13.5px] text-ink-soft" data-testid="review-lines">
+                <li>{plural(f.tradingDays, "trading day")}: {f.winningDays} green, {f.losingDays} red.{f.bestDay && f.tradingDays > 1 ? ` Best ${dayLabel(f.bestDay.date)} at ${money(f.bestDay.pnl, currency, true)}` : ""}{f.worstDay && f.worstDay.pnl < 0 ? `${f.tradingDays > 1 ? "," : ""} worst ${dayLabel(f.worstDay.date)} at ${money(f.worstDay.pnl, currency, true)}` : ""}{f.tradingDays > 1 ? "." : ""}</li>
+                {f.best && f.worst && f.best.id !== f.worst.id && (
+                  <li>Best trade <button type="button" className="underline underline-offset-2" onClick={() => openTrade(f.best!.id)}>{f.best.symbol} #{f.best.id}</button> at {money(f.best.pnl, currency, true)}; worst <button type="button" className="underline underline-offset-2" onClick={() => openTrade(f.worst!.id)}>{f.worst.symbol} #{f.worst.id}</button> at {money(f.worst.pnl, currency, true)}.</li>
+                )}
+                {f.symbols.length > 0 && <li>Most traded: {f.symbols.map((s) => `${s.symbol} (${plural(s.trades, "trade")}, ${money(s.pnl, currency, true)})`).join(", ")}.</li>}
+                <li>{f.planSample ? `Plan followed on ${pct(f.planAdherence)} of the ${plural(f.planSample, "trade")} you marked.` : "No trades marked as on or off plan."}</li>
+                {f.mistakes.length > 0 && <li>Mistakes marked: {f.mistakes.map((m) => `${MISTAKE_WORDS(m.mistake)} (${m.trades})`).join(", ")}.</li>}
+                <li>The {period} before: {f.previous.closedTrades ? `${plural(f.previous.closedTrades, "trade")}, ${money(f.previous.netPnl, currency, true)}, win rate ${pct(f.previous.winRate)}.` : "no closed trades."}</li>
+              </ul>
+            </Card>
+          ))}
+
+          <Card data-testid="ai-review">
+            <CardHeader title="Written review" subtitle={data.saved ? `Written by ${data.saved.model} on ${dateTime(data.saved.createdAt)}. It can be wrong: the numbers above are the record.` : "An AI model reads this period's record and writes a short review: what happened, possible patterns, and a thing or two to try."} />
+            {data.saved && (
+              <div className="text-[14px] leading-relaxed">
+                <RichText text={data.saved.text} />
+                <details className="mt-3 text-[12.5px] text-muted">
+                  <summary className="cursor-pointer">What was sent</summary>
+                  <ul className="mt-1 list-disc pl-5">{data.saved.shared.map((s) => <li key={s}>{s}</li>)}</ul>
+                </details>
+              </div>
+            )}
+            {data.ai.available ? (
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <Button variant={data.saved ? "secondary" : "primary"} disabled={writing} onClick={() => void write()}>{writing ? "Writing…" : data.saved ? "Write it again" : "Write the review"}</Button>
+                <p className="text-[12.5px] text-muted">{data.ai.external ? `Sends this ${period}'s totals, and its trades as your Privacy setting allows, to ${data.ai.label}.` : `Uses ${data.ai.label}.`}</p>
+              </div>
+            ) : (
+              !data.saved && <Notice tone="info">{data.ai.reason}</Notice>
+            )}
+          </Card>
+        </>
       )}
     </div>
   );

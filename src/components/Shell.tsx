@@ -24,6 +24,7 @@ const NAV = [
   { href: "/analytics", label: "Reports", icon: "M4 20V11M10 20V5M16 20v-6M3 20h18" },
   { href: "/patterns", label: "Patterns", icon: "M4 16l5-5 4 4 7-8" },
   { href: "/market", label: "Market context", icon: "M3 12h4l3-7 4 14 3-7h4" },
+  { href: "/news", label: "Economic calendar", icon: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M13 12l-3 4h4l-3 4" },
   { href: "/jarvis", label: "AI Coach", icon: "M4 5h16v11H9l-5 4zM9 10.5h.01M15 10.5h.01" },
   { href: "/accounts", label: "Accounts & MT5", icon: "M3 7h18v12H3zM3 11h18M7 15h3" },
   { href: "/settings", label: "Settings", icon: "M5 7h14M5 12h14M5 17h14M9 5v4M15 10v4M8 15v4" },

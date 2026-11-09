@@ -35,12 +35,15 @@ export interface JarvisProvider {
   stream(req: StreamRequest): AsyncIterable<string>;
 }
 
+type ErrorKind = "not_configured" | "auth" | "rate_limited" | "unavailable" | "bad_request" | "refused" | "timeout";
+
+// Plain fields, not parameter properties, so tests can load this under Node's type stripping.
 export class ProviderError extends Error {
-  constructor(
-    message: string,
-    readonly kind: "not_configured" | "auth" | "rate_limited" | "unavailable" | "bad_request" | "refused" | "timeout",
-    readonly retryable = false,
-  ) {
+  readonly kind: ErrorKind;
+  readonly retryable: boolean;
+  constructor(message: string, kind: ErrorKind, retryable = false) {
     super(message);
+    this.kind = kind;
+    this.retryable = retryable;
   }
 }

@@ -318,6 +318,50 @@ export const MIGRATIONS: { version: number; name: string; sql: string; run?: (db
       created_at TEXT NOT NULL
     );`,
   },
+  {
+    version: 11,
+    name: "economic calendar, auto-tag rules and saved reviews",
+    sql: `CREATE TABLE economic_events (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      at TEXT NOT NULL,
+      all_day INTEGER NOT NULL DEFAULT 0,
+      currency TEXT NOT NULL,
+      title TEXT NOT NULL,
+      impact TEXT NOT NULL,
+      actual TEXT NOT NULL DEFAULT '',
+      forecast TEXT NOT NULL DEFAULT '',
+      previous TEXT NOT NULL DEFAULT '',
+      source TEXT NOT NULL DEFAULT 'manual',
+      created_at TEXT NOT NULL,
+      UNIQUE (user_id, at, currency, title)
+    );
+    CREATE INDEX economic_events_at ON economic_events(user_id, at);
+    CREATE TABLE tag_rules (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      tag TEXT NOT NULL,
+      conditions TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE tag_rule_hits (
+      rule_id INTEGER NOT NULL REFERENCES tag_rules(id) ON DELETE CASCADE,
+      trade_id INTEGER NOT NULL REFERENCES trades(id) ON DELETE CASCADE,
+      PRIMARY KEY (rule_id, trade_id)
+    );
+    CREATE TABLE ai_reviews (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      period TEXT NOT NULL,
+      start_date TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      model TEXT NOT NULL,
+      text TEXT NOT NULL,
+      shared TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      UNIQUE (user_id, period, start_date)
+    );`,
+  },
 ];
 
 const globalForDb = globalThis as unknown as { __kestrelDb?: DatabaseSync };

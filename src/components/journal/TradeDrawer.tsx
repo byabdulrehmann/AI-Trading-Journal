@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useApp } from "@/lib/client/app-state";
-import { SESSION_LABELS, dateTime, duration, fileSize, money, rFmt, toneOf, zoneName } from "@/lib/client/format";
+import { SESSION_LABELS, dateTime, duration, fileSize, money, rFmt, timeOnly, toneOf, zoneName } from "@/lib/client/format";
+import { IMPACT_LABELS, type EventData } from "@/lib/domain/econ";
 import { useFetch } from "@/lib/client/use-fetch";
 import { pipsBetween } from "@/lib/domain/engine/instruments";
 import type { Trade } from "@/lib/domain/types";
@@ -11,6 +13,7 @@ import { Button, Dialog, cx } from "../ui";
 import { LinkedNotes } from "@/components/notebook/LinkedNotes";
 import { TradePriceChart } from "@/components/charts/TradePriceChart";
 import { PlaybookChecklist } from "./Checklist";
+import { ShareCard } from "./ShareCard";
 import { PnlIssue, SideBadge, SourceBadge, StatusBadge } from "./badges";
 import { useTradeActions } from "./useTradeActions";
 
@@ -109,6 +112,7 @@ function TradeDetail({ trade: t }: { trade: Trade }) {
   const ratings = [["Confidence", t.confidence], ["Discipline", t.discipline], ["Fear", t.fear], ["Greed", t.greed]] as const;
   const hasAnalysis = t.setup || t.planNotes || t.entryReason || t.exitReason || t.notes || t.lessons || t.mistakes.length || t.tags.length || t.strategyTags.length || t.emotionBefore || t.emotionAfter;
   const hasPsych = flags.length || t.ruleViolations || t.followedPlan !== null || t.grade || ratings.some(([, v]) => v !== null);
+  const [sharing, setSharing] = useState(false);
 
   return (
     <div className="space-y-5">
@@ -158,6 +162,8 @@ function TradeDetail({ trade: t }: { trade: Trade }) {
           ["Strategy", <span key="st" className="font-sans">{t.strategy || "—"}</span>],
         ]}
       />
+
+      <NearbyNews t={t} />
 
       <section className="border-t border-line pt-4">
         <Heading>Executions</Heading>
@@ -285,10 +291,39 @@ function TradeDetail({ trade: t }: { trade: Trade }) {
           Edit
         </Button>
         <Button onClick={() => void duplicateTrade(t.id)}>Duplicate</Button>
+        <Button onClick={() => setSharing(true)}>Share</Button>
         <Button variant="danger" className="ml-auto" onClick={() => void deleteTrades([t.id])}>
           Delete
         </Button>
       </div>
+      <ShareCard trade={t} currency={cur} open={sharing} onClose={() => setSharing(false)} />
     </div>
+  );
+}
+
+/** Calendar events for this symbol from an hour before the open to an hour after the close. Shown only when there are some. */
+function NearbyNews({ t }: { t: Trade }) {
+  const { data } = useFetch<{ events: (EventData & { id: number })[] }>(`/api/events?tradeId=${t.id}`);
+  if (!data?.events.length) return null;
+  const open = Date.parse(t.openedAt);
+  const when = (iso: string) => {
+    const m = Math.round((Date.parse(iso) - open) / 60_000);
+    return m === 0 ? "at the open" : `${Math.abs(m)} min ${m < 0 ? "before" : "after"} the open`;
+  };
+  return (
+    <section className="border-t border-line pt-4" data-testid="trade-news">
+      <Heading>Economic events</Heading>
+      <ul className="space-y-1 text-[13.5px]">
+        {data.events.map((e) => (
+          <li key={e.id} className="flex flex-wrap gap-x-2">
+            <span className="num text-ink-soft">{timeOnly(e.at)}</span>
+            <span className="num">{e.currency}</span>
+            <span>{e.title}</span>
+            <span className={e.impact === "high" ? "text-loss" : "text-muted"}>{IMPACT_LABELS[e.impact].toLowerCase()} impact</span>
+            <span className="text-muted">, {when(e.at)}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

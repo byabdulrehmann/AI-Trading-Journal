@@ -5,9 +5,10 @@ import { useCallback, useEffect, useState } from "react";
 import type { Facets } from "@/lib/client/analytics";
 import { api, fieldErrors } from "@/lib/client/api";
 import { useApp } from "@/lib/client/app-state";
-import { dateTime, money } from "@/lib/client/format";
+import { SESSION_LABELS, dateTime, fileSize, money } from "@/lib/client/format";
 import { useFetch } from "@/lib/client/use-fetch";
 import { COACHING_STYLES, type ActivityEvent, type SHARING_LEVELS } from "@/lib/domain/types";
+import { OP_LABELS, RULE_FIELDS, type RuleCondition, type RuleField } from "@/lib/domain/autotag";
 import { Badge, Button, Field, PageHeader, Segmented, Spinner, Toggle, cx, inputClass } from "@/components/ui";
 
 const SHARING: { value: (typeof SHARING_LEVELS)[number]; label: string; detail: string }[] = [
@@ -72,7 +73,7 @@ function Password() {
 }
 
 export default function SettingsPage() {
-  const { settings, saveSettings } = useApp();
+  const { settings, saveSettings, user } = useApp();
   if (!settings) return <Spinner label="Loading your settings" />;
   const j = settings.jarvis;
 
@@ -80,7 +81,7 @@ export default function SettingsPage() {
     <>
       <PageHeader title="Settings" description="Preferences, privacy and your data. Everything is stored in a local database on this computer." />
       <nav aria-label="Settings sections" className="mb-5 flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
-        {[["profile", "Profile"], ["defaults", "Trading defaults"], ["password", "Password"], ["accounts", "Accounts"], ["jarvis", "AI Coach"], ["privacy", "Privacy"], ["data", "Your data"]].map(([id, l]) => (
+        {[["profile", "Profile"], ["defaults", "Trading defaults"], ["password", "Password"], ["accounts", "Accounts"], ["autotags", "Auto-tags"], ["jarvis", "AI Coach"], ["privacy", "Privacy"], ["data", "Your data"], ...(user?.isOwner ? [["backups", "Backups"]] : [])].map(([id, l]) => (
           <a key={id} href={`#${id}`} className="py-1 text-ink-soft underline-offset-2 hover:text-ink hover:underline pointer-coarse:py-3">{l}</a>
         ))}
       </nav>
@@ -103,6 +104,8 @@ export default function SettingsPage() {
 
       <Accounts />
 
+      <AutoTags />
+
       <Section id="jarvis" title="AI Coach" description={<>Model and provider are chosen on the <Link href="/jarvis" className="text-ink underline">AI Coach</Link> page, under Model.</>}>
         <div className="divide-y divide-line">
           <Toggle label="Enable the AI Coach" checked={j.enabled} onChange={(v) => void saveSettings({ jarvis: { enabled: v } })} description="When off, the panel is hidden and no messages are processed. Saved history is kept." />
@@ -120,6 +123,7 @@ export default function SettingsPage() {
 
       <Privacy />
       <DataControls />
+      {user?.isOwner && <Backups />}
     </>
   );
 }
@@ -381,7 +385,7 @@ function DataControls() {
         </div>
         <div className="border-t border-line pt-4">
           <h3 className="text-[14px] font-medium">Delete all data</h3>
-          <p className="mt-1 max-w-2xl text-[13px] text-muted">Permanently removes trades, accounts, attachments, settings, AI Coach conversations, memories and the activity log. Your sign-in stays. Export first if you want a copy.</p>
+          <p className="mt-1 max-w-2xl text-[13px] text-muted">Permanently removes trades, accounts, attachments, settings, AI Coach conversations, memories and the activity log. Your sign-in stays. Export first if you want a copy. Database backups made before keep their copy until they are deleted under Backups.</p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <label htmlFor="confirm-delete" className="sr-only">Type DELETE to confirm</label>
             <input id="confirm-delete" className={cx(inputClass, "sm:w-56")} placeholder="Type DELETE to confirm" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} />
@@ -399,6 +403,180 @@ function DataControls() {
             </Button>
           </div>
         </div>
+      </div>
+    </Section>
+  );
+}
+
+interface TagRule {
+  id: number;
+  tag: string;
+  conditions: RuleCondition[];
+  tagged: number;
+}
+
+const WEEKDAY_LABELS: Record<string, string> = { "0": "Sunday", "1": "Monday", "2": "Tuesday", "3": "Wednesday", "4": "Thursday", "5": "Friday", "6": "Saturday" };
+const valueLabel = (field: RuleField, v: string) => (field === "session" ? (SESSION_LABELS[v] ?? v) : field === "weekday" ? WEEKDAY_LABELS[v] : field === "hour" ? `${v.padStart(2, "0")}:00` : v);
+const conditionText = (c: RuleCondition) => `${RULE_FIELDS[c.field].label.toLowerCase()} ${OP_LABELS[c.op]} ${valueLabel(c.field, c.value)}`;
+const blankCondition = (): RuleCondition => ({ field: "symbol", op: "is", value: "" });
+
+function AutoTags() {
+  const { toast, refresh } = useApp();
+  const { data, reload } = useFetch<{ rules: TagRule[] }>("/api/tag-rules");
+  const [tag, setTag] = useState("");
+  const [conditions, setConditions] = useState<RuleCondition[]>([blankCondition()]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const setCondition = (i: number, patch: Partial<RuleCondition>) => setConditions((cs) => cs.map((c, j) => (j === i ? { ...c, ...patch } : c)));
+
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const r = await api<{ tagged: number }>("/api/tag-rules", { method: "POST", json: { tag, conditions } });
+      toast({ message: `Rule saved. ${r.tagged} trade${r.tagged === 1 ? "" : "s"} tagged ${tag}.`, tone: "success" });
+      setTag("");
+      setConditions([blankCondition()]);
+      setErrors({});
+      reload();
+      await refresh();
+    } catch (err) {
+      const fe = fieldErrors(err);
+      setErrors(fe);
+      if (!Object.keys(fe).length) toast({ message: err instanceof Error ? err.message : "Couldn't save the rule.", tone: "error" });
+    }
+  };
+  const remove = async (r: TagRule) => {
+    try {
+      await api(`/api/tag-rules/${r.id}`, { method: "DELETE" });
+      reload();
+    } catch (err) {
+      toast({ message: err instanceof Error ? err.message : "Couldn't delete the rule.", tone: "error" });
+    }
+  };
+
+  return (
+    <Section id="autotags" title="Auto-tags" description="Tags added for you when a trade matches. A rule tags each trade once: remove the tag from a trade and it stays removed. Rules about the result wait until the trade closes.">
+      {data?.rules.length ? (
+        <ul className="mb-4 divide-y divide-line border-y border-line" data-testid="tag-rules">
+          {data.rules.map((r) => (
+            <li key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-[13.5px]">
+              <Badge tone="accent">{r.tag}</Badge>
+              <span className="order-last min-w-0 basis-full text-ink-soft sm:order-none sm:flex-1 sm:basis-0">when {r.conditions.map(conditionText).join(", and ")}</span>
+              <span className="num text-[12.5px] text-muted">{r.tagged} tagged</span>
+              <Button size="sm" variant="ghost" aria-label={`Delete the ${r.tag} rule`} onClick={() => void remove(r)}>Delete</Button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mb-4 text-[13.5px] text-muted">No rules yet.</p>
+      )}
+      <form onSubmit={add} className="flex max-w-3xl flex-col gap-3" noValidate>
+        <Field label="Tag" error={errors.tag} className="sm:w-64">{(p) => <input {...p} className={inputClass} maxLength={30} placeholder="Quick loss" value={tag} onChange={(e) => setTag(e.target.value)} />}</Field>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-[13px] text-ink-soft">When all of these are true</legend>
+          {conditions.map((c, i) => {
+            const f = RULE_FIELDS[c.field];
+            const err = errors[`conditions.${i}.value`] ?? errors[`conditions.${i}.op`];
+            return (
+              <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2 sm:grid-cols-[12rem_10rem_minmax(0,1fr)_auto]">
+                <label className="sr-only" htmlFor={`cond-field-${i}`}>Condition {i + 1}</label>
+                <select id={`cond-field-${i}`} className={inputClass} value={c.field} onChange={(e) => { const field = e.target.value as RuleField; const nf = RULE_FIELDS[field]; setCondition(i, { field, op: nf.ops[0], value: "options" in nf ? nf.options[0] : "" }); }}>
+                  {Object.entries(RULE_FIELDS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                </select>
+                <label className="sr-only" htmlFor={`cond-op-${i}`}>Comparison {i + 1}</label>
+                <select id={`cond-op-${i}`} className={inputClass} value={c.op} onChange={(e) => setCondition(i, { op: e.target.value })}>
+                  {f.ops.map((o) => <option key={o} value={o}>{OP_LABELS[o]}</option>)}
+                </select>
+                <label className="sr-only" htmlFor={`cond-value-${i}`}>Value {i + 1}</label>
+                {"options" in f ? (
+                  <select id={`cond-value-${i}`} className={inputClass} value={c.value} onChange={(e) => setCondition(i, { value: e.target.value })}>
+                    {f.options.map((o) => <option key={o} value={o}>{valueLabel(c.field, o)}</option>)}
+                  </select>
+                ) : (
+                  <input id={`cond-value-${i}`} className={cx(inputClass, c.field !== "symbol" && "num")} inputMode={c.field === "symbol" ? undefined : "decimal"} aria-invalid={err ? true : undefined} value={c.value} placeholder={c.field === "symbol" ? "EURUSD" : c.field === "hour" ? "0 to 23" : ""} onChange={(e) => setCondition(i, { value: e.target.value })} />
+                )}
+                <Button type="button" variant="ghost" size="sm" className="self-center" disabled={conditions.length === 1} aria-label={`Remove condition ${i + 1}`} onClick={() => setConditions((cs) => cs.filter((_, j) => j !== i))}>Remove</Button>
+                {err && <p className="col-span-full text-[12.5px] text-loss">{err}</p>}
+              </div>
+            );
+          })}
+          {errors.conditions && <p className="text-[12.5px] text-loss">{errors.conditions}</p>}
+        </fieldset>
+        <p className="text-[12.5px] text-muted">Hours and days are in your time zone. News means a timed high-impact event in your Economic calendar for a currency the symbol names; a symbol naming none, like a stock, counts every currency.</p>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" disabled={conditions.length >= 5} onClick={() => setConditions((cs) => [...cs, blankCondition()])}>Add a condition</Button>
+          <Button type="submit" variant="primary">Save rule</Button>
+        </div>
+      </form>
+    </Section>
+  );
+}
+
+interface BackupFile {
+  name: string;
+  size: number;
+  createdAt: string;
+  kind: "manual" | "auto" | "migration";
+}
+const BACKUP_KIND = { manual: "Made by you", auto: "Automatic", migration: "Before an update" } as const;
+
+function Backups() {
+  const { toast } = useApp();
+  const { data, error, reload } = useFetch<{ backups: BackupFile[]; folder: string }>("/api/backups");
+  const [busy, setBusy] = useState(false);
+
+  const make = async () => {
+    setBusy(true);
+    try {
+      await api("/api/backups", { method: "POST" });
+      toast({ message: "Backup made.", tone: "success" });
+      reload();
+    } catch (err) {
+      toast({ message: err instanceof Error ? err.message : "Couldn't make the backup.", tone: "error" });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const remove = async (b: BackupFile) => {
+    if (!confirm(`Delete the backup from ${dateTime(b.createdAt)}? This can't be undone.`)) return;
+    try {
+      await api(`/api/backups/${encodeURIComponent(b.name)}`, { method: "DELETE" });
+      reload();
+    } catch (err) {
+      toast({ message: err instanceof Error ? err.message : "Couldn't delete it.", tone: "error" });
+    }
+  };
+
+  return (
+    <Section id="backups" title="Backups" description="Full copies of the database: every user's journal on this computer. Jarvis makes one a day while it runs and keeps the last seven. Stored MT5 passwords stay encrypted in them, and the key isn't in the file.">
+      <div className="space-y-4">
+        <Button variant="primary" disabled={busy} onClick={() => void make()}>{busy ? "Backing up…" : "Back up now"}</Button>
+        {error && !data && <p className="text-[13.5px] text-loss">{error}</p>}
+        {data && (data.backups.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-[13.5px]" data-testid="backups">
+              <thead className="text-left text-[12.5px] text-muted"><tr className="border-b border-line"><th scope="col" className="py-1.5 font-normal">Made</th><th scope="col" className="py-1.5 pl-3 font-normal">Kind</th><th scope="col" className="py-1.5 pl-3 text-right font-normal">Size</th><td /></tr></thead>
+              <tbody>
+                {data.backups.map((b) => (
+                  <tr key={b.name} className="border-b border-line">
+                    <td className="num py-1.5 whitespace-nowrap">{dateTime(b.createdAt)}</td>
+                    <td className="py-1.5 pl-3 text-ink-soft">{BACKUP_KIND[b.kind]}</td>
+                    <td className="num py-1.5 pl-3 text-right">{fileSize(b.size)}</td>
+                    <td className="py-1.5 pl-3 text-right whitespace-nowrap">
+                      <a href={`/api/backups/${encodeURIComponent(b.name)}`} download className="mr-1 inline-flex h-8 items-center px-3 text-[13px] text-ink-soft hover:bg-raised hover:text-ink">Download</a>
+                      <Button size="sm" variant="ghost" aria-label={`Delete the backup from ${dateTime(b.createdAt)}`} onClick={() => void remove(b)}>Delete</Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <p className="text-[13.5px] text-muted">No backups yet.</p>)}
+        {data && (
+          <div className="max-w-2xl text-[13px] text-muted">
+            <p className="font-medium text-ink-soft">To restore one</p>
+            <p className="mt-1">Stop Jarvis, then copy the backup over <span className="num">kestrel.db</span> in the data folder, one level above <span className="num break-all">{data.folder}</span>. Delete <span className="num">kestrel.db-wal</span> and <span className="num">kestrel.db-shm</span> beside it if they are there, then start Jarvis. Jarvis never restores by itself, so no click can replace your journal.</p>
+          </div>
+        )}
       </div>
     </Section>
   );

@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { dataPath, db, now, purgeDeletedTrades, transaction } from "../db";
 import { audit } from "./audit";
+import { applyRules } from "../autotag";
 import { getSettings } from "./settings";
 import { unlinkSync } from "node:fs";
 import path from "node:path";
@@ -405,6 +406,8 @@ export function recalculateTrade(tradeId: number) {
       gross_pnl = ?, net_pnl = ?, risk_amount = ?, r_multiple = ?, planned_r = ?, holding_minutes = ? WHERE id = ?`)
     .run(openedAt, closedAt, r.avgEntry, r.avgExit, r.enteredQty, r.status, r.pnlStatus, r.remainingQty, r.grossPnl, r.netPnl, r.initialRisk, r.rMultiple, r.plannedR,
       closedAt ? (Date.parse(closedAt) - Date.parse(openedAt)) / 60000 : null, tradeId);
+  // The one place every trade passes after a change, from any source: the auto-tag rules run here.
+  applyRules(tradeId);
 }
 
 export function recalculateAccount(accountId: number) {
@@ -759,6 +762,10 @@ export function exportAll(userId: number) {
     routineItems: byUser("routine_items"),
     routineChecks: byUser("routine_checks"),
     goals: byUser("goals"),
+    economicEvents: byUser("economic_events"),
+    tagRules: byUser("tag_rules"),
+    tagRuleHits: conn.prepare("SELECT h.* FROM tag_rule_hits h JOIN tag_rules r ON r.id = h.rule_id WHERE r.user_id = ?").all(userId),
+    aiReviews: byUser("ai_reviews"),
   };
 }
 
@@ -780,7 +787,7 @@ export function deleteAllData(userId: number) {
   const accountSettings = (conn.prepare("SELECT id FROM accounts WHERE user_id = ?").all(userId) as { id: number }[]).map((a) => `mt5:${a.id}`);
   transaction(conn, () => {
     for (const key of accountSettings) conn.prepare("DELETE FROM settings WHERE key = ?").run(key);
-    for (const table of ["goals", "routine_checks", "routine_items", "prop_expenses", "challenges", "notes", "note_folders", "note_templates", "missed_trades", "daily_journal", "jarvis_conversations", "jarvis_memories", "activity_log", "import_batches", "attachments", "reconciliations", "trades", "tags", "strategies", "accounts"])
+    for (const table of ["ai_reviews", "tag_rules", "economic_events", "goals", "routine_checks", "routine_items", "prop_expenses", "challenges", "notes", "note_folders", "note_templates", "missed_trades", "daily_journal", "jarvis_conversations", "jarvis_memories", "activity_log", "import_batches", "attachments", "reconciliations", "trades", "tags", "strategies", "accounts"])
       conn.prepare(`DELETE FROM ${table} WHERE user_id = ?`).run(userId);
     conn.prepare("DELETE FROM settings WHERE key = ?").run(`app:${userId}`);
     audit(userId, "data.deleted_all");
