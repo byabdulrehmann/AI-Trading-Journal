@@ -105,7 +105,7 @@ export async function fillBasics(form: Locator, t: TradeFields) {
 
 /** Logs a trade through the form and waits for the confirmation. */
 export async function logTrade(page: Page, t: TradeFields) {
-  await page.getByRole("button", { name: "Log trade" }).first().click();
+  await page.getByRole("button", { name: "Add trade" }).first().click();
   const form = dialog(page);
   await fillBasics(form, t);
   await form.getByRole("button", { name: "Save trade" }).click();
@@ -133,5 +133,5 @@ export async function loadSample(page: Page) {
   await open(page, "/");
   await page.getByRole("button", { name: "Load sample journal" }).click();
   await expect(page).toHaveURL(/includeSample=1/);
-  await expect(page.getByRole("slider", { name: /Closed trades in order/ })).toBeVisible();
+  await expect(page.getByTestId("kpi-row")).toBeVisible();
 }

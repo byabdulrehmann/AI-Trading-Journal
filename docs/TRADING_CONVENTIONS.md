@@ -114,6 +114,17 @@ Firms word their rules differently. Jarvis reads them this way, and the Progress
 - **Share pictures** are drawn in the browser and never uploaded. Money amounts are off by default; notes, account name and broker details are never on them.
 - **Backups** are whole-database copies, owner only: one automatic copy a day while Jarvis runs, the last seven kept, plus copies made by hand. Restoring is done by hand with Jarvis stopped.
 
+## Dashboard
+
+The layout follows `docs/dashboard-visual-spec.md`. The score's method is in `docs/performance-score.md`.
+
+- **Realized vs live:** the KPIs, score, both charts and the calendar count closed trades only. Floating P&L appears only in Open positions, which is labelled as live account data.
+- **Open positions:** MT5 accounts show the positions from their last sync, marked stale with the sync time when the sync is old or failed. Accounts entered by hand show their open trades with "Price unavailable": Jarvis never makes up a price.
+- **Days and weeks:** a day is the close date in the zone from Settings. The dashboard calendar runs Sunday to Saturday, and a week's card counts only that row's days inside the month shown. The Calendar page and weekly reports still use Monday weeks.
+- **Date range** filters by open time, as on every other page. The charts and calendar place trades by close date, so a multi-day trade can sit just outside a chosen range.
+- **Currencies** are never added together: the currency chip picks the one the totals are in, and positions in another currency are counted aside.
+- **Kept per browser:** the sidebar's collapsed state, the calendar's month and display options, the trades card's tab and position columns. Filters stay in the URL.
+
 ## Feature checklist
 
 From the public pages https://www.tradezella.com/ and https://www.tradezella.com/features, both fetched successfully, functionality only and in my own wording. These are marketing-level claims: nothing was tested in the product.

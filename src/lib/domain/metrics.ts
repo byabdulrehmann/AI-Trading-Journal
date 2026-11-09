@@ -269,6 +269,8 @@ export interface Metrics {
   tradingDays: number;
   winningDays: number;
   losingDays: number;
+  /** The sum of the days that ended up, for the consistency axis. */
+  winningDaysPnl: number;
   dayWinRate: number | null;
   avgDailyPnl: number | null;
   bestDay: { date: string; pnl: number } | null;
@@ -339,6 +341,7 @@ export function computeMetrics(trades: Trade[], tz?: string): Metrics {
     tradingDays: days.length,
     winningDays: days.filter((d) => d.pnl > 0).length,
     losingDays: days.filter((d) => d.pnl < 0).length,
+    winningDaysPnl: addMoney(days.filter((d) => d.pnl > 0).map((d) => d.pnl)),
     dayWinRate: days.length ? days.filter((d) => d.pnl > 0).length / days.length : null,
     avgDailyPnl: days.length ? round(s.netPnl / days.length, 2) : null,
     bestDay: dayOf(days[0]),
@@ -556,6 +559,8 @@ export interface ScoreAxis extends MetricDefinition {
   /** 0 to 100. Null when these trades can't say, and then it sits out of the total. */
   value: number | null;
   weight: number;
+  /** The measurement the axis is scored from, before scaling. Null when there isn't one. */
+  raw: number | null;
   /** Why it's blank. */
   missing?: string;
 }
@@ -578,68 +583,85 @@ export function ramp(x: number, anchors: [number, number][]): number {
   return anchors[anchors.length - 1][1];
 }
 
+export const SCORE_ANCHORS = {
+  winRate: [[0.2, 0], [0.4, 50], [0.6, 100]],
+  profitFactor: [[0.5, 0], [1, 40], [1.5, 70], [2.5, 100]],
+  avgWinLoss: [[0.5, 0], [1, 40], [2, 75], [3, 100]],
+  recoveryFactor: [[-1, 0], [0, 30], [1, 50], [3, 80], [6, 100]],
+  maxDrawdown: [[1, 100], [3, 80], [6, 50], [10, 20], [15, 0]],
+  consistency: [[0.15, 100], [0.3, 75], [0.5, 40], [1, 0]],
+} satisfies Record<string, [number, number][]>;
+
 /**
- * Jarvis's own composite. The weights and anchors are judgement calls, stated here and shown beside the score, not
- * findings about what makes a trader profitable. Money-based axes are ratios, so account size doesn't change them.
+ * The Jarvis Performance Score: six axes, each scaled 0 to 100 by straight lines between stated anchors, then a
+ * weighted mean of the axes that have a value. Method, anchors and reasons: docs/performance-score.md. Money-based
+ * axes are ratios, so account size doesn't change them.
  */
 export function computeScore(m: Metrics): Score {
   const noLosses = m.losses === 0 && m.wins > 0;
+  const ddInLosses = m.maxDrawdown === 0 ? 0 : m.avgLoss ? m.maxDrawdown / Math.abs(m.avgLoss) : null;
+  const bestShare = m.winningDays > 0 && m.bestDay && m.winningDaysPnl > 0 ? m.bestDay.pnl / m.winningDaysPnl : null;
   const axes: ScoreAxis[] = [
     {
-      key: "profitability",
-      label: "Profitability",
-      weight: 25,
-      formula: "profit factor: 0.5 = 0, 1 = 40, 1.5 = 70, 2.5 = 100",
-      meaning: "How much winners earned against what losers cost. Weight 25.",
-      value: m.profitFactor !== null ? ramp(m.profitFactor, [[0.5, 0], [1, 40], [1.5, 70], [2.5, 100]]) : noLosses ? 100 : null,
+      key: "winRate",
+      label: "Win %",
+      weight: 15,
+      formula: "winning trades ÷ closed trades: 20% = 0, 40% = 50, 60% = 100",
+      meaning: "How often a trade ends in profit. Weight 15.",
+      raw: m.winRate,
+      value: m.winRate === null ? null : ramp(m.winRate, SCORE_ANCHORS.winRate),
     },
     {
-      key: "edge",
-      label: "Edge per trade",
+      key: "profitFactor",
+      label: "Profit factor",
       weight: 20,
-      formula: "expectancy ÷ |average loss|: −0.5 = 0, 0 = 40, 0.25 = 70, 0.75 = 100",
-      meaning: "What an average trade makes, measured in typical losses. Weight 20.",
-      value: m.expectancy !== null && m.avgLoss ? ramp(m.expectancy / Math.abs(m.avgLoss), [[-0.5, 0], [0, 40], [0.25, 70], [0.75, 100]]) : noLosses ? 100 : null,
+      formula: "gross profit ÷ gross loss: 0.5 = 0, 1 = 40, 1.5 = 70, 2.5 = 100",
+      meaning: "How much winners earned against what losers cost. No losses scores 100. Weight 20.",
+      raw: m.profitFactor,
+      value: m.profitFactor !== null ? ramp(m.profitFactor, SCORE_ANCHORS.profitFactor) : noLosses ? 100 : null,
     },
     {
-      key: "risk",
-      label: "Drawdown control",
+      key: "avgWinLoss",
+      label: "Avg win/loss",
+      weight: 15,
+      formula: "average win ÷ |average loss|: 0.5 = 0, 1 = 40, 2 = 75, 3 = 100",
+      meaning: "How big a typical winner is next to a typical loser. No losses scores 100. Weight 15.",
+      raw: m.payoffRatio,
+      value: m.payoffRatio !== null ? ramp(m.payoffRatio, SCORE_ANCHORS.avgWinLoss) : noLosses ? 100 : null,
+    },
+    {
+      key: "recoveryFactor",
+      label: "Recovery factor",
       weight: 20,
-      formula: "recovery factor: −1 = 0, 0 = 30, 1 = 50, 3 = 80, 6 = 100",
-      meaning: "Profit made for each unit of the deepest drawdown. Weight 20.",
-      value: m.recoveryFactor !== null ? ramp(m.recoveryFactor, [[-1, 0], [0, 30], [1, 50], [3, 80], [6, 100]]) : m.netPnl > 0 ? 100 : null,
+      formula: "net P&L ÷ deepest drawdown: −1 = 0, 0 = 30, 1 = 50, 3 = 80, 6 = 100",
+      meaning: "Profit made for each unit of the deepest fall. A profit with no drawdown scores 100. Weight 20.",
+      raw: m.recoveryFactor,
+      value: m.recoveryFactor !== null ? ramp(m.recoveryFactor, SCORE_ANCHORS.recoveryFactor) : m.closedTrades && m.netPnl > 0 ? 100 : null,
+    },
+    {
+      key: "maxDrawdown",
+      label: "Max drawdown",
+      weight: 15,
+      formula: "deepest drawdown ÷ |average loss|: 1 = 100, 3 = 80, 6 = 50, 10 = 20, 15 = 0",
+      meaning: "The deepest fall from a peak, counted in typical losses, so account size doesn't matter. Weight 15.",
+      raw: ddInLosses,
+      value: m.closedTrades === 0 || ddInLosses === null ? null : ramp(ddInLosses, SCORE_ANCHORS.maxDrawdown),
     },
     {
       key: "consistency",
       label: "Consistency",
       weight: 15,
-      formula: "winning days: 30% = 0, 50% = 50, 70% = 100",
-      meaning: "How often a day ended up. Weight 15.",
-      value: m.dayWinRate !== null ? ramp(m.dayWinRate, [[0.3, 0], [0.5, 50], [0.7, 100]]) : null,
-    },
-    {
-      key: "discipline",
-      label: "Discipline",
-      weight: 10,
-      formula: "on-plan answers: 50% = 0, 80% = 60, 100% = 100",
-      meaning: "How often you reported following your plan. Needs at least 10 answers. Weight 10.",
-      value: m.planAdherence !== null && m.planSample >= 10 ? ramp(m.planAdherence, [[0.5, 0], [0.8, 60], [1, 100]]) : null,
-      missing: "Answer whether you followed the plan on at least 10 trades.",
-    },
-    {
-      key: "stops",
-      label: "Stop use",
-      weight: 10,
-      formula: "closed trades with a stop: 0% = 0, 100% = 100",
-      meaning: "A trade with no stop has no defined risk. Weight 10.",
-      value: m.closedTrades ? (m.rSample / m.closedTrades) * 100 : null,
+      formula: "best day ÷ all winning days' profit: 15% = 100, 30% = 75, 50% = 40, 100% = 0",
+      meaning: "Whether profit is spread over many days or rests on one. No winning day scores 0. Weight 15.",
+      raw: bestShare,
+      value: m.tradingDays === 0 ? null : bestShare === null ? 0 : ramp(bestShare, SCORE_ANCHORS.consistency),
     },
   ];
   const known = axes.filter((a) => a.value !== null);
   const weight = known.reduce((t, a) => t + a.weight, 0);
   const enough = m.closedTrades >= SCORE_MIN_TRADES && m.tradingDays >= SCORE_MIN_DAYS && weight > 0;
   return {
-    score: enough ? Math.round(known.reduce((t, a) => t + (a.value as number) * a.weight, 0) / weight) : null,
+    score: enough ? Math.round(known.reduce((t, a) => t + (a.value as number) * a.weight, 0) / weight * 100) / 100 : null,
     axes,
     needs: { trades: SCORE_MIN_TRADES, days: SCORE_MIN_DAYS },
   };

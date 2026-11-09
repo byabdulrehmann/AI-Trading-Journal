@@ -366,11 +366,12 @@ export const MIGRATIONS: { version: number; name: string; sql: string; run?: (db
 
 const globalForDb = globalThis as unknown as { __kestrelDb?: DatabaseSync };
 
-const dbFile = () => process.env.KESTREL_DB_PATH || path.join(process.cwd(), "data", "kestrel.db");
+const dbFile = () => process.env.KESTREL_DB_PATH || path.join(/*turbopackIgnore: true*/ process.cwd(), "data", "kestrel.db");
 
 /** A folder beside the database, for files that don't belong in it. */
 export function dataPath(folder: string): string {
-  const dir = path.join(path.dirname(dbFile()), folder);
+  // Untraced like the MT5 client paths: data/ holds the database, backups and the terminal, none of which ships.
+  const dir = path.join(/*turbopackIgnore: true*/ path.dirname(dbFile()), folder);
   mkdirSync(dir, { recursive: true });
   return dir;
 }
@@ -397,7 +398,7 @@ export function purgeDeletedTrades(conn: DatabaseSync) {
   conn.exec(`DELETE FROM trades WHERE id IN (${expired})`);
   for (const f of files) {
     try {
-      unlinkSync(path.join(dataPath("attachments"), f.stored_name));
+      unlinkSync(path.join(/*turbopackIgnore: true*/ dataPath("attachments"), f.stored_name));
     } catch {
       // Already gone: the row was what the app read.
     }
@@ -427,7 +428,7 @@ function migrate(db: DatabaseSync) {
 /** A full copy of the existing journal, taken before its schema changes. */
 function backupBeforeMigrating(db: DatabaseSync, version: number) {
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const file = path.join(dataPath("backups"), `kestrel-before-migration-${version}-${stamp}.db`);
+  const file = path.join(/*turbopackIgnore: true*/ dataPath("backups"), `kestrel-before-migration-${version}-${stamp}.db`);
   db.exec(`VACUUM INTO '${file.replace(/'/g, "''")}'`);
 }
 

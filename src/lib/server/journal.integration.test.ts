@@ -100,8 +100,8 @@ describe("migration from the old schema", () => {
       assert.ok(J.exportAll(owner).trades.length >= 2);
     });
     test("settings are per user", () => {
-      updateSettings(other, { theme: "light" });
-      assert.equal(getSettings(owner).theme, "dark");
+      updateSettings(other, { theme: "dark" });
+      assert.equal(getSettings(owner).theme, "light");
     });
     test("deleting all data removes only that user's", () => {
       J.createAccount(other, { name: "Theirs", broker: "", currency: "EUR", startingBalance: 0 });

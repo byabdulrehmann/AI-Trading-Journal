@@ -225,7 +225,7 @@ export const SHARING_LEVELS = ["metrics", "trades", "trades_with_notes"] as cons
 
 export const Settings = z.object({
   displayName: z.string().trim().max(40).default(""),
-  theme: z.enum(["system", "dark", "light"]).default("dark"),
+  theme: z.enum(["system", "dark", "light"]).default("light"),
   baseCurrency: z.string().length(3).default("USD"),
   defaultAccountId: z.number().int().nullable().default(null),
   onboardingDismissed: z.boolean().default(false),

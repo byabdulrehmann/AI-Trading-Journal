@@ -2,7 +2,7 @@ import { dialog, expect, field, fillBasics, open, test } from "./helpers";
 
 test("the price ladder: dragging and arrow keys change the fields", async ({ page }) => {
   await open(page, "/journal");
-  await page.getByRole("button", { name: "Log trade" }).first().click();
+  await page.getByRole("button", { name: "Add trade" }).first().click();
   const form = dialog(page);
   await fillBasics(form, { symbol: "EURUSD", entry: "1.0850", stop: "1.0800", target: "1.0950", quantity: "1", multiplier: "100000" });
 

@@ -25,7 +25,7 @@ const slotAt = (e: React.PointerEvent<SVGElement> | React.MouseEvent<SVGElement>
 };
 
 /** Pointer or arrow keys pick the item a chart reads out; Enter acts on it. */
-function useScrub(n: number, onEnter?: (i: number) => void) {
+export function useScrub(n: number, onEnter?: (i: number) => void) {
   const [active, setActive] = useState<number | null>(null);
   const keys = (e: React.KeyboardEvent) => {
     const at = active ?? n - 1;
@@ -53,7 +53,7 @@ function useScrub(n: number, onEnter?: (i: number) => void) {
 }
 
 /** The exact figures, beside the item they read, flipping at the middle so they stay on the chart. */
-function Tip({ x, width, children }: { x: number; width: number; children: React.ReactNode }) {
+export function Tip({ x, width, children }: { x: number; width: number; children: React.ReactNode }) {
   return (
     <figcaption aria-live="polite" className="pointer-events-none absolute top-0 z-[var(--z-raised)] border border-line-strong bg-raised px-2 py-1 text-[12px]" style={x > width / 2 ? { right: Math.max(0, width - x + 8) } : { left: x + 8 }}>
       {children}

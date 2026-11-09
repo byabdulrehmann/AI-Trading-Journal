@@ -21,10 +21,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ref={ref}
       type={type}
       className={cx(
-        "inline-flex items-center justify-center gap-2 font-medium whitespace-nowrap transition-colors active:translate-y-px disabled:cursor-not-allowed disabled:opacity-55",
+        "inline-flex items-center justify-center gap-2 rounded-control font-medium whitespace-nowrap transition-colors active:translate-y-px disabled:cursor-not-allowed disabled:opacity-55",
         size === "sm" ? "h-8 px-3 text-[13px]" : "h-9 px-3.5 text-sm",
-        variant === "primary" && "bg-accent text-accent-ink hover:bg-focus",
-        variant === "secondary" && "border border-line-strong bg-transparent text-ink hover:bg-raised",
+        variant === "primary" && "bg-accent text-accent-ink hover:bg-accent/90",
+        variant === "secondary" && "border border-line bg-surface text-ink hover:bg-raised",
         variant === "ghost" && "text-ink-soft hover:bg-raised hover:text-ink",
         variant === "danger" && "border border-loss/50 text-loss hover:bg-loss-soft",
         className,
@@ -36,7 +36,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 
 export function Card({ className, children, ...rest }: React.HTMLAttributes<HTMLElement>) {
   return (
-    <section className={cx("border-t border-line", className)} {...rest}>
+    <section className={cx("rounded-panel border border-line bg-surface px-card pb-card shadow-card", className)} {...rest}>
       {children}
     </section>
   );
@@ -46,7 +46,7 @@ export function CardHeader({ title, subtitle, action }: { title: string; subtitl
   return (
     <div className="flex items-start justify-between gap-3 py-3">
       <div className="min-w-0">
-        <h2 className="text-[15px] font-medium text-ink">{title}</h2>
+        <h2 className="text-[14px] font-semibold text-ink">{title}</h2>
         {subtitle && <p className="mt-0.5 text-[13px] text-muted">{subtitle}</p>}
       </div>
       {action && <div className="shrink-0 whitespace-nowrap">{action}</div>}
@@ -113,7 +113,7 @@ export function Metric({ def, value, tone, note }: { def: MetricDefinition; valu
 
 export function EmptyState({ title, body, action }: { title: string; body: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <div className="border-y border-line py-8">
+    <div className="rounded-panel border border-line bg-surface px-card py-8 shadow-card">
       <h3 className="text-[20px] font-medium text-ink">{title}</h3>
       <div className="mt-1 max-w-xl text-[14px] text-ink-soft">{body}</div>
       {action && <div className="mt-4 flex flex-wrap gap-2">{action}</div>}
@@ -162,7 +162,7 @@ export function Field({
 }
 
 export const inputClass =
-  "h-9 w-full min-w-0 border border-line-strong bg-sunken px-2.5 text-[14px] text-ink placeholder:text-muted aria-[invalid=true]:outline aria-[invalid=true]:outline-loss disabled:cursor-not-allowed disabled:opacity-55";
+  "h-9 w-full min-w-0 rounded-control border border-line-strong bg-surface px-2.5 text-[14px] text-ink placeholder:text-muted aria-[invalid=true]:outline aria-[invalid=true]:outline-loss disabled:cursor-not-allowed disabled:opacity-55";
 
 export function Toggle({ checked, onChange, label, description, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; description?: React.ReactNode; disabled?: boolean }) {
   const id = useId();
@@ -182,11 +182,11 @@ export function Toggle({ checked, onChange, label, description, disabled }: { ch
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className={cx(
-          "relative mt-0.5 h-5 w-10 shrink-0 border transition-colors disabled:opacity-55",
+          "relative mt-0.5 h-5 w-10 shrink-0 rounded-full border transition-colors disabled:opacity-55",
           checked ? "border-accent bg-accent" : "border-line-strong bg-sunken",
         )}
       >
-        <span aria-hidden className={cx("absolute top-[2px] left-[2px] h-3.5 w-4 transition-transform", checked ? "translate-x-[18px] bg-accent-ink" : "bg-muted")} />
+        <span aria-hidden className={cx("absolute top-[2px] left-[2px] h-3.5 w-3.5 rounded-full transition-transform", checked ? "translate-x-[20px] bg-accent-ink" : "bg-muted")} />
       </button>
     </div>
   );
@@ -227,7 +227,7 @@ export function Dialog({
       onClose={onClose}
       onClick={(e) => !persistent && e.target === ref.current && onClose()}
       className={cx(
-        "overflow-hidden border-line-strong bg-canvas p-0 text-ink",
+        "overflow-hidden border-line bg-surface p-0 text-ink shadow-xl",
         drawer ? "animate-slide my-0 mr-0 ml-auto h-dvh max-h-dvh w-full max-w-2xl border-l" : cx("animate-rise m-auto max-h-[94dvh] w-[calc(100%-16px)] rounded-panel border", wide ? "max-w-4xl" : "max-w-lg"),
       )}
     >
@@ -266,8 +266,8 @@ export function Segmented<T extends string>({ value, onChange, options, label }:
           aria-checked={value === o.value}
           onClick={() => onChange(o.value)}
           className={cx(
-            "px-2.5 py-1 text-[13px] whitespace-nowrap transition-colors",
-            value === o.value ? "bg-raised text-ink shadow-[inset_0_-2px_0_var(--accent)]" : "text-muted hover:text-ink",
+            "rounded-[5px] px-2.5 py-1 text-[13px] whitespace-nowrap transition-colors",
+            value === o.value ? "bg-surface font-medium text-ink shadow-card ring-1 ring-line" : "text-muted hover:text-ink",
           )}
         >
           {o.label}
@@ -283,7 +283,7 @@ export function Notice({ tone = "warn", children, action }: { tone?: "warn" | "i
     <div
       role="note"
       className={cx(
-        "flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-l-2 px-3.5 py-2.5 text-[13.5px] text-ink",
+        "flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-control border-l-2 px-3.5 py-2.5 text-[13.5px] text-ink",
         tone === "warn" && "border-warn bg-warn-soft",
         tone === "info" && "border-info bg-info-soft",
         tone === "loss" && "border-loss bg-loss-soft",

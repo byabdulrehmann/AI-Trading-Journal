@@ -32,7 +32,7 @@ function ViewEditor({ layout, save }: { layout: DashboardLayout; save: (next: Da
   const { toast } = useApp();
   const view = activeView(layout);
   const [name, setName] = useState("");
-  const missing = missingWidgets(view.widgets);
+  const missing = missingWidgets(view.widgets).filter((id) => !FIXED_WIDGETS.includes(id));
 
   const saveAs = () => {
     const next = saveAsView(layout, name, crypto.randomUUID());
@@ -42,7 +42,7 @@ function ViewEditor({ layout, save }: { layout: DashboardLayout; save: (next: Da
   };
 
   return (
-    <div className="mb-4 flex flex-wrap items-end gap-x-5 gap-y-3 border-y border-line py-3 text-[13px]" data-testid="view-editor">
+    <div className="flex flex-wrap items-end gap-x-5 gap-y-3 border-t border-line py-3 text-[13px]" data-testid="view-editor">
       <label className="flex flex-col gap-1 text-ink-soft">
         Add a widget
         <select
@@ -100,7 +100,7 @@ function ViewEditor({ layout, save }: { layout: DashboardLayout; save: (next: Da
 function WidgetTools({ widget, index, count, onMove, onResize, onRemove, onDragStart }: { widget: WidgetRef; index: number; count: number; onMove: (to: number) => void; onResize: (span: number) => void; onRemove: () => void; onDragStart: () => void }) {
   const label = WIDGET_INFO[widget.id].label;
   return (
-    <div role="group" aria-label={`Arrange ${label}`} className="mb-1 flex flex-wrap items-center gap-1 bg-raised px-2 py-1 text-[12.5px]">
+    <div role="group" aria-label={`Arrange ${label}`} className="mb-1 flex flex-wrap items-center gap-1 rounded-control bg-accent-soft px-2 py-1 text-[12.5px]">
       <span draggable onDragStart={(e) => {
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("text/plain", widget.id);
@@ -118,31 +118,37 @@ function WidgetTools({ widget, index, count, onMove, onResize, onRemove, onDragS
   );
 }
 
-/** The picker of saved views, and the widgets of the current one. Every change saves as it's made. */
-export function DashboardGrid({ ctx }: { ctx: WidgetContext }) {
+/** Widgets the fixed dashboard layout above already shows. Kept in saved layouts, so old settings still parse, but never drawn twice. */
+export const FIXED_WIDGETS: WidgetId[] = ["tape", "score", "dailyPnl", "calendar", "recent"];
+
+/** The extra widgets under the fixed layout. The gear in the dashboard's status row opens the editor. */
+export function DashboardGrid({ ctx, editing }: { ctx: WidgetContext; editing: boolean }) {
   const { settings, saveSettings } = useApp();
-  const [editing, setEditing] = useState(false);
   const [dragging, setDragging] = useState<WidgetId | null>(null);
   const layout = resolveLayout(settings?.dashboard);
   const view = activeView(layout);
   const save = (next: DashboardLayout) => void saveSettings({ dashboard: next });
-  const change = (widgets: WidgetRef[]) => save(setWidgets(layout, widgets));
+  const shown = view.widgets.filter((w) => !FIXED_WIDGETS.includes(w.id));
+  const change = (widgets: WidgetRef[]) => save(setWidgets(layout, [...view.widgets.filter((w) => FIXED_WIDGETS.includes(w.id)), ...widgets]));
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <label className="flex items-center gap-2 text-[13px] text-muted">
-          View
-          <select aria-label="Dashboard view" className={control} value={layout.active} onChange={(e) => save({ ...layout, active: e.target.value })}>
-            {layout.views.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
-          </select>
-        </label>
-        <Button size="sm" className="max-sm:h-11" aria-pressed={editing} onClick={() => setEditing((e) => !e)}>{editing ? "Done" : "Customize"}</Button>
-      </div>
-      {editing && <ViewEditor layout={layout} save={save} />}
-      {view.widgets.length === 0 && <p className="border-y border-line py-6 text-[14px] text-ink-soft">This view has no widgets. {editing ? "Add one above." : "Press Customize to add some."}</p>}
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-x-6 gap-y-6 sm:grid-cols-2 xl:grid-cols-4">
-        {view.widgets.map((w, i) => (
+      {editing && (
+        <div className="mb-3 rounded-panel border border-line bg-surface px-card pt-3 shadow-card" data-testid="widget-editor">
+          <p className="text-[14px] font-semibold text-ink">Dashboard widgets</p>
+          <p className="mb-2 text-[13px] text-muted">The cards above are fixed. Add, remove, reorder and resize the widgets below them, and save arrangements as views.</p>
+          <label className="mb-2 flex items-center gap-2 text-[13px] text-muted">
+            View
+            <select aria-label="Dashboard view" className={control} value={layout.active} onChange={(e) => save({ ...layout, active: e.target.value })}>
+              {layout.views.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+            </select>
+          </label>
+          <ViewEditor layout={layout} save={save} />
+        </div>
+      )}
+      {shown.length === 0 && editing && <p className="py-4 text-[14px] text-ink-soft">No extra widgets in this view. Add one above.</p>}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-[21px] sm:grid-cols-2 xl:grid-cols-4">
+        {shown.map((w, i) => (
           <div
             key={w.id}
             data-widget={w.id}
@@ -153,7 +159,7 @@ export function DashboardGrid({ ctx }: { ctx: WidgetContext }) {
                 ? (e) => {
                     e.preventDefault();
                     // moveWidget ignores anything that isn't a widget in this view, such as text dragged in from elsewhere.
-                    change(moveWidget(view.widgets, e.dataTransfer.getData("text/plain") as WidgetId, i));
+                    change(moveWidget(shown, e.dataTransfer.getData("text/plain") as WidgetId, i));
                     setDragging(null);
                   }
                 : undefined
@@ -164,10 +170,10 @@ export function DashboardGrid({ ctx }: { ctx: WidgetContext }) {
               <WidgetTools
                 widget={w}
                 index={i}
-                count={view.widgets.length}
-                onMove={(to) => change(moveWidget(view.widgets, w.id, to))}
-                onResize={(span) => change(resizeWidget(view.widgets, w.id, span))}
-                onRemove={() => change(removeWidget(view.widgets, w.id))}
+                count={shown.length}
+                onMove={(to) => change(moveWidget(shown, w.id, to))}
+                onResize={(span) => change(resizeWidget(shown, w.id, span))}
+                onRemove={() => change(removeWidget(shown, w.id))}
                 onDragStart={() => setDragging(w.id)}
               />
             )}

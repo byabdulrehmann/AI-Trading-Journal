@@ -10,32 +10,36 @@ const oneTrade = async (page: Page) => {
   await page.request.post("/api/trades", { data: { accountId: account, symbol: "EURUSD", side: "long", openedAt: "2026-07-01T02:30:00.000Z", closedAt: "2026-07-01T03:00:00.000Z", entryPrice: 1.1, exitPrice: 1.11, quantity: 1000 } });
 };
 
-test("the score shows the API's total, and its axes open their formulas", async ({ page }) => {
+const settingsButton = (page: Page) => page.getByRole("button", { name: /^Dashboard settings/ });
+
+test("the score shows the API's total, and an axis opens its inputs", async ({ page }) => {
   await loadSample(page);
   const a = await api(page);
   expect(a.score.score).toBeGreaterThanOrEqual(0);
-  await expect(page.getByTestId("score-total")).toHaveText(String(a.score.score));
-  const card = page.locator('[data-widget="score"]');
-  await expect(card.getByRole("img", { name: new RegExp(`Score ${a.score.score} of 100`) })).toBeVisible();
-  await card.getByRole("button", { name: "formula for Profitability" }).click();
-  await expect(card.getByText(/profit factor: 0\.5 = 0/)).toBeVisible();
+  await expect(page.getByTestId("score-total")).toHaveText(a.score.score.toFixed(2));
+  expect(a.score.axes.map((x: { label: string }) => x.label)).toEqual(["Win %", "Profit factor", "Avg win/loss", "Recovery factor", "Max drawdown", "Consistency"]);
+  const pf = a.score.axes.find((x: { key: string }) => x.key === "profitFactor");
+  await page.getByTestId("score-axis-profitFactor").click();
+  await expect(page.getByTestId("score-axis-detail")).toContainText(`Profit factor: ${pf.value.toFixed(1)}`);
+  await expect(page.getByTestId("score-axis-detail")).toContainText("gross profit ÷ gross loss: 0.5 = 0");
 });
 
 test("with too few trades the score says what it needs instead of a number", async ({ page }) => {
   await oneTrade(page);
   await open(page, "/");
-  await expect(page.getByTestId("score-pending")).toContainText("at least 20 closed trades across 5 days");
-  await expect(page.getByTestId("score-total")).toHaveCount(0);
+  await expect(page.getByTestId("score-pending")).toContainText("needs 20 closed trades over 5 trading days. So far: 1 over 1.");
+  await expect(page.getByTestId("score-total")).toHaveText("—");
 });
 
-test("customizing: add, remove, resize, move and drag, kept after a reload", async ({ page }) => {
+test("customizing the widgets under the fixed cards: add, remove, resize, move and drag, kept after a reload", async ({ page }) => {
   await loadSample(page);
-  await expect.poll(() => widgets(page)).toContain("tape");
+  await expect.poll(() => widgets(page)).toContain("result");
   try {
-    await page.getByRole("button", { name: "Customize" }).click();
-
+    await settingsButton(page).click();
     await page.getByLabel("Add a widget").selectOption("mistakes");
     await expect(page.locator('[data-widget="mistakes"]').getByRole("heading", { name: "Mistakes" })).toBeVisible();
+    // The fixed cards are never offered twice.
+    await expect(page.getByLabel("Add a widget").locator('option[value="score"]')).toHaveCount(0);
 
     await page.getByRole("button", { name: "Remove Worth a look" }).click();
     await expect(page.locator('[data-widget="worth"]')).toHaveCount(0);
@@ -45,27 +49,27 @@ test("customizing: add, remove, resize, move and drag, kept after a reload", asy
     await page.getByRole("button", { name: "Move Quality earlier" }).click();
     await expect.poll(async () => (await widgets(page)).indexOf("quality")).toBe(before.indexOf("result"));
 
-    // A real drag, to a widget in view: recent lands where calendar was.
-    const handle = page.getByTestId("drag-recent");
+    // A real drag: strategies lands where quality is.
+    const handle = page.getByTestId("drag-strategy");
     await handle.scrollIntoViewIfNeeded();
     const from = (await handle.boundingBox())!;
-    const slot = (await widgets(page)).indexOf("calendar");
+    const slot = (await widgets(page)).indexOf("quality");
     await page.mouse.move(from.x + 5, from.y + from.height / 2);
     await page.mouse.down();
+    const to = (await page.locator('[data-widget="quality"]').boundingBox())!;
     // The bottom of the widget above, which is on screen even when its top has scrolled away.
-    const to = (await page.locator('[data-widget="calendar"]').boundingBox())!;
     await page.mouse.move(to.x + 20, to.y + to.height - 10, { steps: 8 });
     await page.mouse.up();
-    await expect.poll(async () => (await widgets(page)).indexOf("recent")).toBe(slot);
+    await expect.poll(async () => (await widgets(page)).indexOf("strategy")).toBe(slot);
 
     await page.getByLabel("Size of Risk").selectOption("4");
     await expect(page.locator('[data-widget="risk"]')).toHaveClass(/xl:col-span-4/);
 
-    await page.getByRole("button", { name: "Done" }).click();
+    await settingsButton(page).click();
     await expect(page.getByRole("button", { name: "Remove Risk" })).toHaveCount(0);
 
     await page.reload();
-    await expect.poll(async () => (await widgets(page)).indexOf("recent")).toBe(slot);
+    await expect.poll(async () => (await widgets(page)).indexOf("strategy")).toBe(slot);
     const after = await widgets(page);
     expect(after).toContain("mistakes");
     expect(after).not.toContain("worth");
@@ -79,13 +83,13 @@ test("saved views: separate layouts, renamed, switched and deleted", async ({ pa
   await loadSample(page);
   const view = page.getByLabel("Dashboard view");
   try {
-    await page.getByRole("button", { name: "Customize" }).click();
+    await settingsButton(page).click();
     await page.getByLabel("Save as a new view").fill("Risk review");
     await page.getByRole("button", { name: "Save view" }).click();
     await expect(view.locator("option:checked")).toHaveText("Risk review");
 
-    await page.getByRole("button", { name: "Remove Equity tape" }).click();
-    await expect(page.locator('[data-widget="tape"]')).toHaveCount(0);
+    await page.getByRole("button", { name: "Remove Result" }).click();
+    await expect(page.locator('[data-widget="result"]')).toHaveCount(0);
 
     // A taken name is refused.
     await page.getByLabel("Save as a new view").fill("overview");
@@ -94,9 +98,9 @@ test("saved views: separate layouts, renamed, switched and deleted", async ({ pa
     await page.getByLabel("Save as a new view").fill("");
 
     await view.selectOption({ label: "Overview" });
-    await expect(page.locator('[data-widget="tape"]')).toHaveCount(1);
+    await expect(page.locator('[data-widget="result"]')).toHaveCount(1);
     await view.selectOption({ label: "Risk review" });
-    await expect(page.locator('[data-widget="tape"]')).toHaveCount(0);
+    await expect(page.locator('[data-widget="result"]')).toHaveCount(0);
 
     const rename = page.getByLabel("Rename this view");
     await rename.fill("Risk");
@@ -108,10 +112,10 @@ test("saved views: separate layouts, renamed, switched and deleted", async ({ pa
     await expect(view.locator("option:checked")).toHaveText("Overview");
     await expect(page.getByRole("button", { name: "Delete view" })).toBeDisabled();
 
-    await page.getByRole("button", { name: "Remove Score" }).click();
-    await expect(page.locator('[data-widget="score"]')).toHaveCount(0);
+    await page.getByRole("button", { name: "Remove Quality" }).click();
+    await expect(page.locator('[data-widget="quality"]')).toHaveCount(0);
     await page.getByRole("button", { name: "Reset layout" }).click();
-    await expect(page.locator('[data-widget="score"]')).toHaveCount(1);
+    await expect(page.locator('[data-widget="quality"]')).toHaveCount(1);
   } finally {
     await reset(page);
   }
@@ -121,7 +125,8 @@ test("results in R and percent match the API on the screen, and the score doesn'
   await loadSample(page);
   const money = await api(page);
 
-  await page.getByLabel("Show results in").selectOption("r");
+  await page.getByRole("button", { name: /^Filters/ }).click();
+  await page.getByTestId("filters-menu").getByLabel("Show results in").selectOption("r");
   await expect(page).toHaveURL(/unit=r/);
   const inR = await api(page, "includeSample=1&unit=r");
   expect(inR.display).toBe("R");
@@ -129,13 +134,13 @@ test("results in R and percent match the API on the screen, and the score doesn'
   const net = `${inR.metrics.netPnl < 0 ? "−" : "+"}${Math.abs(inR.metrics.netPnl).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}R`;
   await expect(page.locator('[data-widget="result"]').getByText(net, { exact: true })).toBeVisible();
   expect(inR.score.score).toBe(money.score.score);
-  await expect(page.getByTestId("score-total")).toHaveText(String(money.score.score));
+  await expect(page.getByTestId("score-total")).toHaveText(money.score.score.toFixed(2));
 
-  await page.getByLabel("Show results in").selectOption("percent");
+  await page.getByTestId("filters-menu").getByLabel("Show results in").selectOption("percent");
   const inPct = await api(page, "includeSample=1&unit=percent");
   expect(inPct.display).toBe("%");
   near(inPct.metrics.netPnl, (money.metrics.netPnl / 115000) * 100); // 25,000 + 40,000 + 50,000 of starting balances
-  await expect(page.getByTestId("unit-note")).toContainText("115,000 combined starting balance");
+  await expect(page.locator("#main").getByTestId("unit-note")).toContainText("115,000 combined starting balance");
 
   // The unit follows you to the other result pages.
   await page.getByRole("navigation").getByRole("link", { name: "Reports", exact: true }).click();
@@ -149,14 +154,4 @@ test("a unit nothing can be shown in falls back to money and says why", async ({
   await expect(page.getByTestId("unit-note")).toContainText("Showing money");
   await expect(page.getByTestId("unit-note")).toContainText("no starting balance");
   await expect(page.locator('[data-widget="result"]').getByText("+$10.00", { exact: true }).first()).toBeVisible();
-});
-
-test("the small calendar's day links match the API", async ({ page }) => {
-  await loadSample(page);
-  const a = await api(page);
-  const last = a.periods.day.at(-1);
-  const cell = page.getByTestId("mini-calendar").getByRole("link", { name: new RegExp(`^${last.key}: `) });
-  await expect(cell).toBeVisible();
-  await cell.click();
-  await expect(page).toHaveURL(new RegExp(`/calendar\\?.*day=${last.key}`));
 });

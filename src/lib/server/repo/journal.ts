@@ -772,7 +772,7 @@ export function exportAll(userId: number) {
 export function removeStoredFiles(folder: string, names: string[]) {
   for (const name of names) {
     try {
-      unlinkSync(path.join(dataPath(folder), name));
+      unlinkSync(path.join(/*turbopackIgnore: true*/ dataPath(folder), name));
     } catch {
       // Already gone: the row is what the app reads.
     }

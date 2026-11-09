@@ -20,7 +20,7 @@ test("a filter set on one page follows you to the others, until cleared", async 
   await expect(page).toHaveURL(/side=short/);
   await expect(page.getByText(usd(20), { exact: true }).first()).toBeVisible();
 
-  await nav(page, "Journal");
+  await nav(page, "Trades");
   await expect(page).toHaveURL(/\/journal\?.*side=short/);
   await expect(page.getByRole("combobox", { name: "Direction" })).toHaveValue("short");
   await expect(page.getByRole("checkbox", { name: /Select trade/ })).toHaveCount(1);
@@ -29,9 +29,10 @@ test("a filter set on one page follows you to the others, until cleared", async 
   await nav(page, "Dashboard");
   await expect(page).toHaveURL(/side=short/);
 
-  await page.getByRole("button", { name: "Clear", exact: true }).click();
+  await page.getByRole("button", { name: /^Filters/ }).click();
+  await page.getByTestId("filters-menu").getByRole("button", { name: "Clear", exact: true }).click();
   await expect(page).not.toHaveURL(/side=short/);
-  await nav(page, "Journal");
+  await nav(page, "Trades");
   await expect(page).not.toHaveURL(/side=short/);
   await expect(page.getByRole("checkbox", { name: /Select trade/ })).toHaveCount(3);
 });
@@ -64,7 +65,7 @@ test("a chosen time zone moves days, labels and typed times", async ({ page }) =
     expect(await days()).toEqual(["2026-06-30"]);
 
     await open(page, "/journal");
-    await page.getByRole("button", { name: "Log trade" }).first().click();
+    await page.getByRole("button", { name: "Add trade" }).first().click();
     const form = dialog(page);
     await fillBasics(form, { symbol: "GBPUSD", opened: "2026-07-01T10:00", closed: "2026-07-01T11:00", entry: "1.3", exit: "1.31", quantity: "1000" });
     await form.getByRole("button", { name: "Save trade" }).click();
@@ -82,7 +83,7 @@ test("a chosen time zone moves days, labels and typed times", async ({ page }) =
 
 test("an option asks for its details, defaults to 100 per contract and shows them", async ({ page }) => {
   await open(page, "/journal");
-  await page.getByRole("button", { name: "Log trade" }).first().click();
+  await page.getByRole("button", { name: "Add trade" }).first().click();
   const form = dialog(page);
   await fillBasics(form, { symbol: "AAPL C190", opened: "2026-10-14T09:00", closed: "2026-10-14T10:00", entry: "4.2", exit: "5.7", quantity: "2" });
   await form.getByRole("button", { name: /^Asset class and session/ }).click();
@@ -112,7 +113,7 @@ test("fee defaults start a new manual trade, and can be changed there", async ({
     await commission.blur();
     await expect.poll(async () => (await (await page.request.get("/api/settings")).json()).settings.feeDefaults.commission).toBe(2.5);
     await page.reload();
-    await page.getByRole("button", { name: "Log trade" }).first().click();
+    await page.getByRole("button", { name: "Add trade" }).first().click();
     await expect(field(dialog(page), "Commission")).toHaveValue("2.5");
   } finally {
     await settings(page, { feeDefaults: { commission: 0, otherFees: 0 } });

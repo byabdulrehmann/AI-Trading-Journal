@@ -164,7 +164,7 @@ export function commitImport(userId: number, file: UploadedFile, req: ImportRequ
   const { preview, rows, invalidRows } = analyse(userId, file, req);
   if (rows.length === 0) throw new UploadError("No valid rows to import.");
   const storedName = `${randomUUID()}.${preview.format}`;
-  const stored = path.join(dataPath("imports"), storedName);
+  const stored = path.join(/*turbopackIgnore: true*/ dataPath("imports"), storedName);
   writeFileSync(stored, file.bytes, { flag: "wx" });
   try {
     const { batch, count } = importTrades(userId, req.accountId, rows, {

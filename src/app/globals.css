@@ -1,11 +1,10 @@
-/* Hallmark · shape: app screen · genre: modern-minimal · theme: Rim (deal 2/3, seed private-local-trading-journal-91a9·37279940·2026-11-05·r0) · redesign: full
- * nav: the project's sidebar, kept · signature: the Tape, an equity line with every closed trade as a tick · states: loading, empty, error, full
- * axes: dark/grotesk-sans/warm · posture: committed · contrast: pass · v2.0.0 */
-/* Hallmark · pre-emit critique: P4 H4 E5 S4 R4 V4 · weakest: H, an app screen has no hero, so the Tape carries the first screen */
-/* Hallmark · dropped chart onMouseMove/onMouseEnter/onMouseLeave, onPick · replaced by pointer handlers and calendar keys doing the same job; the record's "links" of Button, Link and Segmented were moved, not removed, and were clicked in the browser pass */
+/* Jarvis look: light canvas, white rounded cards, navy sidebar, violet accent. Layout follows docs/dashboard-visual-spec.md. */
 @import "tailwindcss";
 @import "./tokens.css" layer(theme);
 @import "./base.css" layer(base);
+
+/* The collapsed sidebar, chosen on <html> before paint. */
+@custom-variant navmin (:where([data-nav="collapsed"]) &);
 
 @theme inline {
   --color-canvas: var(--canvas);
@@ -25,6 +24,12 @@
   --color-profit-soft: var(--profit-soft);
   --color-loss: var(--loss);
   --color-loss-soft: var(--loss-soft);
+  --color-profit-strong: var(--profit-strong);
+  --color-loss-strong: var(--loss-strong);
+  --color-nav: var(--nav-bg);
+  --color-nav-ink: var(--nav-ink);
+  --color-nav-muted: var(--nav-muted);
+  --color-nav-active: var(--nav-active);
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
   --color-warn: var(--warn);
@@ -34,16 +39,16 @@
   --spacing-gutter: 1rem;
   --spacing-section: 1.5rem;
   --spacing-card: 1rem;
-  /* Rim: nothing on the screen is round. */
-  --radius-control: 0;
-  --radius-panel: 0;
-  --radius-xs: 0;
-  --radius-sm: 0;
-  --radius-md: 0;
-  --radius-lg: 0;
-  --radius-xl: 0;
-  --radius-2xl: 0;
-  --radius-3xl: 0;
+  --radius-control: 6px;
+  --radius-panel: 10px;
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 14px;
+  --radius-3xl: 20px;
+  --shadow-card: var(--card-shadow);
 }
 
 /* The app's shared classes. Keep to tokens; measurements are mono, labels never are. */

@@ -1,101 +1,145 @@
-/* Hallmark · tokens: Rim night, in the project's token names. Every colour and face in the app comes from here. */
+/* Jarvis tokens: light canvas, white cards, navy sidebar, violet accent. Every colour and face in the app comes from here. */
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
-  /* Shared scale, from the scaffold. */
+  /* Shared scale. */
   --space-3xs: 2px; --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 40px;
   --text-xs: 0.75rem; --text-sm: 0.875rem; --text-md: 1rem; --text-lg: 1.2rem; --text-xl: 1.44rem; --text-2xl: 1.728rem;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --dur-micro: 120ms; --dur-short: 220ms;
   --z-raised: 10; --z-sticky: 200; --z-modal: 400; --z-toast: 500;
-  --container: 1280px;
+  --container: 1760px;
 
-  /* Rim night. */
-  --canvas: oklch(11% 0.008 75);
-  --surface: oklch(14.5% 0.009 75);
-  --raised: oklch(18.5% 0.010 75);
-  --sunken: oklch(8% 0.007 75);
-  --line: oklch(24% 0.010 78);
-  --line-strong: oklch(36% 0.011 78);
-  --ink: oklch(94% 0.010 80);
-  --ink-soft: oklch(84% 0.011 80);
-  --muted: oklch(70% 0.012 80);
-  --accent: oklch(72% 0.17 45);
-  --accent-ink: oklch(12% 0.02 45);
-  --accent-soft: oklch(72% 0.17 45 / 0.14);
-  --focus: oklch(78% 0.15 45);
-  --info: oklch(76% 0.11 250);
-  --info-soft: oklch(76% 0.11 250 / 0.14);
-  /* Waived from Rim's two signals: traders read green and red as profit and loss before anything else. */
-  --profit: oklch(78% 0.13 165);
-  --profit-soft: oklch(78% 0.13 165 / 0.13);
-  --loss: oklch(72% 0.16 15);
-  --loss-soft: oklch(72% 0.16 15 / 0.13);
-  --warn: oklch(82% 0.13 90);
-  --warn-soft: oklch(82% 0.13 90 / 0.12);
-  --scrim: oklch(5% 0.005 75 / 0.68);
+  /* Light, the default. */
+  --canvas: #f4f5f8;
+  --surface: #ffffff;
+  --raised: #f7f8fb;
+  --sunken: #eef0f4;
+  --line: #e6e8ee;
+  --line-strong: #cfd3dc;
+  --ink: #1d1f2e;
+  --ink-soft: #3d4154;
+  --muted: #6e7387;
+  --accent: #5b4fe8;
+  --accent-ink: #ffffff;
+  --accent-soft: rgb(91 79 232 / 0.1);
+  --focus: #5b4fe8;
+  --info: #3d63c9;
+  --info-soft: rgb(61 99 201 / 0.1);
+  --profit: #13906a;
+  --profit-soft: #dbf2e9;
+  --profit-strong: #b7e4d1;
+  --loss: #d23c55;
+  --loss-soft: #f9d3d6;
+  --loss-strong: #f2b0b6;
+  --warn: #9a6a00;
+  --warn-soft: rgb(230 168 23 / 0.14);
+  --scrim: rgb(20 22 40 / 0.4);
+  --card-shadow: 0 1px 2px rgb(20 22 40 / 0.04), 0 1px 1px rgb(20 22 40 / 0.02);
+
+  /* The sidebar is navy in both themes. */
+  --nav-bg: #1b1d3d;
+  --nav-bg-end: #231f49;
+  --nav-ink: rgb(255 255 255 / 0.9);
+  --nav-muted: rgb(255 255 255 / 0.58);
+  --nav-active: rgb(255 255 255 / 0.1);
+  --nav-line: rgb(255 255 255 / 0.08);
+
+  /* The score's red, amber, green scale. */
+  --scale-low: #e2475b;
+  --scale-mid: #f2b630;
+  --scale-high: #2fb07d;
 
   --font-display: var(--font-ui), ui-sans-serif, system-ui, sans-serif;
   --font-body: var(--font-display);
-  --font-outlier: var(--font-figures), ui-monospace, monospace;
-  --radius-card: 0;
-  --radius-pill: 0;
+  --font-outlier: var(--font-display);
+  --radius-card: 10px;
+  --radius-pill: 999px;
   --rule-hair: 1px;
-  --tracking-display: -0.03em;
-  --display-weight: 500;
+  --tracking-display: -0.015em;
+  --display-weight: 600;
 }
 
-/* Rim has no light colourway; this is its paper inversion, for the Settings theme choice. */
-:root[data-theme="light"] {
-  color-scheme: light;
-  --canvas: oklch(96% 0.006 80);
-  --surface: oklch(98% 0.005 80);
-  --raised: oklch(100% 0 0);
-  --sunken: oklch(93% 0.007 80);
-  --line: oklch(88% 0.008 80);
-  --line-strong: oklch(74% 0.010 80);
-  --ink: oklch(18% 0.010 75);
-  --ink-soft: oklch(32% 0.011 75);
-  --muted: oklch(46% 0.012 75);
-  --accent: oklch(52% 0.17 42);
-  --accent-ink: oklch(98% 0.01 80);
-  --accent-soft: oklch(52% 0.17 42 / 0.1);
-  --focus: oklch(52% 0.17 42);
-  --info: oklch(46% 0.12 250);
-  --info-soft: oklch(46% 0.12 250 / 0.1);
-  --profit: oklch(45% 0.11 165);
-  --profit-soft: oklch(45% 0.11 165 / 0.1);
-  --loss: oklch(50% 0.17 20);
-  --loss-soft: oklch(50% 0.17 20 / 0.09);
-  --warn: oklch(48% 0.10 85);
-  --warn-soft: oklch(48% 0.10 85 / 0.1);
-  --scrim: oklch(18% 0.01 75 / 0.4);
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #0f1124;
+  --surface: #171a33;
+  --raised: #1e2241;
+  --sunken: #0b0d1d;
+  --line: #272b4a;
+  --line-strong: #3b4067;
+  --ink: #eceefa;
+  --ink-soft: #c7cade;
+  --muted: #9599b4;
+  --accent: #7f74ff;
+  --accent-ink: #ffffff;
+  --accent-soft: rgb(127 116 255 / 0.16);
+  --focus: #9d94ff;
+  --info: #84a6ff;
+  --info-soft: rgb(132 166 255 / 0.14);
+  --profit: #41cf9c;
+  --profit-soft: rgb(65 207 156 / 0.14);
+  --profit-strong: rgb(65 207 156 / 0.28);
+  --loss: #f26b80;
+  --loss-soft: rgb(242 107 128 / 0.15);
+  --loss-strong: rgb(242 107 128 / 0.3);
+  --warn: #f2c35a;
+  --warn-soft: rgb(242 195 90 / 0.13);
+  --scrim: rgb(5 6 15 / 0.65);
+  --card-shadow: none;
+  --nav-bg: #12142b;
+  --nav-bg-end: #171535;
 }
 
-@media (prefers-color-scheme: light) {
+@media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
-    color-scheme: light;
-    --canvas: oklch(96% 0.006 80);
-    --surface: oklch(98% 0.005 80);
-    --raised: oklch(100% 0 0);
-    --sunken: oklch(93% 0.007 80);
-    --line: oklch(88% 0.008 80);
-    --line-strong: oklch(74% 0.010 80);
-    --ink: oklch(18% 0.010 75);
-    --ink-soft: oklch(32% 0.011 75);
-    --muted: oklch(46% 0.012 75);
-    --accent: oklch(52% 0.17 42);
-    --accent-ink: oklch(98% 0.01 80);
-    --accent-soft: oklch(52% 0.17 42 / 0.1);
-    --focus: oklch(52% 0.17 42);
-    --info: oklch(46% 0.12 250);
-    --info-soft: oklch(46% 0.12 250 / 0.1);
-    --profit: oklch(45% 0.11 165);
-    --profit-soft: oklch(45% 0.11 165 / 0.1);
-    --loss: oklch(50% 0.17 20);
-    --loss-soft: oklch(50% 0.17 20 / 0.09);
-    --warn: oklch(48% 0.10 85);
-    --warn-soft: oklch(48% 0.10 85 / 0.1);
-    --scrim: oklch(18% 0.01 75 / 0.4);
+    color-scheme: dark;
+    --canvas: #0f1124;
+    --surface: #171a33;
+    --raised: #1e2241;
+    --sunken: #0b0d1d;
+    --line: #272b4a;
+    --line-strong: #3b4067;
+    --ink: #eceefa;
+    --ink-soft: #c7cade;
+    --muted: #9599b4;
+    --accent: #7f74ff;
+    --accent-ink: #ffffff;
+    --accent-soft: rgb(127 116 255 / 0.16);
+    --focus: #9d94ff;
+    --info: #84a6ff;
+    --info-soft: rgb(132 166 255 / 0.14);
+    --profit: #41cf9c;
+    --profit-soft: rgb(65 207 156 / 0.14);
+    --profit-strong: rgb(65 207 156 / 0.28);
+    --loss: #f26b80;
+    --loss-soft: rgb(242 107 128 / 0.15);
+    --loss-strong: rgb(242 107 128 / 0.3);
+    --warn: #f2c35a;
+    --warn-soft: rgb(242 195 90 / 0.13);
+    --scrim: rgb(5 6 15 / 0.65);
+    --card-shadow: none;
+    --nav-bg: #12142b;
+    --nav-bg-end: #171535;
   }
 }
+
+.skip-link {
+  position: absolute;
+  left: var(--space-sm);
+  top: -48px;
+  z-index: var(--z-toast);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.skip-link:focus { top: var(--space-sm); }
+
+@keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.animate-rise { animation: rise var(--dur-micro) var(--ease-out) both; }
+
+@keyframes slide-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.animate-slide { animation: slide-in var(--dur-short) var(--ease-out) both; }
+
+@keyframes caret { 50% { opacity: 0; } }
+.typing-caret::after { content: "▍"; margin-left: var(--space-3xs); color: var(--accent); animation: caret 1s steps(1) infinite; }

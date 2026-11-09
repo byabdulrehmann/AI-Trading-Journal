@@ -55,7 +55,7 @@ export function saveAttachment(userId: number, tradeId: number, input: { kind: A
   if (n >= MAX_ATTACHMENTS_PER_TRADE) throw new AttachmentError(`A trade can have up to ${MAX_ATTACHMENTS_PER_TRADE} attachments.`, 422);
 
   const storedName = `${randomUUID()}.${type.ext}`;
-  const file = path.join(dataPath("attachments"), storedName);
+  const file = path.join(/*turbopackIgnore: true*/ dataPath("attachments"), storedName);
   writeFileSync(file, input.bytes, { flag: "wx" });
   try {
     const res = conn
@@ -83,7 +83,7 @@ export function readAttachment(userId: number, id: number): { filename: string; 
   const row = ownedRow(userId, id);
   if (!row) return null;
   try {
-    return { filename: row.filename, mime: row.mime, bytes: readFileSync(path.join(dataPath("attachments"), row.stored_name)) };
+    return { filename: row.filename, mime: row.mime, bytes: readFileSync(path.join(/*turbopackIgnore: true*/ dataPath("attachments"), row.stored_name)) };
   } catch {
     return null; // The row outlived its file: same answer as a missing attachment.
   }
@@ -94,7 +94,7 @@ export function deleteAttachment(userId: number, id: number): boolean {
   if (!row) return false;
   db().prepare("DELETE FROM attachments WHERE id = ?").run(id);
   try {
-    unlinkSync(path.join(dataPath("attachments"), row.stored_name));
+    unlinkSync(path.join(/*turbopackIgnore: true*/ dataPath("attachments"), row.stored_name));
   } catch {
     // Already gone: the row is what the app reads.
   }

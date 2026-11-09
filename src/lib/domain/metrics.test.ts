@@ -204,37 +204,43 @@ describe("time zones", () => {
   });
 });
 
-describe("the score, by hand", () => {
-  const base = { profitFactor: 2.2, expectancy: 30, avgLoss: -75, recoveryFactor: 1.8, dayWinRate: 0.75, planAdherence: null, planSample: 0, rSample: 12, closedTrades: 20, tradingDays: 5, wins: 10, losses: 8, netPnl: 180 } as unknown as Metrics;
+describe("the Jarvis Performance Score, by hand", () => {
+  // Worked in docs/performance-score.md.
+  const base = { winRate: 0.5, profitFactor: 2.2, payoffRatio: 1.5, recoveryFactor: 1.8, maxDrawdown: 300, avgLoss: -75, wins: 10, losses: 8, closedTrades: 20, tradingDays: 5, winningDays: 3, bestDay: { date: "2026-03-02", pnl: 200 }, winningDaysPnl: 500, netPnl: 180 } as unknown as Metrics;
   const axis = (s: ReturnType<typeof computeScore>, key: string) => s.axes.find((a) => a.key === key)?.value;
+  const near = (a: number | null | undefined, b: number) => assert.ok(a !== null && a !== undefined && Math.abs(a - b) < 1e-9, `${a} is not ${b}`);
 
   test("ramp: flat beyond the ends, straight between anchors", () => {
     const a: [number, number][] = [[1, 10], [3, 30]];
     assert.deepEqual([ramp(0, a), ramp(1, a), ramp(2, a), ramp(3, a), ramp(9, a)], [10, 10, 20, 30, 30]);
+    const down: [number, number][] = [[1, 100], [3, 80]];
+    assert.deepEqual([ramp(0, down), ramp(2, down), ramp(5, down)], [100, 90, 80]);
   });
 
-  test("each axis, and the total with a blank axis sitting out", () => {
+  test("the six axes in order, each from its anchors, and the weighted total", () => {
     const s = computeScore(base);
-    assert.ok(Math.abs((axis(s, "profitability") as number) - 91) < 1e-9); // 2.2 between 1.5 = 70 and 2.5 = 100
-    assert.ok(Math.abs((axis(s, "edge") as number) - 79) < 1e-9); // 30 / 75 = 0.4, between 0.25 = 70 and 0.75 = 100
-    assert.ok(Math.abs((axis(s, "risk") as number) - 62) < 1e-9); // 1.8 between 1 = 50 and 3 = 80
-    assert.equal(axis(s, "consistency"), 100); // 75% winning days is past the top anchor
-    assert.equal(axis(s, "discipline"), null); // no plan answers
-    assert.equal(axis(s, "stops"), 60); // 12 of 20
-    assert.equal(s.score, 80); // (25x91 + 20x79 + 20x62 + 15x100 + 10x60) / 90 = 7195 / 90 = 79.94
+    assert.deepEqual(s.axes.map((a) => a.label), ["Win %", "Profit factor", "Avg win/loss", "Recovery factor", "Max drawdown", "Consistency"]);
+    assert.equal(s.axes.reduce((t, a) => t + a.weight, 0), 100);
+    near(axis(s, "winRate"), 75); // 50% between 40% = 50 and 60% = 100
+    near(axis(s, "profitFactor"), 91); // 2.2 between 1.5 = 70 and 2.5 = 100
+    near(axis(s, "avgWinLoss"), 57.5); // 1.5 between 1 = 40 and 2 = 75
+    near(axis(s, "recoveryFactor"), 62); // 1.8 between 1 = 50 and 3 = 80
+    near(axis(s, "maxDrawdown"), 70); // 300 / 75 = 4 losses deep, between 3 = 80 and 6 = 50
+    near(axis(s, "consistency"), 57.5); // best day 200 of 500 = 40%, between 30% = 75 and 50% = 40
+    assert.equal(s.score, 69.6); // (15x75 + 20x91 + 15x57.5 + 20x62 + 15x70 + 15x57.5) / 100
+    near(s.axes.find((a) => a.key === "maxDrawdown")?.raw, 4);
   });
 
-  test("discipline joins with 10 answers, and moves the total", () => {
-    const s = computeScore({ ...base, planAdherence: 0.8, planSample: 10 });
-    assert.ok(Math.abs((axis(s, "discipline") as number) - 60) < 1e-9);
-    assert.equal(s.score, 78); // (7195 + 10x60) / 100 = 77.95
-    assert.equal(axis(computeScore({ ...base, planAdherence: 0.8, planSample: 9 }), "discipline"), null);
+  test("a blank axis sits out, and the rest are reweighted", () => {
+    const s = computeScore({ ...base, recoveryFactor: null, netPnl: -10 } as Metrics);
+    assert.equal(axis(s, "recoveryFactor"), null);
+    assert.equal(s.score, Math.round(((6960 - 20 * 62) / 80) * 100) / 100); // 71.5
   });
 
   test("no total below 20 trades or 5 days, but the axes still read", () => {
     assert.equal(computeScore({ ...base, closedTrades: 19 }).score, null);
     assert.equal(computeScore({ ...base, tradingDays: 4 }).score, null);
-    assert.ok(axis(computeScore({ ...base, closedTrades: 19 }), "profitability") !== null);
+    assert.ok(axis(computeScore({ ...base, closedTrades: 19 }), "profitFactor") !== null);
   });
 
   test("no trades: no total, blank axes, never NaN", () => {
@@ -246,17 +252,20 @@ describe("the score, by hand", () => {
   test("all wins can't divide by a loss, and read as the top of those axes", () => {
     const m = computeMetrics(Array.from({ length: 20 }, (_, i) => closed(`2026-03-${String((i % 5) + 2).padStart(2, "0")}T10:00:00Z`, 10, { rMultiple: 1 })), UTC);
     const s = computeScore(m);
-    assert.deepEqual([axis(s, "profitability"), axis(s, "edge"), axis(s, "risk"), axis(s, "consistency"), axis(s, "stops")], [100, 100, 100, 100, 100]);
-    assert.equal(s.score, 100);
+    assert.deepEqual([axis(s, "winRate"), axis(s, "profitFactor"), axis(s, "avgWinLoss"), axis(s, "recoveryFactor"), axis(s, "maxDrawdown")], [100, 100, 100, 100, 100]);
+    near(axis(s, "consistency"), 75 + ((0.2 - 0.3) / (0.15 - 0.3)) * 25); // five equal days: best is 20%
+    assert.ok((s.score as number) > 95);
   });
 
   test("all losses bottom out", () => {
     const m = computeMetrics(Array.from({ length: 20 }, (_, i) => closed(`2026-03-${String((i % 5) + 2).padStart(2, "0")}T10:00:00Z`, -10)), UTC);
     const s = computeScore(m);
-    assert.equal(axis(s, "profitability"), 0); // profit factor 0
-    assert.equal(axis(s, "edge"), 0); // -10 / 10 = -1, below the bottom anchor
-    assert.equal(axis(s, "risk"), 0); // recovery -1
-    assert.equal(axis(s, "consistency"), 0);
+    assert.equal(axis(s, "winRate"), 0);
+    assert.equal(axis(s, "profitFactor"), 0); // profit factor 0
+    assert.equal(axis(s, "avgWinLoss"), null); // no wins: there's no average win
+    assert.equal(axis(s, "recoveryFactor"), 0); // -200 / 200 = -1
+    assert.equal(axis(s, "maxDrawdown"), 0); // 200 / 10 = 20 losses deep
+    assert.equal(axis(s, "consistency"), 0); // no winning day
     assert.equal(s.score, 0);
   });
 

@@ -7,7 +7,7 @@ test("a manual trade from the form persists with its figures after a refresh", a
   await open(page, "/journal");
   await expect(page.getByRole("heading", { name: "Your journal is empty" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Log trade" }).first().click();
+  await page.getByRole("button", { name: "Add trade" }).first().click();
   const form = dialog(page);
   await field(form, "Instrument").fill(EURUSD.symbol);
   await field(form, "Entry").fill(EURUSD.entry);
@@ -254,7 +254,7 @@ test.describe("finding trades", () => {
 
 test("partial fills through the form: partial, then closed, with the numbers", async ({ page }) => {
   await open(page, "/journal");
-  await page.getByRole("button", { name: "Log trade" }).first().click();
+  await page.getByRole("button", { name: "Add trade" }).first().click();
   const form = dialog(page);
   await field(form, "Instrument").fill("EURUSD");
   await field(form, "Entry").fill("1.0850");
@@ -464,7 +464,7 @@ test("a form opened before the accounts arrive still saves into the default acco
     await route.continue();
   });
   await page.goto("/journal");
-  await page.getByRole("button", { name: "Log trade" }).first().click();
+  await page.getByRole("button", { name: "Add trade" }).first().click();
   const form = dialog(page);
   await expect(form.getByRole("button", { name: "Save trade" })).toBeEnabled();
   await field(form, "Instrument").fill("EURUSD");

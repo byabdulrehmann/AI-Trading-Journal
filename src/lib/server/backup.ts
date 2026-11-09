@@ -25,7 +25,7 @@ export function listBackups(): Backup[] {
   return readdirSync(dir())
     .filter((n) => NAME.test(n))
     .map((name) => {
-      const s = statSync(path.join(dir(), name));
+      const s = statSync(path.join(/*turbopackIgnore: true*/ dir(), name));
       return { name, size: s.size, createdAt: s.mtime.toISOString(), kind: kindOf(name) };
     })
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -35,14 +35,14 @@ export function createBackup(kind: "manual" | "auto"): Backup {
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const name = `kestrel-${kind === "auto" ? "auto" : "backup"}-${stamp}.db`;
   // A consistent copy even while the app writes: SQLite takes it inside one read transaction.
-  db().exec(`VACUUM INTO '${path.join(dir(), name).replace(/'/g, "''")}'`);
-  if (kind === "auto") for (const old of listBackups().filter((b) => b.kind === "auto").slice(KEEP_AUTO)) unlinkSync(path.join(dir(), old.name));
+  db().exec(`VACUUM INTO '${path.join(/*turbopackIgnore: true*/ dir(), name).replace(/'/g, "''")}'`);
+  if (kind === "auto") for (const old of listBackups().filter((b) => b.kind === "auto").slice(KEEP_AUTO)) unlinkSync(path.join(/*turbopackIgnore: true*/ dir(), old.name));
   return listBackups().find((b) => b.name === name)!;
 }
 
 /** The file's full path, only for a name that is one of the backups. Anything else (a path, "..") is null. */
 export function backupPath(name: string): string | null {
-  return NAME.test(name) && listBackups().some((b) => b.name === name) ? path.join(dir(), name) : null;
+  return NAME.test(name) && listBackups().some((b) => b.name === name) ? path.join(/*turbopackIgnore: true*/ dir(), name) : null;
 }
 
 export function deleteBackup(name: string): boolean {

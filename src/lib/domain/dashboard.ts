@@ -35,7 +35,7 @@ export type DashboardView = z.infer<typeof View>;
 export type DashboardLayout = z.infer<typeof DashboardLayout>;
 
 const ref = (id: WidgetId): WidgetRef => ({ id, span: WIDGET_INFO[id].span });
-const DEFAULT_WIDGETS: WidgetId[] = ["tape", "score", "dailyPnl", "result", "quality", "risk", "activity", "calendar", "strategy", "recent", "worth"];
+const DEFAULT_WIDGETS: WidgetId[] = ["result", "quality", "risk", "activity", "strategy", "symbol", "worth"];
 export const defaultWidgets = (): WidgetRef[] => DEFAULT_WIDGETS.map(ref);
 
 export function resolveLayout(saved: DashboardLayout | null | undefined): DashboardLayout {

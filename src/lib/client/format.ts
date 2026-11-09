@@ -20,7 +20,7 @@ export function money(n: number | null | undefined, currency = "USD", signed = f
   return `${sign}${currencySymbol(currency)}${abs}`;
 }
 
-function currencySymbol(c: string) {
+export function currencySymbol(c: string) {
   return { USD: "$", EUR: "€", GBP: "£", JPY: "¥" }[c] ?? `${c} `;
 }
 

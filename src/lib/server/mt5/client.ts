@@ -28,11 +28,12 @@ export interface SessionRequest {
   from: number;
 }
 
-const ROOT = process.cwd();
-const PYTHON = path.join(ROOT, "services", "mt5", ".venv", "Scripts", "python.exe");
-const SERVICE = path.join(ROOT, "services", "mt5", "service.py");
-const TERMINAL_DIR = path.join(ROOT, "data", "mt5-terminal");
-const TERMINAL = path.join(TERMINAL_DIR, "terminal64.exe");
+// Built at runtime: left untraced, or the build reads data/mt5-terminal, whose files the running terminal keeps locked.
+const ROOT = /*turbopackIgnore: true*/ process.cwd();
+const PYTHON = path.join(/*turbopackIgnore: true*/ ROOT, "services", "mt5", ".venv", "Scripts", "python.exe");
+const SERVICE = path.join(/*turbopackIgnore: true*/ ROOT, "services", "mt5", "service.py");
+const TERMINAL_DIR = path.join(/*turbopackIgnore: true*/ ROOT, "data", "mt5-terminal");
+const TERMINAL = path.join(/*turbopackIgnore: true*/ TERMINAL_DIR, "terminal64.exe");
 // Longer than the service's own initialize, login and history waits together, shorter than fetch's 300s limit.
 const SESSION_TIMEOUT_MS = 280_000;
 const IDLE_MS = 10 * 60_000;
@@ -76,7 +77,7 @@ function spawnService(): Promise<Service> {
 /** The terminal keeps logins it was given, in its own folder. A tree kill leaves no chance to clean up there. */
 function forgetSavedLogins() {
   try {
-    rmSync(path.join(TERMINAL_DIR, "Config", "accounts.dat"), { force: true });
+    rmSync(path.join(/*turbopackIgnore: true*/ TERMINAL_DIR, "Config", "accounts.dat"), { force: true });
   } catch {
     // Still locked: the service removes it again before the next start.
   }

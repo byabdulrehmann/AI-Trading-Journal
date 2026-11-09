@@ -4,7 +4,7 @@ import "./globals.css";
 import { AppStateProvider } from "@/lib/client/app-state";
 import { Shell } from "@/components/Shell";
 
-const sans = Geist({ variable: "--font-ui", subsets: ["latin"], weight: ["400", "500"] });
+const sans = Geist({ variable: "--font-ui", subsets: ["latin"], weight: ["400", "500", "600"] });
 const mono = Geist_Mono({ variable: "--font-figures", subsets: ["latin"], weight: ["400", "500"] });
 
 export const metadata: Metadata = {
@@ -13,11 +13,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0908",
+  themeColor: "#1b1d3d",
 };
 
-// Applies the saved theme before first paint. Dark unless the user chose otherwise; "kestrel-theme" is the old key.
-const themeScript = `try{var s=localStorage,t=s.getItem("jarvis-theme")||s.getItem("kestrel-theme")||"dark";if(t!=="system")document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme="dark"}`;
+// Applies the saved theme before first paint. Light unless the user chose otherwise; "kestrel-theme" is the old key.
+const themeScript = `try{var s=localStorage,t=s.getItem("jarvis-theme")||s.getItem("kestrel-theme")||"light";if(t!=="system")document.documentElement.dataset.theme=t;if(s.getItem("jarvis-nav")==="collapsed")document.documentElement.dataset.nav="collapsed"}catch(e){document.documentElement.dataset.theme="light"}`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
