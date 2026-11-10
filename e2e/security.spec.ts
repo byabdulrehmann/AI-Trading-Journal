@@ -29,8 +29,9 @@ const ROUTES: [string, string][] = [
   ["POST", "tradbot/audio"], ["DELETE", "tradbot/audio"], ["POST", "tradbot/command"], ["GET", "tradbot/events"], ["POST", "tradbot/pair"],
   ["DELETE", "tradbot/pair"], ["GET", "tradbot/status"], ["POST", "trades/ID/attachments"], ["GET", "trades/ID/bars"], ["GET", "trades/ID"], ["PUT", "trades/ID"],
   ["POST", "trades/ID"], ["GET", "trades/ID/rules"], ["PUT", "trades/ID/rules"], ["POST", "trades/bulk"], ["POST", "trades/delete"], ["GET", "trades/export"],
-  ["GET", "trades"], ["POST", "trades"],
+  ["GET", "trades"], ["POST", "trades"], ["GET", "early-access"], ["DELETE", "early-access/ID"],
 ];
+// Public by design: the website's early-access form. Covered in site.spec.ts.
 
 const call = (r: APIRequestContext, method: string, path: string, data?: unknown) => r.fetch(`/api/${path}`, { method, data: method === "GET" ? undefined : (data ?? {}) });
 

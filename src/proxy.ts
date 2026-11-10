@@ -3,7 +3,14 @@ import { NextResponse, type NextRequest } from "next/server";
 // shortcut: loopback hosts only, add an allowed-hosts list and HTTPS before serving Jarvis on a network.
 const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
 const COOKIE = "jarvis_session"; // Must match auth.ts, which can't be imported here (it opens the database).
-const PUBLIC_PAGES = new Set(["/login", "/welcome"]);
+// The marketing site and sign-in. Keep in step with PUBLIC_PAGES in src/lib/client/app-state.tsx.
+const PUBLIC_PAGES = new Set(["/login", "/welcome", "/platform", "/features", "/about", "/contact"]);
+/** Files crawlers and link previews fetch without a session. */
+const PUBLIC_FILES = new Set(["/robots.txt", "/sitemap.xml"]);
+/** Next adds a content hash to the preview image's path, for example /opengraph-image-p6oktx. */
+const isPreviewImage = (path: string) => /^\/opengraph-image(-[a-z0-9]+)?$/.test(path) || /^\/twitter-image(-[a-z0-9]+)?$/.test(path);
+/** The site's early-access form is the only API call a signed-out visitor may make, and only to add a request. */
+const publicApi = (req: NextRequest) => req.nextUrl.pathname.startsWith("/api/auth/") || (req.nextUrl.pathname === "/api/early-access" && req.method === "POST");
 
 function sameHost(origin: string, host: string) {
   try {
@@ -32,7 +39,7 @@ export function proxy(req: NextRequest) {
   }
 
   const { pathname } = req.nextUrl;
-  if (req.cookies.has(COOKIE) || PUBLIC_PAGES.has(pathname) || pathname.startsWith("/api/auth/")) return NextResponse.next();
+  if (req.cookies.has(COOKIE) || PUBLIC_PAGES.has(pathname) || PUBLIC_FILES.has(pathname) || isPreviewImage(pathname) || publicApi(req)) return NextResponse.next();
   if (pathname.startsWith("/api/")) return NextResponse.json({ error: "Please sign in." }, { status: 401 });
   return NextResponse.redirect(new URL("/login", req.url));
 }

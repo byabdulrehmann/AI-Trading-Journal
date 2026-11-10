@@ -81,7 +81,7 @@ export default function SettingsPage() {
     <>
       <PageHeader title="Settings" description="Preferences, privacy and your data. Everything is stored in a local database on this computer." />
       <nav aria-label="Settings sections" className="mb-5 flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
-        {[["profile", "Profile"], ["defaults", "Trading defaults"], ["password", "Password"], ["accounts", "Accounts"], ["autotags", "Auto-tags"], ["jarvis", "AI Coach"], ["privacy", "Privacy"], ["data", "Your data"], ...(user?.isOwner ? [["backups", "Backups"]] : [])].map(([id, l]) => (
+        {[["profile", "Profile"], ["defaults", "Trading defaults"], ["password", "Password"], ["accounts", "Accounts"], ["autotags", "Auto-tags"], ["jarvis", "AI Coach"], ["privacy", "Privacy"], ["data", "Your data"], ...(user?.isOwner ? [["backups", "Backups"], ["early-access", "Early access"]] : [])].map(([id, l]) => (
           <a key={id} href={`#${id}`} className="py-1 text-ink-soft underline-offset-2 hover:text-ink hover:underline pointer-coarse:py-3">{l}</a>
         ))}
       </nav>
@@ -124,6 +124,7 @@ export default function SettingsPage() {
       <Privacy />
       <DataControls />
       {user?.isOwner && <Backups />}
+      {user?.isOwner && <EarlyAccess />}
     </>
   );
 }
@@ -518,6 +519,52 @@ interface BackupFile {
   kind: "manual" | "auto" | "migration";
 }
 const BACKUP_KIND = { manual: "Made by you", auto: "Automatic", migration: "Before an update" } as const;
+
+interface EarlyAccessRequest {
+  id: number;
+  name: string;
+  email: string;
+  trades: string;
+  message: string;
+  createdAt: string;
+}
+
+/** Requests from the marketing site's form. Owner only, like backups: they belong to the installation, not a journal. */
+function EarlyAccess() {
+  const { toast } = useApp();
+  const { data, error, reload } = useFetch<{ requests: EarlyAccessRequest[] }>("/api/early-access");
+  const remove = async (r: EarlyAccessRequest) => {
+    if (!confirm(`Delete the request from ${r.name}? This can't be undone.`)) return;
+    try {
+      await api(`/api/early-access/${r.id}`, { method: "DELETE" });
+      reload();
+    } catch (err) {
+      toast({ message: err instanceof Error ? err.message : "Couldn't delete it.", tone: "error" });
+    }
+  };
+  return (
+    <Section id="early-access" title="Early access requests" description="Sent from the website's early-access form (/contact). They are stored here only: nothing is emailed, and no account is created.">
+      {error && !data && <p className="text-[13.5px] text-loss">{error}</p>}
+      {data && (data.requests.length ? (
+        <ul className="divide-y divide-line" data-testid="early-access-requests">
+          {data.requests.map((r) => (
+            <li key={r.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
+              <div className="min-w-0">
+                <p className="text-[14px] font-medium text-ink">{r.name} <span className="font-normal text-ink-soft">{r.email}</span></p>
+                {r.trades && <p className="text-[13.5px] text-ink-soft">Trades: {r.trades}</p>}
+                {r.message && <p className="mt-1 text-[13.5px] whitespace-pre-wrap text-ink-soft">{r.message}</p>}
+                <p className="num mt-1 text-[12.5px] text-muted">{dateTime(r.createdAt)}</p>
+              </div>
+              <Button size="sm" variant="ghost" aria-label={`Delete the request from ${r.name}`} onClick={() => void remove(r)}>Delete</Button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-[13.5px] text-muted">No requests yet.</p>
+      ))}
+    </Section>
+  );
+}
 
 function Backups() {
   const { toast } = useApp();

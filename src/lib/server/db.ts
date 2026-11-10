@@ -362,6 +362,20 @@ export const MIGRATIONS: { version: number; name: string; sql: string; run?: (db
       UNIQUE (user_id, period, start_date)
     );`,
   },
+  {
+    version: 12,
+    name: "early-access requests from the public website",
+    // Not tied to a user: they come from signed-out visitors. Only the owner reads them.
+    sql: `CREATE TABLE early_access (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      trades TEXT NOT NULL DEFAULT '',
+      message TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX early_access_created ON early_access(created_at);`,
+  },
 ];
 
 const globalForDb = globalThis as unknown as { __kestrelDb?: DatabaseSync };
