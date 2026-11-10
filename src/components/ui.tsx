@@ -80,7 +80,7 @@ export function PageHeader({ title, description, actions }: { title: string; des
         <h1 className="text-[26px] leading-[1.1] font-medium text-ink">{title}</h1>
         {description && <p className="mt-1 max-w-2xl text-[14px] text-muted">{description}</p>}
       </div>
-      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+      {actions && <div className="flex max-w-full min-w-0 flex-wrap gap-2">{actions}</div>}
     </header>
   );
 }

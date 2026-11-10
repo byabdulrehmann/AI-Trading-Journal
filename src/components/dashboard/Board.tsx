@@ -35,17 +35,26 @@ export function InfoTip({ text, label }: { text: string; label: string }) {
 
 // ---------- KPI cards ----------
 
-function KpiCard({ label, info, children, visual, testId }: { label: string; info: string; children: React.ReactNode; visual?: React.ReactNode; testId: string }) {
+/**
+ * Sized from the card's own width (a container query), not the window's: with the sidebar open, five cards across
+ * can be narrow on a wide screen. `beside` puts the visual in the value's row, under the label, as Avg win/loss does.
+ */
+function KpiCard({ label, info, children, visual, beside, testId }: { label: string; info: string; children: React.ReactNode; visual?: React.ReactNode; beside?: React.ReactNode; testId: string }) {
   return (
-    <section className={cx(panel, "flex min-h-[112px] min-w-0 items-center justify-between gap-2 px-5 py-4 xl:px-4 2xl:px-5")} data-testid={testId} aria-label={label}>
-      <div className="min-w-0">
-        <h2 className="flex items-center gap-1.5 text-[12.5px] font-medium whitespace-nowrap text-muted">
-          {label}
-          <InfoTip text={info} label={label} />
-        </h2>
-        <div className="mt-2">{children}</div>
+    <section className={cx(panel, "@container min-h-[112px] min-w-0 px-4 py-4 @[15rem]:px-5")} data-testid={testId} aria-label={label}>
+      <div className="flex h-full items-center justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <h2 className="flex min-w-0 items-center gap-1.5 text-[12.5px] font-medium text-muted">
+            <span className="truncate">{label}</span>
+            <InfoTip text={info} label={label} />
+          </h2>
+          <div className="mt-2 flex items-center gap-3">
+            <div className="min-w-0 shrink-0">{children}</div>
+            {beside && <div className="ml-auto min-w-0 flex-1 basis-20 max-w-[200px]">{beside}</div>}
+          </div>
+        </div>
+        {visual && <div className="shrink-0">{visual}</div>}
       </div>
-      {visual && <div className="shrink-0">{visual}</div>}
     </section>
   );
 }
@@ -58,7 +67,7 @@ export function Gauge({ parts, label }: { parts: [number, number, number]; label
   let start = 0;
   const shown = parts.filter((p) => p > 0).length;
   return (
-    <svg viewBox="0 0 86 48" role="img" aria-label={label} className="h-auto w-[86px] xl:w-[64px] 2xl:w-[86px]">
+    <svg viewBox="0 0 86 48" role="img" aria-label={label} className="h-auto w-[64px] @[16rem]:w-[86px]">
       <path d={d} fill="none" stroke="var(--sunken)" strokeWidth="7" strokeLinecap="round" />
       {total > 0 &&
         parts.map((p, i) => {
@@ -77,9 +86,9 @@ function Pills({ parts, hrefs }: { parts: [number, number, number]; hrefs?: [str
   const tones = ["bg-profit-soft text-profit", "bg-sunken text-ink-soft", "bg-loss-soft text-loss"];
   const names = ["won", "breakeven", "lost"];
   return (
-    <span className="mt-1 flex justify-center gap-1">
+    <span className="mt-1 flex justify-center gap-0.5 @[16rem]:gap-1">
       {parts.map((n, i) => {
-        const cls = cx("num min-w-6 rounded-full px-1.5 text-center text-[10.5px] leading-[16px] font-semibold", tones[i]);
+        const cls = cx("num min-w-5 rounded-full px-1 text-center text-[10px] leading-[16px] font-semibold @[16rem]:min-w-6 @[16rem]:px-1.5 @[16rem]:text-[10.5px]", tones[i]);
         return hrefs ? (
           <Link key={i} href={hrefs[i]} className={cx(cls, "hover:ring-1 hover:ring-current")} aria-label={`${n} ${names[i]}`}>{n}</Link>
         ) : (
@@ -94,7 +103,7 @@ function Ring({ profit, loss }: { profit: number; loss: number }) {
   const total = profit + Math.abs(loss);
   const share = total ? (profit / total) * 100 : 0;
   return (
-    <svg viewBox="0 0 56 56" className="h-auto w-14 xl:w-11 2xl:w-14" role="img" aria-label={total ? `Gross profit is ${share.toFixed(0)}% of gross profit and loss together` : "No closed trades"}>
+    <svg viewBox="0 0 56 56" className="h-auto w-11 @[16rem]:w-14" role="img" aria-label={total ? `Gross profit is ${share.toFixed(0)}% of gross profit and loss together` : "No closed trades"}>
       <circle cx="28" cy="28" r="22" fill="none" stroke="var(--sunken)" strokeWidth="6" />
       {total > 0 && (
         <g transform="rotate(-90 28 28)">
@@ -109,7 +118,7 @@ function Ring({ profit, loss }: { profit: number; loss: number }) {
 /** Compact for a currency ("$7.06K"); R, % and pips keep their unit through money(). */
 const compact = (n: number, display: string) => (display.length === 3 ? shortMoney(n, currencySymbol(display).trim()) : money(n, display));
 
-const valueClass = "num text-[22px] leading-none font-semibold tracking-tight";
+const valueClass = "num text-[19px] leading-none font-semibold tracking-tight @[16rem]:text-[22px]";
 
 export function KpiRow({ data, display, search }: { data: Analytics; display: string; search: string }) {
   const m = data.metrics;
@@ -121,7 +130,9 @@ export function KpiRow({ data, display, search }: { data: Analytics; display: st
   const all = journalHref(search, {});
   const by = (outcome: string) => journalHref(search, { outcome });
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-[21px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5" data-testid="kpi-row">
+    // Columns follow the row's own width: five only when each card gets about 220 px, whatever the sidebar takes.
+    <div className="@container" data-testid="kpi-row">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-[21px] @[34rem]:grid-cols-2 @[48rem]:grid-cols-3 @[74rem]:grid-cols-5">
       <KpiCard testId="kpi-net" label="Net P&L" info={`Realized, closed trades only: ${D.netPnl.formula}. ${D.netPnl.meaning}`}
         visual={
           <Link href={all} aria-label="Open the trades behind Net P&L" title="Open these trades" className="grid size-[30px] place-items-center rounded-control bg-accent-soft text-accent hover:bg-accent hover:text-white">
@@ -129,7 +140,7 @@ export function KpiRow({ data, display, search }: { data: Analytics; display: st
           </Link>
         }
       >
-        <p className="flex items-center gap-2">
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className={cx(valueClass, m.netPnl > 0 ? "text-profit" : m.netPnl < 0 ? "text-loss" : "text-ink")} data-testid="kpi-net-value">{money(m.netPnl, display)}</span>
           <span className="num rounded-full bg-sunken px-1.5 text-[11px] leading-[17px] font-semibold text-ink-soft" title="Closed trades counted" data-testid="kpi-net-count">{m.closedTrades}</span>
         </p>
@@ -151,8 +162,8 @@ export function KpiRow({ data, display, search }: { data: Analytics; display: st
         <Link href="#calendar" className={cx(valueClass, "text-ink hover:underline")} data-testid="kpi-daywin-value">{pct(m.dayWinRate, 2)}</Link>
       </KpiCard>
       <KpiCard testId="kpi-avg" label="Avg win/loss" info={`Average winning trade ÷ |average losing trade|. ${D.avgWin.formula}; ${D.avgLoss.formula}.`}
-        visual={
-          <div className="w-[150px] max-w-[42vw] xl:w-[70px] 2xl:w-[150px]">
+        beside={
+          <div data-testid="kpi-avg-bar">
             <div className="flex h-1.5 overflow-hidden rounded-full bg-sunken" role="img" aria-label={`Average win ${money(m.avgWin, display)}, average loss ${money(m.avgLoss, display)}`}>
               <span className="bg-profit" style={{ width: `${winShare}%` }} />
               <span className="flex-1 bg-loss" style={{ display: avgLoss ? undefined : "none" }} />
@@ -166,6 +177,7 @@ export function KpiRow({ data, display, search }: { data: Analytics; display: st
       >
         <span className={cx(valueClass, "text-ink")} data-testid="kpi-avg-value">{m.payoffRatio === null ? (m.losses === 0 && m.wins > 0 ? "No losses" : "—") : m.payoffRatio.toFixed(2)}</span>
       </KpiCard>
+      </div>
     </div>
   );
 }
@@ -184,10 +196,11 @@ export function ScoreCard({ data }: { data: Analytics }) {
   const s = data.score;
   const [picked, setPicked] = useState<number | null>(null);
   const [box, { width }] = useBoxSize<HTMLDivElement>({ width: 520, height: 0 });
-  // Drawn at the card's own width, so labels stay 12 px; the radius gives way first.
-  const W = Math.max(280, width);
-  const r = Math.max(48, Math.min(92, (W - 250) / 2));
-  const H = 2 * r + 66;
+  // Drawn at the card's own width, so labels stay 12 px; the radius gives way first, then labels take two lines.
+  const W = Math.max(240, width);
+  const stacked = W < 440;
+  const r = Math.max(40, Math.min(92, (W - (stacked ? 200 : 250)) / 2));
+  const H = 2 * r + (stacked ? 84 : 66);
   const c = { x: W / 2, y: H / 2 + 4 };
   const n = s.axes.length;
   const angle = (i: number) => -Math.PI / 2 + (i / n) * 2 * Math.PI;
@@ -203,7 +216,8 @@ export function ScoreCard({ data }: { data: Analytics }) {
         <h2 className="text-[14px] font-semibold text-ink">Jarvis Performance Score</h2>
         <InfoTip label="the Jarvis Performance Score" text={`Six axes, each scaled 0 to 100 from stated anchors, then a weighted mean. Needs ${s.needs.trades} closed trades over ${s.needs.days} days. Select an axis for its inputs. Full method: docs/performance-score.md.`} />
       </header>
-      <div ref={box} className="relative flex-1 px-2">
+      <div className="relative flex-1 px-2">
+        <div ref={box}>
         <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="mx-auto block" role="img" aria-label={`Radar of the six axes. ${s.axes.map((a) => `${a.label} ${a.value === null ? "not known" : a.value.toFixed(1)}`).join(", ")}.`}>
           {[20, 40, 60, 80, 100].map((v) => <polygon key={v} points={ring(v)} fill={v === 100 ? "var(--raised)" : "none"} stroke="var(--line)" />)}
           {s.axes.map((a, i) => {
@@ -234,11 +248,19 @@ export function ScoreCard({ data }: { data: Analytics }) {
                 onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setPicked(picked === i ? null : i))}
                 data-testid={`score-axis-${a.key}`}
               >
-                {a.label} ({a.value === null ? "—" : a.value.toFixed(1)})
+                {stacked ? (
+                  <>
+                    <tspan x={lx} dy={ly < c.y - 4 ? -7 : ly > c.y + 4 ? 0 : -6}>{a.label}</tspan>
+                    <tspan x={lx} dy="14">({a.value === null ? "—" : a.value.toFixed(1)})</tspan>
+                  </>
+                ) : (
+                  `${a.label} (${a.value === null ? "—" : a.value.toFixed(1)})`
+                )}
               </text>
             );
           })}
         </svg>
+        </div>
         {axis && (
           <div className="absolute inset-x-3 bottom-2 rounded-control border border-line bg-surface p-3 text-[12.5px] shadow-xl" role="dialog" aria-label={`${axis.label} inputs`} data-testid="score-axis-detail">
             <div className="flex items-start justify-between gap-2">

@@ -48,3 +48,55 @@ test("at 375 px with no trades yet, the same screens fit too", async ({ page }) 
     await fits(page, path);
   }
 });
+
+const WIDTHS = [320, 414, 768, 1024, 1280, 1366, 1536, 1920];
+const PAGES = ["/", "/day", "/journal", "/notebook", "/progress", "/playbooks", "/analytics", "/backtest", "/replay", "/calendar", "/patterns", "/market", "/news", "/jarvis", "/accounts", "/settings"];
+
+/** What sticks out past the screen's edge, or out of its card, outside anything that scrolls sideways on purpose. */
+const breakage = (page: Page) =>
+  page.evaluate(() => {
+    const scrolls = (el: Element | null) => {
+      for (let e = el; e && e !== document.body; e = e.parentElement) if (["auto", "scroll"].includes(getComputedStyle(e).overflowX)) return true;
+      return false;
+    };
+    const out = new Set<string>();
+    for (const el of document.querySelectorAll("body *")) {
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      if (!r.width || !r.height || cs.position === "fixed" || cs.position === "absolute" || el.closest(".sr-only, [hidden]") || scrolls(el.parentElement)) continue;
+      const name = `${el.tagName.toLowerCase()} "${(el.textContent ?? "").trim().slice(0, 30)}"`;
+      if (r.right > innerWidth + 1 || r.left < -1) out.add(`off the screen: ${name}`);
+      const card = el.parentElement?.closest("section");
+      if (card && r.right > card.getBoundingClientRect().right + 1) out.add(`out of its card: ${name}`);
+    }
+    return [...out];
+  });
+
+test.describe("every page at every width", () => {
+  test.use({ isMobile: false, hasTouch: false });
+
+  test("nothing sticks out of the screen or its card, and the Avg win/loss bar sits beside its value", async ({ page }) => {
+    test.setTimeout(600_000);
+    await loadSample(page);
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const path of PAGES) {
+        await open(page, `${path}?includeSample=1`);
+        await page.waitForLoadState("networkidle");
+        expect(await breakage(page), `${path} at ${width} px`).toEqual([]);
+      }
+      // On the dashboard, the bar is under the label, beside the value, never across them.
+      await open(page, "/?includeSample=1");
+      const card = page.getByTestId("kpi-avg");
+      const [label, value, bar] = await Promise.all([card.locator("h2").boundingBox(), page.getByTestId("kpi-avg-value").boundingBox(), page.getByTestId("kpi-avg-bar").boundingBox()]);
+      expect(bar!.y, `bar below the label at ${width} px`).toBeGreaterThanOrEqual(label!.y + label!.height);
+      expect(bar!.x, `bar right of the value at ${width} px`).toBeGreaterThanOrEqual(value!.x + value!.width);
+      expect(bar!.width, `bar wide enough to read at ${width} px`).toBeGreaterThan(60);
+      // Every KPI label shows in full.
+      for (const id of ["kpi-net", "kpi-winrate", "kpi-pf", "kpi-daywin", "kpi-avg"]) {
+        const label = page.getByTestId(id).locator("h2 span").first();
+        expect(await label.evaluate((e) => e.scrollWidth <= e.clientWidth), `${id} label at ${width} px`).toBe(true);
+      }
+    }
+  });
+});
