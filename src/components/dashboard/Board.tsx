@@ -106,6 +106,9 @@ function Ring({ profit, loss }: { profit: number; loss: number }) {
   );
 }
 
+/** Compact for a currency ("$7.06K"); R, % and pips keep their unit through money(). */
+const compact = (n: number, display: string) => (display.length === 3 ? shortMoney(n, currencySymbol(display).trim()) : money(n, display));
+
 const valueClass = "num text-[22px] leading-none font-semibold tracking-tight";
 
 export function KpiRow({ data, display, search }: { data: Analytics; display: string; search: string }) {
@@ -155,8 +158,8 @@ export function KpiRow({ data, display, search }: { data: Analytics; display: st
               <span className="flex-1 bg-loss" style={{ display: avgLoss ? undefined : "none" }} />
             </div>
             <p className="num mt-1.5 flex justify-between text-[11px] font-medium">
-              <Link href={by("win")} className="text-profit hover:underline">{m.avgWin === null ? "—" : shortMoney(m.avgWin, display.length === 3 ? currencySymbol(display) : "")}</Link>
-              <Link href={by("loss")} className="text-loss hover:underline">{m.avgLoss === null ? "—" : shortMoney(m.avgLoss, display.length === 3 ? currencySymbol(display) : "")}</Link>
+              <Link href={by("win")} className="text-profit hover:underline">{m.avgWin === null ? "—" : compact(m.avgWin, display)}</Link>
+              <Link href={by("loss")} className="text-loss hover:underline">{m.avgLoss === null ? "—" : compact(m.avgLoss, display)}</Link>
             </p>
           </div>
         }
@@ -343,7 +346,7 @@ export function CumulativeCard({ data, display, dayHref, brush, rangeActive, cle
     <ChartCard
       testId="cumulative-card"
       title="Daily Net Cumulative P&L"
-      info="Realized only: the running total of closed trades' net P&L, one point per day a trade closed, in your time zone. Floating P&L is never included. Drag across the chart to zoom to those days; select a point to open that day."
+      info="Realized only: the running total of closed trades' net P&L, one point per day a trade closed, in your time zone. Floating P&L is never included. Drag across the chart to zoom to the trades closed on those days; select a point to open that day."
       action={rangeActive ? <button type="button" onClick={clearRange} className="text-[12px] font-medium text-accent hover:underline">Reset zoom</button> : null}
     >
       <div ref={box} className="relative h-full">
@@ -358,7 +361,13 @@ export function CumulativeCard({ data, display, dayHref, brush, rangeActive, cle
               role="img"
               aria-label={`Cumulative realized P&L over ${series.length} trading days, ending at ${money(series.at(-1)!.cum, display)}.`}
               {...focusProps}
-              onPointerDown={(e) => setDrag({ a: at(e), b: at(e) })}
+              onPointerDown={(e) => {
+                // Captured, so a release outside the chart still ends the drag here.
+                e.currentTarget.setPointerCapture(e.pointerId);
+                setDrag({ a: at(e), b: at(e) });
+              }}
+              onPointerCancel={() => setDrag(null)}
+              onLostPointerCapture={() => setDrag(null)}
               onPointerMove={(e) => {
                 const i = at(e);
                 setActive(i);
@@ -672,8 +681,7 @@ export function MonthCalendar({ data, display, dayHref, today }: { data: Analyti
   const weeks = weekSummaries(grid, days);
   const stats = monthStats(y, m, days);
   const biggest = Math.max(0, ...grid.flat().filter((c) => c.inMonth).map((c) => Math.abs(days.get(c.key)?.pnl ?? 0)));
-  const sym = display.length === 3 ? currencySymbol(display).trim() : "";
-  const fmt = (n: number) => (sym ? shortMoney(n, sym) : money(n, display));
+  const fmt = (n: number) => compact(n, display);
   const title = new Date(Date.UTC(y, m - 1, 15)).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
 
   return (

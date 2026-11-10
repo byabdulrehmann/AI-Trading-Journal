@@ -79,6 +79,8 @@ export function shortMoney(n: number, symbol: string): string {
   const abs = Math.abs(n);
   const sign = n < 0 ? "-" : "";
   if (abs < 1000) return `${sign}${symbol}${abs < 100 && abs % 1 ? abs.toFixed(2) : Math.round(abs)}`;
-  const [v, unit] = abs >= 1e6 ? [abs / 1e6, "M"] : [abs / 1e3, "K"];
-  return `${sign}${symbol}${Number(v.toPrecision(3))}${unit}`;
+  // Rounded first, so 999,600 reads $1M rather than $1000K.
+  const k = Number((abs / 1e3).toPrecision(3));
+  const [v, unit] = k >= 1000 ? [Number((abs / 1e6).toPrecision(3)), "M"] : [k, "K"];
+  return `${sign}${symbol}${v}${unit}`;
 }

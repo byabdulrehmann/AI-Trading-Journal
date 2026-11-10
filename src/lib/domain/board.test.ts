@@ -67,6 +67,6 @@ describe("dashboard series", () => {
   });
 
   test("short money", () => {
-    assert.deepEqual([shortMoney(7060, "$"), shortMoney(-18123, "$"), shortMoney(906, "$"), shortMoney(-213, "$"), shortMoney(12.5, "$"), shortMoney(2_680_000, "$"), shortMoney(0, "$")], ["$7.06K", "-$18.1K", "$906", "-$213", "$12.50", "$2.68M", "$0"]);
+    assert.deepEqual([shortMoney(7060, "$"), shortMoney(-18123, "$"), shortMoney(906, "$"), shortMoney(-213, "$"), shortMoney(12.5, "$"), shortMoney(2_680_000, "$"), shortMoney(0, "$"), shortMoney(999_600, "$"), shortMoney(-999_999, "€")], ["$7.06K", "-$18.1K", "$906", "-$213", "$12.50", "$2.68M", "$0", "$1M", "-€1M"]);
   });
 });

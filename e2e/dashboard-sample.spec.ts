@@ -53,7 +53,7 @@ test("cumulative chart: arrow keys read a day and Enter opens its journal", asyn
   await expect(tip).toContainText(mmddyy(a.periods.day.at(-2).key));
   await page.keyboard.press("End");
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(new RegExp(`/day\?.*date=${last.key}`));
+  await expect(page).toHaveURL(new RegExp(`/day\\?.*date=${last.key}`));
 });
 
 test("cumulative chart: dragging zooms to those days, and Reset zoom removes it", async ({ page }) => {
@@ -62,20 +62,41 @@ test("cumulative chart: dragging zooms to those days, and Reset zoom removes it"
   await expectFiguresMatch(page, all);
   const box = (await chart(page).boundingBox())!;
   const y = box.y + box.height / 2;
-  const refetch = page.waitForResponse((res) => res.url().includes("/api/analytics?") && res.url().includes("from="));
+  const refetch = page.waitForResponse((res) => res.url().includes("/api/analytics?") && res.url().includes("closedFrom="));
   await page.mouse.move(box.x + box.width * 0.4, y);
   await page.mouse.down();
   await page.mouse.move(box.x + box.width * 0.6, y, { steps: 6 });
   await page.mouse.move(box.x + box.width * 0.8, y, { steps: 6 });
   await page.mouse.up();
-  await expect(page).toHaveURL(/range=custom/);
-  await expect(page).toHaveURL(/from=\d{4}-\d{2}-\d{2}/);
+  // The chart is by close date, so the zoom is too.
+  await expect(page).toHaveURL(/closedFrom=\d{4}-\d{2}-\d{2}/);
+  await expect(page).toHaveURL(/closedTo=\d{4}-\d{2}-\d{2}/);
   const filtered = await (await refetch).json();
   expect(filtered.metrics.closedTrades).toBeLessThan(all.metrics.closedTrades);
   await expectFiguresMatch(page, filtered);
 
   await page.getByRole("button", { name: "Reset zoom" }).click();
-  await expect(page).not.toHaveURL(/range=|from=|to=/);
+  await expect(page).not.toHaveURL(/closedFrom=|closedTo=/);
   await expect(page).toHaveURL(/includeSample=1/);
   await expectFiguresMatch(page, all);
+});
+
+test("cumulative chart: a drag released outside the chart is dropped, not applied later", async ({ page }) => {
+  await loadSample(page);
+  const box = (await chart(page).boundingBox())!;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(box.x + box.width * 0.4, y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.7, y, { steps: 4 });
+  await page.mouse.move(box.x + box.width * 0.7, box.y - 200, { steps: 4 });
+  await page.mouse.up();
+  // Released outside: the capture still ends the drag, as a zoom over what was selected.
+  await expect(page).toHaveURL(/closedFrom=/);
+  await page.getByRole("button", { name: "Reset zoom" }).click();
+  await expect(page).not.toHaveURL(/closedFrom=/);
+  // Moving back over the chart draws no leftover selection, and a click opens a day.
+  await page.mouse.move(box.x + box.width * 0.5, y, { steps: 4 });
+  await expect(chart(page).locator("rect[stroke]")).toHaveCount(0);
+  await page.mouse.click(box.x + box.width * 0.5, y);
+  await expect(page).toHaveURL(/\/day\?.*date=\d{4}-\d{2}-\d{2}/);
 });

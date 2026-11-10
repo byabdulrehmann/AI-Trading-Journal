@@ -3,8 +3,11 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 const listeners = new Set<() => void>();
+/** Holds a choice when storage is blocked, so the page still agrees with itself until it reloads. */
+const memory = new Map<string, string>();
 
 function read(key: string): string | null {
+  if (memory.has(key)) return memory.get(key) as string;
   try {
     return localStorage.getItem(key);
   } catch {
@@ -29,6 +32,7 @@ export function useStored(key: string, fallback: string): [string, (value: strin
   const value = useSyncExternalStore(subscribe, () => read(key) ?? fallback, () => fallback);
   const set = useCallback(
     (v: string) => {
+      memory.set(key, v);
       try {
         localStorage.setItem(key, v);
       } catch {}

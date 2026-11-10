@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { api } from "@/lib/client/api";
 import type { Analytics } from "@/lib/client/analytics";
 import { useApp } from "@/lib/client/app-state";
@@ -34,6 +34,15 @@ function todayKey(tz?: string) {
   const d = zoneParts(Date.now(), tz);
   return `${d.year}-${pad(d.month)}-${pad(d.day)}`;
 }
+const everyMinute = (cb: () => void) => {
+  const id = setInterval(cb, 60_000);
+  return () => clearInterval(id);
+};
+/** Today's date in the chosen zone, rechecked each minute, so a dashboard left open overnight moves to the new day. */
+function useToday(tz?: string) {
+  return useSyncExternalStore(everyMinute, () => todayKey(tz), () => todayKey(tz));
+}
+
 function sevenDaysAgo(tz?: string) {
   const d = zoneParts(Date.now(), tz);
   return new Date(zoneInstant(d.year, d.month, d.day - 6, 0, 0, tz)).toISOString();
@@ -94,7 +103,7 @@ function Dashboard() {
   const search = useSearchParams().toString();
   const [editing, setEditing] = useState(false);
   const tz = settings?.timeZone || undefined;
-  const today = useMemo(() => todayKey(tz), [tz]);
+  const today = useToday(tz);
   const week = useMemo(() => sevenDaysAgo(tz), [tz]);
   const { data, error, loading, reload } = useFetch<Analytics>(`/api/analytics?${filters.apiQuery()}`);
   const recent = useFetch<{ trades: Trade[] }>(data ? `/api/trades?${filters.apiQuery({ extra: { pageSize: "10", currency: data.currency, sort: "closedAt", dir: "desc", closedOnly: "1" } })}` : null);
@@ -191,7 +200,8 @@ function Dashboard() {
           <KpiRow data={data} display={data.display} search={search} />
           <div className="grid grid-cols-[minmax(0,1fr)] gap-[21px] md:grid-cols-2 xl:grid-cols-3">
             <div className="md:col-span-2 xl:col-span-1"><ScoreCard data={data} /></div>
-            <CumulativeCard data={data} display={data.display} dayHref={dayHref} brush={(from, to) => filters.set({ range: "custom", from, to })} rangeActive={Boolean(filters.get("range"))} clearRange={() => filters.set({ range: null, from: null, to: null })} />
+            {/* The chart is drawn by close date, so its zoom filters by close date too. */}
+            <CumulativeCard data={data} display={data.display} dayHref={dayHref} brush={(closedFrom, closedTo) => filters.set({ closedFrom, closedTo })} rangeActive={Boolean(filters.get("closedFrom") || filters.get("closedTo"))} clearRange={() => filters.set({ closedFrom: null, closedTo: null })} />
             <DailyCard data={data} display={data.display} dayHref={dayHref} />
           </div>
           <div className="grid grid-cols-[minmax(0,1fr)] gap-[21px] xl:grid-cols-3">
@@ -209,17 +219,11 @@ function Dashboard() {
               data,
               display: data.display,
               search,
-              accounts,
-              recent: recent.data?.trades ?? [],
               patterns,
               toAnswer: unanswered.data?.total ?? 0,
               coachEnabled: Boolean(settings?.jarvis.enabled),
-              symbols: new Map(),
-              rangeActive: Boolean(filters.get("range")),
               openTrade,
               askJarvis,
-              brush: (from, to) => filters.set({ range: "custom", from, to }),
-              clearRange: () => filters.set({ range: null, from: null, to: null }),
             }}
           />
         </div>

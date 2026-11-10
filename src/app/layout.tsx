@@ -1,11 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist } from "next/font/google";
 import "./globals.css";
 import { AppStateProvider } from "@/lib/client/app-state";
 import { Shell } from "@/components/Shell";
 
 const sans = Geist({ variable: "--font-ui", subsets: ["latin"], weight: ["400", "500", "600"] });
-const mono = Geist_Mono({ variable: "--font-figures", subsets: ["latin"], weight: ["400", "500"] });
 
 export const metadata: Metadata = {
   title: "Jarvis",
@@ -21,7 +20,7 @@ const themeScript = `try{var s=localStorage,t=s.getItem("jarvis-theme")||s.getIt
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="en" className={`${sans.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
