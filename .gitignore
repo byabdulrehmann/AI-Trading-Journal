@@ -55,3 +55,6 @@ next-env.d.ts
 
 /.hallmark/before/
 /.hallmark/after/
+
+# Impeccable engine binary: downloaded and checksum-verified by its launcher, not committed
+/.claude/skills/impeccable/scripts/bin/
