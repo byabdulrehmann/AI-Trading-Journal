@@ -32,7 +32,6 @@ export default defineConfig({
     timeout: 300_000,
     env: {
       KESTREL_DIST_DIR: ".next-e2e",
-      JARVIS_OPEN_SIGNUP: "1", // The two-user test needs a second account. signup-closed.spec.ts covers the default.
       KESTREL_DB_PATH: path.join(process.env.E2E_DATA_DIR, "kestrel.db"),
       TRADBOT_URL: "http://127.0.0.1:9", // Nothing listens there, so no test can reach a real TradBot.
       ANTHROPIC_API_KEY: "",

@@ -2,12 +2,12 @@
 
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
-import Image from "next/image";
 import Link from "next/link";
-import { useRef } from "react";
-import { cx } from "@/components/ui";
-import { SAMPLE_NOTE, SCREENS, Status, type ScreenKey } from "../parts";
+import { useEffect, useRef } from "react";
+import { Status } from "../parts";
 import { useReducedMotion } from "../scroll";
+import { useSound } from "../sound";
+import { CHARTS } from "./Charts";
 
 /* ---------- Act 02: the trader's problem (kinetic lines over a ground that drifts colder) ---------- */
 
@@ -210,18 +210,10 @@ export function Mt5() {
 
 /* ---------- Act 06: analytics (a pinned rail travelling sideways; a swipeable rail on touch) ---------- */
 
-const PANELS: { key: ScreenKey; title: string; note: string }[] = [
-  { key: "reportsOverview", title: "P&L by period, and the equity curve", note: "Day, week, month or year, from closed trades only." },
-  { key: "calendarPage", title: "The trading calendar", note: "Each day's result, trade count and win rate." },
-  { key: "reportsRisk", title: "Drawdown, risk and R-multiples", note: "Risk planned against risk taken." },
-  { key: "reportsTime", title: "When you trade best", note: "Weekday and hour, in your own time zone." },
-  { key: "playbooks", title: "Strategy performance", note: "Your playbooks side by side." },
-  { key: "reportsInstruments", title: "Instrument performance", note: "Every symbol, side and asset class." },
-];
-
 export function Analytics() {
   const root = useRef<HTMLElement>(null);
   const reduced = useReducedMotion();
+  const { play } = useSound();
   useGSAP(
     () => {
       if (reduced) return;
@@ -235,30 +227,48 @@ export function Analytics() {
     },
     { scope: root, dependencies: [reduced], revertOnUpdate: true },
   );
+  // Each drawing draws itself as its panel comes into view, sideways or down. Without this they simply show.
+  useEffect(() => {
+    if (reduced) return;
+    const track = root.current!.querySelector<HTMLElement>(".rail-track")!;
+    track.dataset.armed = "true";
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          (e.target as HTMLElement).dataset.in = "true";
+          io.unobserve(e.target);
+          play("data");
+        }
+      },
+      { threshold: 0.45 },
+    );
+    track.querySelectorAll(".ch-panel").forEach((el) => io.observe(el));
+    return () => {
+      io.disconnect();
+      delete track.dataset.armed;
+    };
+  }, [reduced, play]);
   return (
     <section id="analytics" data-sc-act="analytics" ref={root} className="relative" aria-labelledby="analytics-title">
       <div className="rail-pin flex min-h-[100svh] flex-col justify-center overflow-hidden py-[88px]">
         <div className="s-wrap">
           <h2 id="analytics-title" className="s-display s-h2 max-w-[18ch]" data-reveal="words">Every figure, from your own closed trades.</h2>
         </div>
-        <div className="mt-10 overflow-x-auto [scrollbar-width:none] max-lg:snap-x max-lg:snap-mandatory lg:overflow-visible" tabIndex={0} aria-label="Analytics screens, scroll sideways">
+        <div className="mt-10 overflow-x-auto [scrollbar-width:none] max-lg:snap-x max-lg:snap-mandatory lg:overflow-visible" tabIndex={0} aria-label="Report illustrations, scroll sideways">
           <ol className="rail-track flex w-max gap-6 px-[var(--s-gutter)] will-change-transform">
-            {PANELS.map((p) => {
-              const s = SCREENS[p.key];
-              const tall = s.h / s.w > 0.8;
-              return (
-                <li key={p.key} className={cx("shrink-0 snap-start", tall ? "w-[min(78vw,340px)] lg:w-[340px]" : "w-[min(86vw,600px)] lg:w-[600px]")}>
-                  <div className="s-frame">
-                    <Image src={s.src} width={s.w} height={s.h} alt={s.alt} unoptimized className="h-auto w-full" sizes="(min-width: 1024px) 600px, 86vw" />
-                  </div>
-                  <h3 className="mt-4 text-[17px] font-semibold text-[var(--s-ink)]">{p.title}</h3>
-                  <p className="s-body mt-1 text-[14.5px]">{p.note}</p>
-                </li>
-              );
-            })}
+            {CHARTS.map(({ key, title, note, Chart }) => (
+              <li key={key} className="ch-panel w-[min(86vw,520px)] shrink-0 snap-start lg:w-[520px]">
+                <div className="s-frame p-5">
+                  <Chart />
+                </div>
+                <h3 className="mt-4 text-[17px] font-semibold text-[var(--s-ink)]">{title}</h3>
+                <p className="s-body mt-1 text-[14.5px]">{note}</p>
+              </li>
+            ))}
           </ol>
         </div>
-        <p className="s-wrap s-caption mt-6">{SAMPLE_NOTE}</p>
+        <p className="s-wrap s-caption mt-6">Illustrations of the reports, with no figures on them. In Jarvis each one is drawn from your own closed trades.</p>
       </div>
     </section>
   );
@@ -289,7 +299,7 @@ export function Psychology() {
   );
   const title = "Jarvis doesn't read your mind. It reads your record.";
   return (
-    <section id="psychology" data-sc-act="psychology" ref={root} className="s-section" aria-labelledby="psy-title">
+    <section id="psychology" data-sc-act="psychology" ref={root} className="s-section s-paper" aria-labelledby="psy-title">
       <div className="s-wrap">
         <h2 id="psy-title" className="psy-title s-display s-h2 ml-auto max-w-[18ch] text-right">
           {title.split(" ").map((w, i) => (

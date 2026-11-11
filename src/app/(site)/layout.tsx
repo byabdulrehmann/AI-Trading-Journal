@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Funnel_Display, Geist_Mono } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Serif } from "next/font/google";
 import { SiteChrome } from "@/components/site/SiteChrome";
 import "./site.css";
 
-const display = Funnel_Display({ variable: "--font-site-display", subsets: ["latin"], weight: ["500", "600", "700"] });
-const mono = Geist_Mono({ variable: "--font-site-mono", subsets: ["latin"], weight: ["400", "500"] });
+const display = IBM_Plex_Serif({ variable: "--font-site-display", subsets: ["latin"], weight: ["300", "400"] });
+const mono = IBM_Plex_Mono({ variable: "--font-site-mono", subsets: ["latin"], weight: ["400", "500"] });
 
 const description = "Jarvis is a private trading journal and performance platform for forex and gold traders. MT5 sync with the read-only investor password, honest analytics from your own trades, and it runs on your own computer.";
 

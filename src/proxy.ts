@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
 const COOKIE = "jarvis_session"; // Must match auth.ts, which can't be imported here (it opens the database).
 // The marketing site and sign-in. Keep in step with PUBLIC_PAGES in src/lib/client/app-state.tsx.
-const PUBLIC_PAGES = new Set(["/login", "/welcome", "/platform", "/features", "/about", "/contact"]);
+const PUBLIC_PAGES = new Set(["/login", "/signup", "/forgot-password", "/welcome", "/platform", "/features", "/about", "/contact"]);
 /** Files crawlers and link previews fetch without a session. */
 const PUBLIC_FILES = new Set(["/robots.txt", "/sitemap.xml"]);
 /** Next adds a content hash to the preview image's path, for example /opengraph-image-p6oktx. */

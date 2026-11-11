@@ -96,10 +96,14 @@ export async function startSession(userId: number) {
   });
 }
 
+export async function checkPassword(userId: number, password: string): Promise<boolean> {
+  const row = db().prepare("SELECT password_hash FROM users WHERE id = ?").get(userId) as { password_hash: string } | undefined;
+  return !!row && (await verifyPassword(password, row.password_hash));
+}
+
 /** Signs out every device, so a copied cookie stops working. The caller starts a fresh session. */
 export async function changePassword(userId: number, current: string, next: string): Promise<boolean> {
-  const row = db().prepare("SELECT password_hash FROM users WHERE id = ?").get(userId) as { password_hash: string } | undefined;
-  if (!row || !(await verifyPassword(current, row.password_hash))) return false;
+  if (!(await checkPassword(userId, current))) return false;
   const hash = await hashPassword(next);
   transaction(db(), () => {
     db().prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hash, userId);
@@ -157,3 +161,45 @@ export function rateLimited(key: string): boolean {
 }
 
 export const clearRateLimit = (key: string) => attempts.delete(key);
+
+/* ---------- recovery codes: Jarvis has no email, so a forgotten password is reset with a code the user kept ---------- */
+
+// 32 symbols, so each random byte maps without bias; no I, O, 0 or 1 to misread.
+const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+/** Four groups of five: 100 random bits, written like ABCDE-FGHJK-LMNPQ-RSTUV. */
+function makeRecoveryCode(): string {
+  const raw = [...randomBytes(20)].map((b) => CODE_ALPHABET[b % 32]).join("");
+  return raw.match(/.{5}/g)!.join("-");
+}
+const codeHash = (code: string) => hashToken(code.toUpperCase().replace(/[^A-Z0-9]/g, ""));
+
+/** Replaces the user's recovery code; the old one stops working. The code is returned once and never stored. */
+export function issueRecoveryCode(userId: number): string {
+  const code = makeRecoveryCode();
+  db().prepare("UPDATE users SET recovery_hash = ? WHERE id = ?").run(codeHash(code), userId);
+  audit(userId, "recovery.issued", "user", userId);
+  return code;
+}
+
+export const hasRecoveryCode = (userId: number) =>
+  !!(db().prepare("SELECT recovery_hash FROM users WHERE id = ?").get(userId) as { recovery_hash: string | null } | undefined)?.recovery_hash;
+
+/**
+ * Sets a new password when the email and recovery code match. The code is used up: a new one is issued and
+ * returned, and every device is signed out. Null when they don't match, without saying which part was wrong.
+ */
+export async function resetWithRecoveryCode(email: string, code: string, next: string): Promise<{ user: User; code: string } | null> {
+  const row = db().prepare("SELECT * FROM users WHERE email = ?").get(email) as Row | undefined;
+  const given = Buffer.from(codeHash(code), "hex");
+  const stored = typeof row?.recovery_hash === "string" ? Buffer.from(row.recovery_hash, "hex") : randomBytes(32);
+  if (!row || typeof row.recovery_hash !== "string" || !timingSafeEqual(given, stored)) return null;
+  const hash = await hashPassword(next);
+  const fresh = makeRecoveryCode();
+  const user = toUser(row);
+  transaction(db(), () => {
+    db().prepare("UPDATE users SET password_hash = ?, recovery_hash = ? WHERE id = ?").run(hash, codeHash(fresh), user.id);
+    db().prepare("DELETE FROM sessions WHERE user_id = ?").run(user.id);
+    audit(user.id, "password.reset", "user", user.id);
+  });
+  return { user, code: fresh };
+}

@@ -6,7 +6,7 @@ import { CTA_HREF, CTA_LABEL } from "./SiteNav";
 export function PageHead({ title, lede, children }: { title: string; lede: string; children?: React.ReactNode }) {
   return (
     <header className="relative overflow-hidden pt-[clamp(150px,22vh,220px)] pb-[clamp(64px,10vh,112px)]">
-      <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_70%_at_85%_0%,rgb(140_130_255/0.12),transparent_70%)]" />
+      <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_70%_at_85%_0%,rgb(255_106_74/0.06),transparent_70%)]" />
       <div className="s-wrap relative">
         <h1 className="s-display s-h1 max-w-[16ch]" data-reveal="words">{title}</h1>
         <p className="s-lede mt-6 max-w-[52ch]">{lede}</p>

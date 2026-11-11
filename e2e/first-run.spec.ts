@@ -4,7 +4,8 @@ test("first-time setup creates an account, then sign out, wrong password and sig
   guard.allow(/status of 401/, /status of 422/);
 
   await page.goto("/");
-  await expect(page).toHaveURL(/\/login$/);
+  // An empty installation has nobody to sign in as, so sign-in sends you on to create the first account.
+  await expect(page).toHaveURL(/\/signup$/);
   await expect(page.getByRole("heading", { name: "Create your account" })).toBeVisible();
 
   await page.getByLabel("Name (optional)").fill("Owner");
@@ -13,7 +14,7 @@ test("first-time setup creates an account, then sign out, wrong password and sig
   await page.getByLabel("Repeat password").fill("something else entirely");
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByText("These passwords don't match.")).toBeVisible();
-  await expect(page).toHaveURL(/\/login$/);
+  await expect(page).toHaveURL(/\/signup$/);
 
   await page.getByLabel("Password", { exact: true }).fill("short");
   await page.getByLabel("Repeat password").fill("short");
@@ -23,6 +24,9 @@ test("first-time setup creates an account, then sign out, wrong password and sig
   await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
   await page.getByLabel("Repeat password").fill(PASSWORD);
   await page.getByRole("button", { name: "Create account" }).click();
+  // The recovery code shows once, before the journal opens.
+  await expect(page.getByLabel("Recovery code")).toHaveText(/^[A-Z2-9]{5}(-[A-Z2-9]{5}){3}$/);
+  await page.getByRole("button", { name: "I've saved it, continue" }).click();
   await expect(page).toHaveURL(/localhost:3107\/$/);
   await expect(page.locator("aside").getByText("Owner", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Start your journal" })).toBeVisible();
@@ -30,8 +34,8 @@ test("first-time setup creates an account, then sign out, wrong password and sig
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
-  // Setup only ever shows on an empty installation.
-  await expect(page.getByLabel("Repeat password")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Create an account" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Forgot your password?" })).toBeVisible();
 
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill("not the right password");

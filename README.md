@@ -57,8 +57,10 @@ docs/FEATURE_MATRIX.md feature checklist vs. the reference product
 - Settings → Your data: export everything as JSON, remove sample data, or delete all data
   (requires typing `DELETE`).
 
-Jarvis has local accounts: the first one created owns the existing data, and sign-up then
-closes unless the server runs with `JARVIS_OPEN_SIGNUP=1`. `npm run dev` and `npm start`
+Jarvis has local accounts: the first one created owns the existing data, and anyone who can
+reach this computer can sign up for their own private journal at `/signup`. Jarvis can't send
+email, so each account gets a one-time recovery code at sign-up (a new one from Settings →
+Recovery code) and `/forgot-password` resets the password with it. `npm run dev` and `npm start`
 listen on `127.0.0.1` only, and `src/proxy.ts` answers only on a loopback host and refuses
 changes sent by other sites. It isn't built for a network: there's no HTTPS, and loosening
 these checks would expose your journal, your MT5 connection and TradBot-I. Anyone who can

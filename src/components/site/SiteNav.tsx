@@ -177,7 +177,7 @@ export function SiteNav({ chapters }: { chapters?: { id: string; label: string }
     <header
       className={cx(
         "fixed inset-x-0 top-0 z-50 transition-[transform,background-color,border-color] duration-300",
-        scrolled ? "border-b border-[var(--s-line)] bg-[rgb(7_8_13/0.86)]" : "border-b border-transparent",
+        scrolled ? "border-b border-[var(--s-line)] bg-[rgb(9_12_11/0.86)]" : "border-b border-transparent",
         hidden && !reduced ? "-translate-y-full" : "translate-y-0",
       )}
       data-testid="site-nav"
@@ -202,6 +202,7 @@ export function SiteNav({ chapters }: { chapters?: { id: string; label: string }
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
           <span className="hidden sm:block"><SoundControl /></span>
           <Link href="/login" className="hidden h-10 items-center px-3 text-[14.5px] text-[var(--s-ink-soft)] no-underline transition-colors hover:text-[var(--s-ink)] md:flex">Sign in</Link>
+          <Link href="/signup" className="hidden h-10 items-center px-3 text-[14.5px] text-[var(--s-ink-soft)] no-underline transition-colors hover:text-[var(--s-ink)] xl:flex">Sign up</Link>
           <Link href={CTA_HREF} className="s-btn s-btn-primary hidden h-10! px-5! text-[14px]! sm:inline-flex">{CTA_LABEL}</Link>
           <button type="button" className="grid size-10 place-items-center rounded-full border border-[var(--s-line-strong)] text-[var(--s-ink)] lg:hidden" aria-expanded={menu} aria-controls="site-menu" aria-label={menu ? "Close menu" : "Open menu"} onClick={() => setMenu((m) => !m)}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>{menu ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 8h16M4 16h16" />}</svg>
@@ -211,7 +212,7 @@ export function SiteNav({ chapters }: { chapters?: { id: string; label: string }
       <div id="site-menu" hidden={!menu} className="fixed inset-x-0 top-[72px] bottom-0 overflow-y-auto border-t border-[var(--s-line)] bg-[var(--s-canvas)] lg:hidden" data-testid="site-menu">
         <div className="s-wrap flex flex-col gap-8 py-8">
           <ul className="flex flex-col">
-            {[...PLATFORM.slice(0, 1).map((l) => ({ ...l, label: "Platform" })), ...LINKS, { href: "/login", label: "Sign in" }].map((l) => (
+            {[...PLATFORM.slice(0, 1).map((l) => ({ ...l, label: "Platform" })), ...LINKS, { href: "/login", label: "Sign in" }, { href: "/signup", label: "Sign up" }].map((l) => (
               <li key={l.href}>
                 <Link href={l.href} onClick={() => setMenu(false)} className="flex h-14 items-center border-b border-[var(--s-line)] font-[family-name:var(--s-font-display)] text-[26px] font-semibold tracking-[-0.02em] text-[var(--s-ink)] no-underline">{l.label}</Link>
               </li>

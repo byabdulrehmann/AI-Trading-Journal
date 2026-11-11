@@ -14,10 +14,10 @@ export interface SceneProgress {
   current: number;
 }
 
-// WebGL materials need literal colours; these are tuned versions of --s-profit, --s-loss and the surface under scene lighting.
-const UP = new THREE.Color("#2fbf8e");
-const DOWN = new THREE.Color("#e2566c");
-const METAL = new THREE.Color("#2a2f45");
+// WebGL materials need literal colours: bone (--s-ink), red pencil (--s-accent) and the green-black surface, tuned for scene light.
+const UP = new THREE.Color("#d8d3c3");
+const DOWN = new THREE.Color("#e8603f");
+const METAL = new THREE.Color("#1b2420");
 
 function rng(seed: number) {
   let s = seed >>> 0;
@@ -191,7 +191,7 @@ function Dust({ count, still }: { count: number; still: boolean }) {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
-      <pointsMaterial size={0.045} color="#a9aedc" transparent opacity={0.55} sizeAttenuation depthWrite={false} />
+      <pointsMaterial size={0.045} color="#cfc9b8" transparent opacity={0.55} sizeAttenuation depthWrite={false} />
     </points>
   );
 }
@@ -235,13 +235,13 @@ export default function CandleScene({ mode, progress, active, still, compact }: 
       aria-hidden
       data-testid={`scene-${mode}`}
     >
-      <fog attach="fog" args={["#07080d", mode === "field" ? 8 : 10, mode === "field" ? 30 : 26]} />
+      <fog attach="fog" args={["#090c0b", mode === "field" ? 8 : 10, mode === "field" ? 30 : 26]} />
       <ambientLight intensity={0.7} />
-      <directionalLight position={[6, 8, 6]} intensity={2.4} color="#e6ebff" />
-      <directionalLight position={[-6, 3, -4]} intensity={0.8} color="#8c82ff" />
-      <pointLight position={[-8, 2, -6]} intensity={90} distance={40} color="#8c82ff" />
-      <pointLight position={[8, -2, 4]} intensity={24} distance={30} color="#3fd39f" />
-      {mode === "field" && <gridHelper args={[90, 60, "#232846", "#12152a"]} position={[0, -4.2, -10]} />}
+      <directionalLight position={[6, 8, 6]} intensity={2.4} color="#f4efe2" />
+      <directionalLight position={[-6, 3, -4]} intensity={0.8} color="#9fb8a8" />
+      <pointLight position={[-8, 2, -6]} intensity={70} distance={40} color="#ff6a4a" />
+      <pointLight position={[8, -2, 4]} intensity={18} distance={30} color="#cfc9b8" />
+      {mode === "field" && <gridHelper args={[90, 60, "#1e2723", "#121815"]} position={[0, -4.2, -10]} />}
       <Candles mode={mode} progress={progress} count={count} still={still} />
       <Dust count={compact ? 260 : 620} still={still} />
       <Rig mode={mode} progress={progress} still={still} />

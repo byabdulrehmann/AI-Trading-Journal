@@ -10,6 +10,7 @@ import { useFetch } from "@/lib/client/use-fetch";
 import { COACHING_STYLES, type ActivityEvent, type SHARING_LEVELS } from "@/lib/domain/types";
 import { OP_LABELS, RULE_FIELDS, type RuleCondition, type RuleField } from "@/lib/domain/autotag";
 import { Badge, Button, Field, PageHeader, Segmented, Spinner, Toggle, cx, inputClass } from "@/components/ui";
+import { RecoveryCode } from "@/components/AuthFrame";
 
 const SHARING: { value: (typeof SHARING_LEVELS)[number]; label: string; detail: string }[] = [
   { value: "metrics", label: "Metrics only", detail: "Totals, win rate, R statistics and pattern summaries. No individual trades." },
@@ -72,6 +73,51 @@ function Password() {
   );
 }
 
+/** A new recovery code for a forgotten password. The old one stops working; the new one is shown once. */
+function Recovery() {
+  const { data, reload } = useFetch<{ hasCode: boolean }>("/api/auth/recovery");
+  const [current, setCurrent] = useState("");
+  const [code, setCode] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await api<{ recoveryCode: string }>("/api/auth/recovery", { method: "POST", json: { current } });
+      setCurrent("");
+      setCode(res.recoveryCode);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't make a new code.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Section id="recovery" title="Recovery code" description="The way back in if you forget your password: Jarvis can't send email. Making a new code replaces the old one.">
+      {code ? (
+        <div className="max-w-md">
+          <RecoveryCode code={code} doneLabel="Done" onDone={() => (setCode(null), reload())} />
+        </div>
+      ) : (
+        <>
+          {data && !data.hasCode && <p className="mb-3 text-[13.5px] text-warn">This account has no recovery code yet. Make one now, so a forgotten password isn&apos;t the end of this journal.</p>}
+          <form onSubmit={submit} className="grid gap-4 sm:grid-cols-[minmax(0,16rem)_auto] sm:items-end">
+            <Field label="Current password">
+              {(p) => <input {...p} type="password" autoComplete="current-password" className={inputClass} value={current} onChange={(e) => setCurrent(e.target.value)} required />}
+            </Field>
+            <Button type="submit" disabled={busy}>{busy ? "Making a code" : data?.hasCode ? "Make a new code" : "Make a recovery code"}</Button>
+          </form>
+          {error && <p role="alert" className="mt-2 text-[13px] text-loss">{error}</p>}
+        </>
+      )}
+    </Section>
+  );
+}
+
 export default function SettingsPage() {
   const { settings, saveSettings, user } = useApp();
   if (!settings) return <Spinner label="Loading your settings" />;
@@ -81,7 +127,7 @@ export default function SettingsPage() {
     <>
       <PageHeader title="Settings" description="Preferences, privacy and your data. Everything is stored in a local database on this computer." />
       <nav aria-label="Settings sections" className="mb-5 flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
-        {[["profile", "Profile"], ["defaults", "Trading defaults"], ["password", "Password"], ["accounts", "Accounts"], ["autotags", "Auto-tags"], ["jarvis", "AI Coach"], ["privacy", "Privacy"], ["data", "Your data"], ...(user?.isOwner ? [["backups", "Backups"], ["early-access", "Early access"]] : [])].map(([id, l]) => (
+        {[["profile", "Profile"], ["defaults", "Trading defaults"], ["password", "Password"], ["recovery", "Recovery code"], ["accounts", "Accounts"], ["autotags", "Auto-tags"], ["jarvis", "AI Coach"], ["privacy", "Privacy"], ["data", "Your data"], ...(user?.isOwner ? [["backups", "Backups"], ["early-access", "Early access"]] : [])].map(([id, l]) => (
           <a key={id} href={`#${id}`} className="py-1 text-ink-soft underline-offset-2 hover:text-ink hover:underline pointer-coarse:py-3">{l}</a>
         ))}
       </nav>
@@ -101,6 +147,7 @@ export default function SettingsPage() {
       <TradingDefaults />
 
       <Password />
+      <Recovery />
 
       <Accounts />
 

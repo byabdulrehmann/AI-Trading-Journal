@@ -47,12 +47,12 @@ export function Reveal() {
     <section id="reveal" data-sc-act="reveal" ref={root} className="relative h-[170svh] motion-reduce:h-auto" aria-labelledby="reveal-title">
       <div className="sticky top-0 flex h-[100svh] flex-col overflow-hidden motion-reduce:relative motion-reduce:h-auto motion-reduce:min-h-[100svh]">
         <SceneMount mode="mark" progress={progress} poster="/site/poster-mark.webp" />
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_50%_42%,rgb(140_130_255/0.12),transparent_70%),linear-gradient(180deg,var(--s-canvas)_0%,transparent_18%,transparent_60%,rgb(7_8_13/0.92)_100%)]" />
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_50%_42%,rgb(255_106_74/0.06),transparent_70%),linear-gradient(180deg,var(--s-canvas)_0%,transparent_18%,transparent_60%,rgb(9_12_11/0.92)_100%)]" />
         <div className="s-wrap relative z-10 mt-auto flex flex-col items-center pb-[10vh] text-center">
           <div className="reveal-mark mb-8"><Mark size={56} /></div>
           <h2 id="reveal-title" className="s-display s-h1 max-w-[20ch]">
-            <span className="block overflow-hidden pb-[0.06em]"><span className="reveal-line block">Stop guessing.</span></span>
-            <span className="block overflow-hidden pb-[0.06em]"><span className="reveal-line block text-[var(--s-metal)]">Start understanding your trading.</span></span>
+            <span className="block overflow-hidden pb-[0.2em] -mb-[0.14em]"><span className="reveal-line block">Stop guessing.</span></span>
+            <span className="block overflow-hidden pb-[0.2em] -mb-[0.14em]"><span className="reveal-line block text-[var(--s-metal)]">Start understanding your trading.</span></span>
           </h2>
           <div className="reveal-cta mt-10 flex flex-wrap items-center justify-center gap-3">
             <Magnetic strength={0.35}>

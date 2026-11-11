@@ -27,8 +27,8 @@ const DAYS = Array.from({ length: 31 }, (_, i) => {
 });
 const pct = (v: number, of: number) => `${(v / of) * 100}%`;
 // Literal colours: GSAP tweens these backgrounds and cannot interpolate CSS variables.
-const FILL: Record<string, string> = { u: "#1f3a40", U: "#22504f", d: "#3a2a3e", D: "#5a3046", "-": "#11131f" };
-const BODY: Record<string, string> = { u: "#3fd39f", U: "#3fd39f", d: "#f26b7f", D: "#f26b7f" };
+const FILL: Record<string, string> = { u: "#26302b", U: "#34413a", d: "#3a2620", D: "#56302a", "-": "#121816" };
+const BODY: Record<string, string> = { u: "#d8d3c3", U: "#d8d3c3", d: "#ff6a4a", D: "#ff6a4a" };
 
 const TILES: { key: ScreenKey; area: string; label: string }[] = [
   { key: "kpis", area: "kpi", label: "Net P&L, win rate, profit factor, day win rate, average win and loss" },

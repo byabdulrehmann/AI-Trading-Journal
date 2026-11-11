@@ -58,7 +58,7 @@ interface AppState {
 }
 
 /** Pages that work signed out: sign-in and the marketing site. Keep in step with src/proxy.ts. */
-export const PUBLIC_PAGES = new Set(["/login", "/welcome", "/platform", "/features", "/about", "/contact"]);
+export const PUBLIC_PAGES = new Set(["/login", "/signup", "/forgot-password", "/welcome", "/platform", "/features", "/about", "/contact"]);
 
 const Ctx = createContext<AppState | null>(null);
 

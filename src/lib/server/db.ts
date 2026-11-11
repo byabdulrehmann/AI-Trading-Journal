@@ -376,6 +376,12 @@ export const MIGRATIONS: { version: number; name: string; sql: string; run?: (db
     );
     CREATE INDEX early_access_created ON early_access(created_at);`,
   },
+  {
+    version: 13,
+    name: "recovery codes for resetting a forgotten password",
+    // A SHA-256 of the current code; the code itself is shown once and never stored.
+    sql: `ALTER TABLE users ADD COLUMN recovery_hash TEXT;`,
+  },
 ];
 
 const globalForDb = globalThis as unknown as { __kestrelDb?: DatabaseSync };
