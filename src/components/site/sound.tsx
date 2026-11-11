@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useStored } from "@/lib/client/use-stored";
 
 /**
@@ -8,7 +9,7 @@ import { useStored } from "@/lib/client/use-stored";
  * downloaded and nothing plays until the visitor turns sound on; the choice is remembered per browser, but even then
  * audio only starts after the visitor's first gesture on the page, as browsers require.
  */
-export type Cue = "tick" | "chapter" | "reveal" | "finale";
+export type Cue = "tick" | "hover" | "click" | "nav" | "power" | "data" | "chapter" | "reveal" | "finale";
 
 interface Sound {
   enabled: boolean;
@@ -21,7 +22,7 @@ interface Sound {
 const Ctx = createContext<Sound | null>(null);
 
 // Minimum gap per cue, so scrolling back and forth over a boundary can't machine-gun it.
-const GAP: Record<Cue, number> = { tick: 120, chapter: 900, reveal: 2500, finale: 6000 };
+const GAP: Record<Cue, number> = { tick: 120, hover: 70, click: 60, nav: 500, power: 4000, data: 2000, chapter: 900, reveal: 2500, finale: 6000 };
 
 class Engine {
   ctx: AudioContext;
@@ -101,7 +102,52 @@ class Engine {
     const t = this.ctx.currentTime;
     const out = this.ctx.createGain();
     out.connect(this.master);
-    if (cue === "tick") {
+    // A short pitched blip: the building block of the small cues.
+    const blip = (type: OscillatorType, from: number, to: number, peak: number, len: number, at = t) => {
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(from, at);
+      o.frequency.exponentialRampToValueAtTime(to, at + len * 0.8);
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(peak, at + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + len);
+      o.connect(g).connect(out);
+      o.start(at);
+      o.stop(at + len + 0.02);
+    };
+    if (cue === "hover") {
+      blip("sine", 2400, 2050, 0.016, 0.045);
+    } else if (cue === "click") {
+      blip("triangle", 420, 170, 0.06, 0.07);
+    } else if (cue === "data") {
+      [880, 1108.7, 1318.5].forEach((f, i) => blip("sine", f, f, 0.03, 0.22, t + i * 0.06));
+    } else if (cue === "nav") {
+      const n = this.noise(0.4);
+      const bp = this.ctx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.Q.value = 2;
+      bp.frequency.setValueAtTime(2400, t);
+      bp.frequency.exponentialRampToValueAtTime(420, t + 0.32);
+      out.gain.setValueAtTime(0.0001, t);
+      out.gain.exponentialRampToValueAtTime(0.05, t + 0.06);
+      out.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
+      n.connect(bp).connect(out);
+      n.start(t);
+      n.stop(t + 0.4);
+    } else if (cue === "power") {
+      // Sound switched on: a low swell rising an octave under a soft fifth, the hero's reveal in sound.
+      const sub = this.ctx.createOscillator();
+      sub.frequency.setValueAtTime(55, t);
+      sub.frequency.exponentialRampToValueAtTime(110, t + 1.1);
+      out.gain.setValueAtTime(0.0001, t);
+      out.gain.exponentialRampToValueAtTime(0.09, t + 0.5);
+      out.gain.exponentialRampToValueAtTime(0.0001, t + 2.4);
+      sub.connect(out);
+      sub.start(t);
+      sub.stop(t + 2.5);
+      [440, 659.3].forEach((f, i) => blip("triangle", f, f, 0.025, 1.8, t + 0.35 + i * 0.12));
+    } else if (cue === "tick") {
       const o = this.ctx.createOscillator();
       o.frequency.setValueAtTime(1500, t);
       o.frequency.exponentialRampToValueAtTime(700, t + 0.05);
@@ -204,6 +250,34 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
     },
     [enabled, gesture],
   );
+  // Hover and click cues come from one listener each, so no control has to wire its own sound.
+  useEffect(() => {
+    if (!enabled || !gesture) return;
+    const over = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse" || !(e.target instanceof Element)) return;
+      const el = e.target.closest(".s-btn, header a, header button, [data-sound=hover]");
+      if (el && !(e.relatedTarget instanceof Node && el.contains(e.relatedTarget))) play("hover");
+    };
+    const click = (e: MouseEvent) => {
+      if (e.target instanceof Element && e.target.closest("a[href], button, [role=button], summary")) play("click");
+    };
+    document.addEventListener("pointerover", over);
+    document.addEventListener("click", click, true);
+    return () => {
+      document.removeEventListener("pointerover", over);
+      document.removeEventListener("click", click, true);
+    };
+  }, [enabled, gesture, play]);
+
+  // Moving between pages gets a soft sweep; the first page load doesn't.
+  const path = usePathname();
+  const lastPath = useRef(path);
+  useEffect(() => {
+    if (lastPath.current === path) return;
+    lastPath.current = path;
+    play("nav");
+  }, [path, play]);
+
   const value = useMemo<Sound>(() => ({ enabled, volume, setEnabled, setVolume: (v) => setStoredVolume(String(v)), play }), [enabled, volume, setEnabled, setStoredVolume, play]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

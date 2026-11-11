@@ -27,7 +27,7 @@ export default function AboutPage() {
       <PageHead title="Built for traders who want the truth about their trading." lede="Jarvis is a trading journal and performance platform for forex and gold traders: day traders, intraday traders and traders working toward or holding funded accounts." />
       <section className="s-section pt-0" aria-labelledby="principles">
         <div className="s-wrap">
-          <h2 id="principles" className="s-display s-h2 max-w-[14ch]">What it is built on.</h2>
+          <h2 id="principles" className="s-display s-h2 max-w-[14ch]" data-reveal="words">What it is built on.</h2>
           <dl className="s-rise mt-14 grid gap-x-16 gap-y-12 md:grid-cols-2">
             {PRINCIPLES.map(([k, v]) => (
               <div key={k} className="border-t border-[var(--s-line)] pt-6">
@@ -40,7 +40,7 @@ export default function AboutPage() {
       </section>
       <section className="s-section border-t border-[var(--s-line)]" aria-labelledby="never">
         <div className="s-wrap grid gap-10 lg:grid-cols-2">
-          <h2 id="never" className="s-display s-h2 max-w-[14ch]">What Jarvis will never do.</h2>
+          <h2 id="never" className="s-display s-h2 max-w-[14ch]" data-reveal="words">What Jarvis will never do.</h2>
           <ul className="s-rise flex flex-col">
             {NEVER.map((n) => (
               <li key={n} className="flex items-start gap-4 border-t border-[var(--s-line)] py-5 text-[18px] text-[var(--s-ink)]">

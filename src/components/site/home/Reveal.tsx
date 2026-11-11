@@ -56,7 +56,7 @@ export function Reveal() {
           </h2>
           <div className="reveal-cta mt-10 flex flex-wrap items-center justify-center gap-3">
             <Magnetic strength={0.35}>
-              <Link href={CTA_HREF} className="s-btn s-btn-primary h-14! px-8! text-[16px]!" onClick={() => play("tick")}>
+              <Link href={CTA_HREF} className="s-btn s-btn-primary h-14! px-8! text-[16px]!">
                 {CTA_LABEL} <Arrow />
               </Link>
             </Magnetic>

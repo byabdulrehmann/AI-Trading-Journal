@@ -9,7 +9,6 @@ import type { SceneProgress } from "../CandleScene";
 import { Arrow, Magnetic, SCREENS } from "../parts";
 import { SceneMount } from "../SceneMount";
 import { useReducedMotion, useScroller } from "../scroll";
-import { useSound } from "../sound";
 
 /** Out-of-focus candles in the near plane: they cross the headline's edges, never its words. */
 function NearCandle({ className, up, h }: { className: string; up: boolean; h: number }) {
@@ -27,13 +26,15 @@ export function Hero() {
   const [progress] = useState<SceneProgress>(() => ({ current: 0 }));
   const reduced = useReducedMotion();
   const { scrollTo } = useScroller();
-  const { play } = useSound();
 
   useGSAP(
     () => {
       if (reduced) return;
       // The headline arrives line by line on load.
-      gsap.from(".hero-line", { yPercent: 60, opacity: 0, duration: 1.1, ease: "expo.out", stagger: 0.09, delay: 0.15 });
+      gsap.from(".hero-line", { yPercent: 60, opacity: 0, filter: "blur(10px)", duration: 1.2, ease: "expo.out", stagger: 0.1, delay: 0.15, clearProps: "filter" });
+      gsap.from(".hero-light", { opacity: 0, duration: 2.4, ease: "power2.out" });
+      // The product sliver drifts, as if it floats in the near plane.
+      gsap.to(".hero-float", { y: -12, rotateZ: -0.6, duration: 3.6, ease: "sine.inOut", repeat: -1, yoyo: true });
       gsap.from(".hero-after", { y: 20, opacity: 0, duration: 0.9, ease: "expo.out", delay: 0.55, stagger: 0.08 });
       const tl = gsap.timeline({
         scrollTrigger: { trigger: root.current, start: "top top", end: "bottom bottom", scrub: 0.6, onUpdate: (st) => (progress.current = st.progress) },
@@ -48,24 +49,37 @@ export function Hero() {
     { scope: root, dependencies: [reduced], revertOnUpdate: true },
   );
 
+  // Pointer depth: each plane shifts by its own amount, nearer planes more, and a soft light follows the pointer.
+  const onMove = (e: React.PointerEvent) => {
+    if (reduced || e.pointerType !== "mouse" || !root.current) return;
+    const s = root.current.style;
+    s.setProperty("--px", ((e.clientX / innerWidth) * 2 - 1).toFixed(3));
+    s.setProperty("--py", ((e.clientY / innerHeight) * 2 - 1).toFixed(3));
+    s.setProperty("--hx", `${e.clientX}px`);
+    s.setProperty("--hy", `${e.clientY}px`);
+  };
+
   return (
-    <section id="enter" data-sc-act="enter" ref={root} className="relative h-[170svh] motion-reduce:h-auto" aria-labelledby="hero-title">
+    <section id="enter" onPointerMove={onMove} data-sc-act="enter" ref={root} className="relative h-[170svh] motion-reduce:h-auto" aria-labelledby="hero-title">
       <div className="sticky top-0 h-[100svh] overflow-hidden motion-reduce:relative">
         <SceneMount mode="field" progress={progress} poster="/site/poster-field.webp" />
         {/* Atmosphere: a low violet rim from the left, the floor fading to ground. */}
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_15%_85%,rgb(140_130_255/0.16),transparent_60%),linear-gradient(180deg,rgb(7_8_13/0.55)_0%,transparent_28%,transparent_55%,rgb(7_8_13/0.9)_100%)]" />
 
-        <div className="hero-near-a pointer-events-none absolute inset-0 hidden md:block" aria-hidden>
+        <div aria-hidden className="hero-light pointer-events-none absolute inset-0 hidden bg-[radial-gradient(520px_circle_at_var(--hx,70%)_var(--hy,40%),rgb(140_130_255/0.10),transparent_65%)] lg:block" />
+        <div className="hero-near-a hero-depth pointer-events-none absolute inset-0 hidden md:block [--depth:22px]" aria-hidden>
           <NearCandle className="top-[18%] right-[30%] blur-[6px] opacity-60" up h={120} />
           <NearCandle className="top-[58%] right-[8%] blur-[10px] opacity-50" up={false} h={170} />
         </div>
-        <div className="hero-near-b pointer-events-none absolute inset-0 hidden md:block" aria-hidden>
+        <div className="hero-near-b hero-depth pointer-events-none absolute inset-0 hidden md:block [--depth:40px]" aria-hidden>
           <NearCandle className="top-[72%] left-[47%] blur-[14px] opacity-45" up h={220} />
         </div>
         {/* A sliver of the real product in the nearest plane, angled away. */}
         <div className="hero-sliver pointer-events-none absolute top-[62%] -right-[14vw] hidden w-[46vw] [transform:perspective(1400px)_rotateY(-22deg)_rotateX(6deg)] lg:block" aria-hidden>
-          <div className="s-frame opacity-80">
-            <Image src={SCREENS.kpis.src} width={SCREENS.kpis.w} height={SCREENS.kpis.h} alt="" unoptimized priority />
+          <div className="hero-depth [--depth:56px]">
+            <div className="hero-float s-frame opacity-80">
+              <Image src={SCREENS.kpis.src} width={SCREENS.kpis.w} height={SCREENS.kpis.h} alt="" unoptimized priority />
+            </div>
           </div>
         </div>
 
@@ -78,11 +92,11 @@ export function Hero() {
           <p className="hero-after s-lede mt-6">A smarter way to understand your trading performance, monitor your accounts and build a more disciplined trading process.</p>
           <div className="hero-after mt-8 flex flex-wrap items-center gap-3">
             <Magnetic>
-              <button type="button" className="s-btn s-btn-primary" onClick={() => (play("tick"), scrollTo("problem"))}>
+              <button type="button" className="s-btn s-btn-primary" onClick={() => scrollTo("problem")}>
                 Explore Jarvis <Arrow />
               </button>
             </Magnetic>
-            <Link href="/platform" className="s-btn s-btn-ghost" onClick={() => play("tick")}>Discover the platform</Link>
+            <Link href="/platform" className="s-btn s-btn-ghost">Discover the platform</Link>
           </div>
         </div>
         <div className="hero-shade pointer-events-none absolute inset-0 bg-[var(--s-canvas)] opacity-0" aria-hidden />

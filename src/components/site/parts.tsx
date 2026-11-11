@@ -45,7 +45,7 @@ export function Shot({ name, className, caption, priority, sizes = "(min-width: 
   };
   return (
     <figure className={cx("m-0", className)}>
-      <div ref={ref} className="s-frame" onPointerMove={onMove}>
+      <div ref={ref} className="s-frame s-unveil" onPointerMove={onMove}>
         <Image src={s.src} width={s.w} height={s.h} alt={s.alt} sizes={sizes} priority={priority} draggable={false} className="pointer-events-none select-none" unoptimized />
       </div>
       {caption !== false && <figcaption className="s-caption">{caption ?? SAMPLE_NOTE}</figcaption>}
@@ -156,7 +156,7 @@ export function SiteFooter() {
             <p className="s-label mb-3">{title as string}</p>
             <ul className="flex flex-col gap-2">
               {(links as string[][]).map(([href, label]) => (
-                <li key={href + label}><Link href={href} className="text-[14.5px] text-[var(--s-ink-soft)] no-underline transition-colors hover:text-[var(--s-ink)]">{label}</Link></li>
+                <li key={href + label}><Link href={href} className="s-link text-[14.5px]">{label}</Link></li>
               ))}
             </ul>
           </div>

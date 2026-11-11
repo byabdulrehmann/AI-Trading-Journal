@@ -31,7 +31,7 @@ export default function PlatformPage() {
 
       <section className="s-section pt-0" aria-labelledby="day">
         <div className="s-wrap">
-          <h2 id="day" className="s-display s-h2 max-w-[18ch]">How it fits a trading day.</h2>
+          <h2 id="day" className="s-display s-h2 max-w-[18ch]" data-reveal="words">How it fits a trading day.</h2>
           <ol className="mt-14 flex flex-col gap-20">
             {DAY.map(([title, body, shot], i) => (
               <li key={title} className={`s-rise grid items-center gap-10 lg:grid-cols-2 ${i % 2 ? "lg:[&>*:first-child]:order-2" : ""}`}>
@@ -49,7 +49,7 @@ export default function PlatformPage() {
       <section id="mt5" className="s-section scroll-mt-20 border-t border-[var(--s-line)]" aria-labelledby="mt5-h">
         <div className="s-wrap grid gap-12 lg:grid-cols-2">
           <div>
-            <h2 id="mt5-h" className="s-display s-h2">MT5, read-only.</h2>
+            <h2 id="mt5-h" className="s-display s-h2" data-reveal="words">MT5, read-only.</h2>
             <p className="s-lede mt-6">MetaTrader 5 gives every account two passwords. The trading password can place orders. The investor password can only look. Jarvis asks for the investor password and nothing else.</p>
           </div>
           <ol className="s-rise flex flex-col gap-6">
@@ -73,7 +73,7 @@ export default function PlatformPage() {
 
       <section id="private" className="s-section scroll-mt-20 border-t border-[var(--s-line)]" aria-labelledby="private-h">
         <div className="s-wrap grid gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-          <h2 id="private-h" className="s-display s-h2">Private and local.</h2>
+          <h2 id="private-h" className="s-display s-h2" data-reveal="words">Private and local.</h2>
           <div className="s-rise grid gap-8 sm:grid-cols-2">
             {[
               ["Your data stays with you", "Trades, notes, screenshots and settings live in a database file on your computer. There is no Jarvis server holding them."],
@@ -92,7 +92,7 @@ export default function PlatformPage() {
 
       <section id="technology" className="s-section scroll-mt-20 border-t border-[var(--s-line)]" aria-labelledby="tech-h">
         <div className="s-wrap">
-          <h2 id="tech-h" className="s-display s-h2 max-w-[16ch]">What it is built with.</h2>
+          <h2 id="tech-h" className="s-display s-h2 max-w-[16ch]" data-reveal="words">What it is built with.</h2>
           <dl className="s-rise mt-14 grid gap-px overflow-hidden rounded-[var(--s-radius-lg)] border border-[var(--s-line)] bg-[var(--s-line)] md:grid-cols-2 lg:grid-cols-3">
             {STACK.map(([k, v]) => (
               <div key={k} className="bg-[var(--s-canvas)] p-7">

@@ -47,7 +47,7 @@ export function Problem() {
     >
       <div className="s-wrap grid gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-20">
         <div className="lg:sticky lg:top-[22vh] lg:self-start">
-          <h2 id="problem-title" className="s-display s-h2">Your trading is spread across your week.</h2>
+          <h2 id="problem-title" className="s-display s-h2" data-reveal="words">Your trading is spread across your week.</h2>
           <p className="s-lede mt-6">Your memory keeps the best parts. The rest decides your results.</p>
         </div>
         <ol className="flex flex-col">
@@ -95,7 +95,7 @@ export function Introducing() {
     <section id="introducing" data-sc-act="introducing" ref={root} className="relative py-[clamp(140px,24vh,280px)]" aria-labelledby="intro-title">
       <div className="s-wrap">
         <div className="intro-statement text-right">
-          <h2 id="intro-title" className="s-display s-h2 ml-auto max-w-[18ch]">Jarvis gathers it into one record, and reads it for you.</h2>
+          <h2 id="intro-title" className="s-display s-h2 ml-auto max-w-[18ch]" data-reveal="words">Jarvis gathers it into one record, and reads it for you.</h2>
         </div>
         <div className="intro-flow relative mt-24">
           <svg className="absolute top-[22px] left-0 hidden h-[2px] w-full lg:block" viewBox="0 0 100 2" preserveAspectRatio="none" aria-hidden>
@@ -140,7 +140,7 @@ export function Mt5() {
     <section id="mt5" data-sc-act="mt5" ref={root} className="s-section" aria-labelledby="mt5-title">
       <div className="s-wrap grid items-center gap-14 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
         <div>
-          <h2 id="mt5-title" className="s-display s-h2">Your MT5 account, read-only.</h2>
+          <h2 id="mt5-title" className="s-display s-h2" data-reveal="words">Your MT5 account, read-only.</h2>
           <p className="s-lede mt-6">Connect with your account&apos;s investor password. It can read your history and positions. It cannot trade, and Jarvis never asks for your trading password.</p>
           <div className="mt-10 grid gap-8 sm:grid-cols-2">
             <div>
@@ -239,7 +239,7 @@ export function Analytics() {
     <section id="analytics" data-sc-act="analytics" ref={root} className="relative" aria-labelledby="analytics-title">
       <div className="rail-pin flex min-h-[100svh] flex-col justify-center overflow-hidden py-[88px]">
         <div className="s-wrap">
-          <h2 id="analytics-title" className="s-display s-h2 max-w-[18ch]">Every figure, from your own closed trades.</h2>
+          <h2 id="analytics-title" className="s-display s-h2 max-w-[18ch]" data-reveal="words">Every figure, from your own closed trades.</h2>
         </div>
         <div className="mt-10 overflow-x-auto [scrollbar-width:none] max-lg:snap-x max-lg:snap-mandatory lg:overflow-visible" tabIndex={0} aria-label="Analytics screens, scroll sideways">
           <ol className="rail-track flex w-max gap-6 px-[var(--s-gutter)] will-change-transform">
@@ -370,7 +370,7 @@ export function Next() {
     <section id="next" data-sc-act="next" ref={root} className="s-section" aria-labelledby="next-title">
       <div className="s-wrap grid gap-12 lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)]">
         <div className="lg:sticky lg:top-[20vh] lg:self-start">
-          <h2 id="next-title" className="s-display s-h2">Practice, review, and what is still being built.</h2>
+          <h2 id="next-title" className="s-display s-h2" data-reveal="words">Practice, review, and what is still being built.</h2>
           <p className="s-lede mt-6">Everything here is marked: in Jarvis today, or in development.</p>
           <Link href="/features" className="s-btn s-btn-ghost mt-8">See every feature</Link>
         </div>

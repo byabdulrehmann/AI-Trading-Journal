@@ -90,3 +90,24 @@ guarded("early-access requests are rate limited", async ({ request }) => {
   for (let i = 0; i < 10 && status !== 429; i++) status = (await request.post("/api/early-access", { data: { name: "Flood", email: uniqueEmail("flood") } })).status();
   expect(status).toBe(429);
 });
+
+guarded("the cursor follower grows over links, never takes clicks, and stays off touch screens", async ({ page, browser }) => {
+  await page.goto("/about");
+  const cursor = page.getByTestId("site-cursor");
+  await expect(cursor).toHaveCount(1);
+  expect(await cursor.evaluate((el) => getComputedStyle(el).pointerEvents)).toBe("none");
+  const link = page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Contact", exact: true });
+  const box = (await link.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 5 });
+  await expect(cursor).toHaveAttribute("data-state", "link");
+  // A click lands on the link underneath, not on the follower.
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page).toHaveURL(/\/contact$/);
+
+  const touch = await browser.newContext({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+  const phone = await touch.newPage();
+  await phone.goto(new URL("/about", page.url()).href);
+  await expect(phone.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(phone.getByTestId("site-cursor")).toHaveCount(0);
+  await touch.close();
+});

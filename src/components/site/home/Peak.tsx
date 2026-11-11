@@ -80,7 +80,9 @@ export function Peak() {
             scrub: 0.7,
             invalidateOnRefresh: true,
             onUpdate: (st) => {
-              if (st.progress > 0.42 && st.direction === 1) play("reveal");
+              if (st.direction !== 1) return;
+              if (st.progress > 0.42) play("reveal");
+              if (st.progress > 0.66) play("data");
             },
           },
         });

@@ -141,6 +141,16 @@ html:has(.site) { background: #07080d; color-scheme: dark; }
 @media (hover: hover) and (pointer: fine) {
   .s-frame:hover::after { opacity: 1; }
 }
+/* The screen leans in a touch under a fine pointer. */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .s-frame img { transition: transform 700ms var(--s-ease-out); }
+  .s-frame:hover img { transform: scale(1.02); }
+}
+
+/* Text links: an underline that draws in from the left. */
+.s-link { color: var(--s-ink-soft); text-decoration: none; background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat; transition: color var(--s-dur-fast) var(--s-ease-out), background-size var(--s-dur) var(--s-ease-out); }
+.s-link:hover, .s-link:focus-visible { color: var(--s-ink); background-size: 100% 1px; }
+
 .s-caption { margin-top: 12px; font-size: 13px; color: var(--s-muted); }
 
 /* ---------- chips ---------- */
@@ -183,10 +193,13 @@ textarea.s-input { height: auto; min-height: 120px; padding-block: 12px; resize:
 /* ---------- entrances ---------- */
 @keyframes site-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes site-rise { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
+@keyframes site-unveil { from { clip-path: inset(18% 8% 18% 8% round 24px); } to { clip-path: inset(0 0 0 0 round 16px); } }
 /* Native scroll timelines for the inner pages: visible by default, animated only where supported and wanted. */
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
     .s-rise { animation: site-rise linear both; animation-timeline: view(); animation-range: entry 0% entry 45%; }
+    /* Product screens open out of a mask as they arrive. */
+    .s-unveil { animation: site-unveil linear both; animation-timeline: view(); animation-range: entry 0% cover 35%; }
   }
 }
 
@@ -194,3 +207,25 @@ textarea.s-input { height: auto; min-height: 120px; padding-block: 12px; resize:
 @media (prefers-reduced-motion: reduce) {
   .site *, .site *::before, .site *::after { scroll-behavior: auto !important; }
 }
+
+/* ---------- cursor follower (fine pointers only; mounted by Cursor.tsx) ---------- */
+.s-cursor { position: fixed; inset: 0; z-index: 90; pointer-events: none; opacity: 0; transition: opacity var(--s-dur) var(--s-ease-out); }
+.s-cursor[data-visible] { opacity: 1; }
+.s-cursor-dot, .s-cursor-ring { position: fixed; top: 0; left: 0; will-change: transform; }
+.s-cursor-dot span, .s-cursor-ring span { display: block; border-radius: 999px; transition: transform 280ms var(--s-ease-out), opacity var(--s-dur) var(--s-ease-out), background-color var(--s-dur) var(--s-ease-out), border-color var(--s-dur) var(--s-ease-out); }
+.s-cursor-dot span { width: 8px; height: 8px; background: var(--s-accent-strong); box-shadow: 0 0 12px rgb(164 156 255 / 0.7); }
+.s-cursor-ring span { width: 36px; height: 36px; border: 1px solid rgb(214 220 255 / 0.28); background: transparent; }
+.s-cursor[data-state="link"] .s-cursor-ring span { transform: scale(1.5); border-color: rgb(164 156 255 / 0.7); background: rgb(140 130 255 / 0.06); }
+.s-cursor[data-state="link"] .s-cursor-dot span { transform: scale(0.5); }
+.s-cursor[data-state="cta"] .s-cursor-ring span { transform: scale(2.1); border-color: transparent; background: rgb(140 130 255 / 0.16); }
+.s-cursor[data-state="cta"] .s-cursor-dot span { transform: scale(0); }
+.s-cursor[data-state="text"] .s-cursor-dot span, .s-cursor[data-state="text"] .s-cursor-ring span { opacity: 0; }
+.s-cursor[data-down] .s-cursor-ring span { transform: scale(0.8); transition-duration: 120ms; }
+.s-cursor[data-down][data-state="link"] .s-cursor-ring span { transform: scale(1.2); }
+.s-cursor[data-down][data-state="cta"] .s-cursor-ring span { transform: scale(1.7); }
+@media (prefers-reduced-motion: reduce) { .s-cursor { display: none; } }
+@media (forced-colors: active) { .s-cursor { display: none; } }
+
+/* Hero pointer depth: a plane shifts by its --depth against the pointer, using `translate` so scroll transforms stay untouched. */
+.hero-depth { translate: calc(var(--px, 0) * var(--depth, 0px) * -1) calc(var(--py, 0) * var(--depth, 0px) * -0.6); transition: translate 900ms var(--s-ease-out); }
+@media (prefers-reduced-motion: reduce) { .hero-depth { translate: none; } }

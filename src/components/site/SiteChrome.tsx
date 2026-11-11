@@ -1,8 +1,10 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { Cursor } from "./Cursor";
 import { SiteFooter } from "./parts";
 import { SiteNav } from "./SiteNav";
+import { WordReveals } from "./reveals";
 import { SmoothScroll } from "./scroll";
 import { SoundProvider } from "./sound";
 
@@ -27,6 +29,8 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         <main id="site-main" tabIndex={-1} className="outline-none">{children}</main>
         <SiteFooter />
         <div className="site-grain" aria-hidden />
+        <Cursor />
+        <WordReveals />
       </SmoothScroll>
     </SoundProvider>
   );

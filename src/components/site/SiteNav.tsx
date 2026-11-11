@@ -70,7 +70,7 @@ export function SoundControl({ compact }: { compact?: boolean }) {
         aria-label={enabled ? "Sound on. Turn sound off" : "Sound off. Turn sound on"}
         onClick={() => {
           setEnabled(!enabled);
-          if (!enabled) setTimeout(() => play("tick"), 60);
+          if (!enabled) setTimeout(() => play("power"), 60);
         }}
         className={cx("grid size-10 place-items-center rounded-full border transition-colors", enabled ? "border-[var(--s-accent)] text-[var(--s-accent-strong)]" : "border-[var(--s-line-strong)] text-[var(--s-ink-soft)] hover:text-[var(--s-ink)]")}
       >
@@ -86,11 +86,16 @@ export function SoundControl({ compact }: { compact?: boolean }) {
   );
 }
 
-function PlatformMenu({ active }: { active: boolean }) {
+/** A soft pill that slides between nav items as the pointer moves across them. */
+function HoverPill() {
+  const reduced = useReducedMotion();
+  return <motion.span layoutId="nav-hover" aria-hidden className="absolute inset-y-1 inset-x-0 -z-10 rounded-full bg-[rgb(255_255_255/0.06)]" transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 42 }} />;
+}
+
+function PlatformMenu({ active, hovered, onHover }: { active: boolean; hovered: boolean; onHover: () => void }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLLIElement>(null);
   const id = useId();
-  const { play } = useSound();
   useEffect(() => {
     if (!open) return;
     const away = (e: PointerEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
@@ -107,17 +112,18 @@ function PlatformMenu({ active }: { active: boolean }) {
     };
   }, [open]);
   return (
-    <li ref={box} className="relative" onMouseEnter={() => matchMedia("(hover: hover)").matches && setOpen(true)} onMouseLeave={() => matchMedia("(hover: hover)").matches && setOpen(false)}>
-      <button type="button" aria-expanded={open} aria-controls={id} onClick={() => setOpen((o) => !o)} className={cx("relative flex h-10 items-center gap-1.5 px-3 text-[14.5px] transition-colors", active || open ? "text-[var(--s-ink)]" : "text-[var(--s-ink-soft)] hover:text-[var(--s-ink)]")}>
+    <li ref={box} className="relative" onMouseEnter={() => (onHover(), matchMedia("(hover: hover)").matches && setOpen(true))} onMouseLeave={() => matchMedia("(hover: hover)").matches && setOpen(false)}>
+      <button type="button" aria-expanded={open} aria-controls={id} onClick={() => setOpen((o) => !o)} className={cx("relative isolate flex h-10 items-center gap-1.5 px-3 text-[14.5px] transition-colors", active || open ? "text-[var(--s-ink)]" : "text-[var(--s-ink-soft)] hover:text-[var(--s-ink)]")}>
         Platform
         <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden className={cx("transition-transform duration-200", open && "rotate-180")}><path d="M1.5 3.5L5 7l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>
         {active && <motion.span layoutId="nav-indicator" className="absolute inset-x-3 -bottom-0.5 h-px bg-[var(--s-accent-strong)]" />}
+        {hovered && <HoverPill />}
       </button>
       <div id={id} hidden={!open} className="absolute top-full left-0 pt-2">
         <ul className="w-[300px] rounded-[var(--s-radius-lg)] border border-[var(--s-line-strong)] bg-[var(--s-surface)] p-2 shadow-[var(--s-shadow-2)]">
           {PLATFORM.map((l) => (
             <li key={l.href}>
-              <Link href={l.href} onClick={() => (setOpen(false), play("tick"))} className="block rounded-[var(--s-radius)] px-3 py-2.5 no-underline transition-colors hover:bg-[var(--s-raised)]">
+              <Link href={l.href} onClick={() => setOpen(false)} className="block rounded-[var(--s-radius)] px-3 py-2.5 no-underline transition-colors hover:bg-[var(--s-raised)]">
                 <span className="block text-[14.5px] font-medium text-[var(--s-ink)]">{l.label}</span>
                 <span className="block text-[13px] text-[var(--s-muted)]">{l.note}</span>
               </Link>
@@ -132,15 +138,18 @@ function PlatformMenu({ active }: { active: boolean }) {
 export function SiteNav({ chapters }: { chapters?: { id: string; label: string }[] }) {
   const pathname = usePathname();
   const reduced = useReducedMotion();
-  const { play } = useSound();
   const [scrolled, setScrolled] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [menu, setMenu] = useState(false);
+  const [hover, setHover] = useState<string | null>(null);
   const last = useRef(0);
+  const bar = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onScroll = () => {
       const y = window.scrollY;
+      // How far through the page: a hairline under the bar.
+      bar.current?.style.setProperty("transform", `scaleX(${Math.min(1, y / Math.max(1, document.documentElement.scrollHeight - innerHeight))})`);
       setScrolled(y > 24);
       // Steps aside while the visitor reads downward, returns the moment they scroll up.
       setHidden(y > 640 && y > last.current + 4 && !menu);
@@ -177,13 +186,14 @@ export function SiteNav({ chapters }: { chapters?: { id: string; label: string }
       <nav aria-label="Main" className="s-wrap flex h-[72px] items-center gap-4">
         <Wordmark />
         <LayoutGroup>
-          <ul className="ml-6 hidden items-center lg:flex">
-            <PlatformMenu active={pathname === "/platform"} />
+          <ul className="ml-6 hidden items-center lg:flex" onMouseLeave={() => setHover(null)}>
+            <PlatformMenu active={pathname === "/platform"} hovered={hover === "/platform"} onHover={() => setHover("/platform")} />
             {LINKS.map((l) => (
-              <li key={l.href}>
-                <Link href={l.href} onClick={() => play("tick")} aria-current={isActive(l.href) ? "page" : undefined} className={cx("relative flex h-10 items-center px-3 text-[14.5px] no-underline transition-colors", isActive(l.href) ? "text-[var(--s-ink)]" : "text-[var(--s-ink-soft)] hover:text-[var(--s-ink)]")}>
+              <li key={l.href} onMouseEnter={() => setHover(l.href)}>
+                <Link href={l.href} aria-current={isActive(l.href) ? "page" : undefined} className={cx("relative isolate flex h-10 items-center px-3 text-[14.5px] no-underline transition-colors", isActive(l.href) ? "text-[var(--s-ink)]" : "text-[var(--s-ink-soft)] hover:text-[var(--s-ink)]")}>
                   {l.label}
                   {isActive(l.href) && <motion.span layoutId="nav-indicator" className="absolute inset-x-3 -bottom-0.5 h-px bg-[var(--s-accent-strong)]" />}
+                  {hover === l.href && <HoverPill />}
                 </Link>
               </li>
             ))}
@@ -192,7 +202,7 @@ export function SiteNav({ chapters }: { chapters?: { id: string; label: string }
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
           <span className="hidden sm:block"><SoundControl /></span>
           <Link href="/login" className="hidden h-10 items-center px-3 text-[14.5px] text-[var(--s-ink-soft)] no-underline transition-colors hover:text-[var(--s-ink)] md:flex">Sign in</Link>
-          <Link href={CTA_HREF} onClick={() => play("tick")} className="s-btn s-btn-primary hidden h-10! px-5! text-[14px]! sm:inline-flex">{CTA_LABEL}</Link>
+          <Link href={CTA_HREF} className="s-btn s-btn-primary hidden h-10! px-5! text-[14px]! sm:inline-flex">{CTA_LABEL}</Link>
           <button type="button" className="grid size-10 place-items-center rounded-full border border-[var(--s-line-strong)] text-[var(--s-ink)] lg:hidden" aria-expanded={menu} aria-controls="site-menu" aria-label={menu ? "Close menu" : "Open menu"} onClick={() => setMenu((m) => !m)}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>{menu ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 8h16M4 16h16" />}</svg>
           </button>
@@ -228,6 +238,7 @@ export function SiteNav({ chapters }: { chapters?: { id: string; label: string }
           </div>
         </div>
       </div>
+      <div ref={bar} aria-hidden className="absolute inset-x-0 -bottom-px h-px origin-left scale-x-0 bg-[linear-gradient(90deg,transparent,var(--s-accent-strong))]" />
     </header>
   );
 }
