@@ -1,4 +1,4 @@
-/* Jarvis look: the glass studio (frosted cards, soft controls, steel-blue accent). Layout follows docs/dashboard-visual-spec.md. */
+/* Jarvis look: the glass studio (frosted cards, soft controls, steel-blue accent). */
 @import "tailwindcss";
 @import "./tokens.css" layer(theme);
 @import "./base.css" layer(base);

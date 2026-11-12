@@ -1,6 +1,6 @@
 # Trading conventions
 
-How Jarvis should treat the awkward cases. These are judgment calls for a single-user forex and gold journal, not an industry standard. MT5 facts come from the sources in `.claude/skills/trading-domain/SKILL.md`. Formulas and worked numbers are in `src/lib/domain/engine/vectors.json`.
+How Jarvis should treat the awkward cases. These are judgment calls for a single-user forex and gold journal, not an industry standard. MT5 facts come from MetaQuotes' MQL5 documentation. Formulas and worked numbers are in `src/lib/domain/engine/vectors.json`.
 
 **Rule behind all of them:** never turn "unknown" into 0. A missing value stays null and is flagged, so statistics stay honest.
 
@@ -116,7 +116,7 @@ Firms word their rules differently. Jarvis reads them this way, and the Progress
 
 ## Dashboard
 
-The layout follows `docs/dashboard-visual-spec.md`. The score's method is in `docs/performance-score.md`.
+The score's method is in `docs/performance-score.md`.
 
 - **Realized vs live:** the KPIs, score, both charts and the calendar count closed trades only. Floating P&L appears only in Open positions, which is labelled as live account data.
 - **Open positions:** MT5 accounts show the positions from their last sync, marked stale with the sync time when the sync is old or failed. Accounts entered by hand show their open trades with "Price unavailable": Jarvis never makes up a price.
@@ -124,45 +124,6 @@ The layout follows `docs/dashboard-visual-spec.md`. The score's method is in `do
 - **Date range** filters by open time, as on every other page. The charts and calendar place trades by close date, so a multi-day trade can sit just outside a chosen range.
 - **Currencies** are never added together: the currency chip picks the one the totals are in, and positions in another currency are counted aside.
 - **Kept per browser:** the sidebar's collapsed state, the calendar's month and display options, the trades card's tab and position columns. Filters stay in the URL.
-
-## Feature checklist
-
-From the public pages https://www.tradezella.com/ and https://www.tradezella.com/features, both fetched successfully, functionality only and in my own wording. These are marketing-level claims: nothing was tested in the product.
-
-**Offered there**
-
-- [ ] Broker sync, file upload, manual entry, multiple accounts
-- [ ] Dashboard, calendar view, advanced filters, running P&L chart
-- [ ] Win rate, expectancy, R-multiple, best and worst day, strengths and weaknesses reports
-- [ ] Setup and mistake tags, trade ratings, habit tracking
-- [ ] Notes, screenshots, journal templates, notebook linked to stats
-- [ ] Playbooks: strategy rules and per-strategy performance
-- [ ] Trade replay with fills on the chart
-- [x] Backtesting
-- [ ] AI pattern and behaviour insights
-- [x] Prop firm rule tracking (daily drawdown, profit target, consistency)
-- [ ] Sharing and mentor spaces
-
-Likely out of scope for a local single-user app: community spaces, mentor mode, tick-level replay data.
-
-**What a naive journal gets wrong, and a serious one needs**
-
-These are my judgment, not claims about any product.
-
-- [ ] Trades built from deals by position identifier, including reversals
-- [ ] Partial fills, scale-ins, and partial exits
-- [ ] Per-broker symbol specs snapshotted with each trade
-- [ ] Net of commission and swap, with unknown fees kept distinct from zero
-- [ ] Initial stop preserved separately from a trailed stop
-- [ ] Conversion to account currency with the rate stored
-- [ ] R coverage shown alongside average R
-- [ ] Idempotent re-import, so that resyncing does not duplicate deals
-- [ ] Reconciliation of trades against the account balance
-- [ ] Session and time statistics that handle DST and the broker timezone
-- [ ] Deposits and withdrawals kept out of performance figures
-- [ ] Filters for symbol, session, side, setup, and hold time on every statistic
-- [ ] Per-setup expectancy, not only win rate
-- [ ] Daily loss and overtrading views
 
 ## Tested on this machine: don't copy MT5 servers.dat
 

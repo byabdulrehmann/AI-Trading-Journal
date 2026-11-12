@@ -22,7 +22,7 @@ interface NavItem {
   badge?: string;
 }
 
-/** Grouped as in docs/dashboard-visual-spec.md. A null href is a module that isn't built: shown, marked, never a link. */
+/** Navigation groups. A null href is a module that isn't built: shown, marked, never a link. */
 const GROUPS: NavItem[][] = [
   [
     { href: "/", label: "Dashboard", icon: ICONS.dashboard },

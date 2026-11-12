@@ -101,7 +101,7 @@ components:
 
 # Design System: Jarvis
 
-The tokens above are the pearl (light) theme, the default. The source of truth is `src/app/tokens.css`; this file describes it. When the two disagree, the CSS wins: update this file, never the other way round. The dashboard layout is specified in `docs/dashboard-visual-spec.md`.
+The tokens above are the pearl (light) theme, the default. The source of truth is `src/app/tokens.css`; this file describes it. When the two disagree, the CSS wins: update this file, never the other way round.
 
 ## Overview
 
@@ -138,7 +138,7 @@ Geist at 400, 500 and 600 for everything people read and every figure (tabular, 
 ## Layout
 
 - Sidebar 196px (56px collapsed), top bar 62px, content inset 22px, cards 21px apart.
-- The dashboard is a fixed composition: a status row, five KPI cards, three analytics cards, then trades and the month calendar. See `docs/dashboard-visual-spec.md`.
+- The dashboard is a fixed composition: a status row, five KPI cards, three analytics cards, then trades and the month calendar.
 - Components size from their own width (container queries) where the sidebar can squeeze them, not from the window.
 - Everything works from 320px to 1920px; `e2e/responsive.spec.ts` fails if anything leaves the screen or its card.
 

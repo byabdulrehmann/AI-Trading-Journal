@@ -2,7 +2,6 @@
  * Jarvis marketing site: an instrument cut from liquid glass. A pearl studio (obsidian at night), frosted glass panels
  * with a specular rim and a sheen that follows the pointer, soft neumorphic controls that press in, and hyperreal glass
  * candles in the 3D scenes. Scoped under .site so the journal's own tokens never change.
- * Direction: .impeccable/surfaces/src-app-site.md.
  */
 html:has(.site) { background: #e6e9ee; color-scheme: light; }
 html[data-site-theme="dark"]:has(.site) { background: #0b0d12; color-scheme: dark; }

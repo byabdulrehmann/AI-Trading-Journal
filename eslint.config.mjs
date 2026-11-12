@@ -13,8 +13,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Vendored agent skills (third-party scripts), not this app's code.
-    ".claude/**",
+    // Local, untracked tooling folders.
+    ".*/**",
   ]),
 ]);
 

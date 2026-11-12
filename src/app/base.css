@@ -1,4 +1,4 @@
-/* Hallmark · base: what the Floor decides. Imported in Tailwind's base layer, so utilities still win. */
+/* Base element styles. Imported in Tailwind's base layer, so utilities still win. */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { overflow-x: clip; }
 html { scrollbar-color: var(--line-strong) var(--canvas); scroll-padding-top: var(--space-xl); }

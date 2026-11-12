@@ -1,166 +1,128 @@
-# Jarvis
+# Jarvis — Trading Journal
 
-A local-first trading journal with a reflective AI companion, **Trading Jarvis**.
-Log or import trades, see analytics with their formulas, spot behavioural patterns
-backed by evidence, and talk them through with Jarvis.
+A private, local-first trading journal and performance platform for MetaTrader 5 traders.
+Jarvis gathers every trade into one record (MT5 sync, file import or manual entry), computes
+honest statistics from it, and gives the trader the tools to review, plan and improve:
+analytics, a P&L calendar, playbooks, a notebook, backtesting, trade replay, prop-challenge
+tracking and an AI coach that works only from the trader's own records.
 
-Jarvis is an educational journaling tool. It never places trades and does not
-give financial, investment or psychological advice.
+Everything runs on the trader's own computer. There is no cloud service and no external
+database; the journal lives in a single SQLite file.
 
-## Run it locally
+![Dashboard](docs/screenshots/dashboard-light.png)
 
-Requirements: **Node.js 24.22.1+ or 26.12.1+** (uses the built-in `node:sqlite`) and npm.
+<details>
+<summary>More screens</summary>
 
-```bash
-npm install
-cp .env.example .env.local   # optional: add ANTHROPIC_API_KEY for Jarvis
-npm run dev                  # http://localhost:3000
-```
+| | |
+|---|---|
+| ![Dashboard, dark theme](docs/screenshots/dashboard-dark.png) | ![Analytics](docs/screenshots/analytics.png) |
+| ![Trade journal](docs/screenshots/journal.png) | ![P&L calendar](docs/screenshots/calendar.png) |
 
-Production build: `npm run build && npm start`.
+</details>
 
-Tests: `npm test` covers profit, CSV import, partial updates and currency totals
-(`src/lib/domain/domain.test.ts`, Node's built-in runner, no extra dependencies).
+## Features
 
-First run: the Overview offers three starts — log a trade, import a CSV, or load
-the sample journal (65 trades, clearly badged "Sample", removable in Settings).
+**Journal**
+- Trade log with sortable columns, saved views, bulk actions and CSV export
+- Import from CSV or Excel with column mapping, explicit number and date formats, and duplicate detection
+- Read-only MetaTrader 5 sync through a broker-issued investor login
+- Daily journal, notebook with folders, templates, links and version history, and attachments
 
-## Stack and structure
+**Analysis**
+- Dashboard with KPI cards, cumulative P&L, a month calendar and a 0–100 performance score
+- Reports: wins and losses, risk, R-multiples, MAE / MFE, and side-by-side comparisons
+- Behavioural pattern detection with sample-size gates and linked evidence
+- Price charts with trade markers, plus trade and day replay
 
-Next.js 16 (App Router) · React 19 · Tailwind CSS v4 · TypeScript · Zod · SQLite (`node:sqlite`) · `@anthropic-ai/sdk`.
-The repository was empty, so this stack keeps everything in one process with no
-external database to install, while leaving room for auth and hosting later.
+**Process**
+- Playbooks with rules, checklists, adherence tracking and missed trades
+- Backtesting sessions on historical broker prices
+- Prop-firm challenge tracking with rule-breach alerts
+- Routines, streaks, goals, spending, economic calendar and periodic reviews
+
+**AI coach**
+- Reflective coaching chat grounded in the trader's own statistics, citing trades as `[#id]`
+- Pluggable model providers (Anthropic, plus an offline demo mode) with model discovery and in-chat switching
+- User-controlled memory and a privacy setting that decides exactly what is shared with a provider
+- Never gives buy or sell instructions and never places trades
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router), React 19, TypeScript |
+| Styling | Tailwind CSS v4 with a token-based design system, light and dark themes |
+| Data | SQLite through Node's built-in `node:sqlite`, versioned migrations |
+| Validation | Zod at every API boundary |
+| Charts | Lightweight Charts, custom SVG charts |
+| AI | Anthropic SDK behind a provider interface |
+| Broker | Python service using the `MetaTrader5` package (read-only) |
+| Marketing site | GSAP, Lenis, Motion, Three.js / React Three Fiber |
+| Testing | Node test runner (unit and integration), Playwright (end-to-end) |
+
+## Architecture
 
 ```
 src/
-  app/                 pages (client components) and api/ route handlers
-  components/          UI: shell, primitives, charts, journal, jarvis
-  lib/domain/          pure logic: types + validation, P&L/R math, metrics, patterns, CSV
-  lib/server/db.ts     SQLite connection + versioned migrations
-  lib/server/repo/     persistence (journal, settings, jarvis, activity)
-  lib/server/market/   MarketDataProvider interface + demo adapter
-  lib/server/ai/       JarvisProvider interface, registry, context builder, prompt, providers
-  lib/client/          fetch helpers, formatting, app state
-docs/FEATURE_MATRIX.md feature checklist vs. the reference product
+  app/                  pages (App Router) and api/ route handlers
+  components/           UI: shell, design-system primitives, dashboard, charts, journal, coach
+  lib/domain/           pure logic: types, P&L and R maths, metrics, patterns, score
+  lib/server/           database, migrations, repositories, auth, import, backups
+  lib/server/ai/        provider interface, registry, context builder, prompts
+  lib/server/mt5/       MT5 client, encrypted credential storage, sync
+services/mt5/           read-only Python bridge to a dedicated MT5 terminal
+e2e/                    Playwright end-to-end tests
 ```
 
-## Data storage
+- **Derived, not stored.** P&L, R and every statistic are computed on read from the raw
+  executions, so a corrected trade updates every figure at once.
+- **Unknown stays unknown.** Missing fees, stops or prices are kept as `null` and flagged,
+  never turned into zero. The rules for awkward cases are in [`docs/TRADING_CONVENTIONS.md`](docs/TRADING_CONVENTIONS.md),
+  and the performance score is documented in [`docs/performance-score.md`](docs/performance-score.md).
+- **Currencies are never mixed.** Totals cover one account currency at a time.
+- **Providers are swappable.** AI and market data sit behind interfaces
+  (`src/lib/server/ai/types.ts`, `src/lib/server/market/types.ts`); adding one needs no UI changes.
 
-- One SQLite file: `data/kestrel.db` (override with `KESTREL_DB_PATH`). Ignored by git.
-- Schema is created by append-only migrations in `src/lib/server/db.ts`; applied
-  versions are recorded in `schema_migrations`.
-- Tables: `accounts`, `trades` (soft-delete for undo, permanently removed after 30 days, `source` = manual/csv/sample,
-  `import_batch` for undoing imports), `settings` (one JSON row), `jarvis_memories`,
-  `jarvis_conversations`, `jarvis_messages`, `activity_log`.
-- P&L, R multiple and planned R are derived on read, never stored:
-  P&L = (exit − entry) × direction × size × multiplier − fees; R = P&L ÷ (|entry − stop| × size × multiplier).
-- Settings → Your data: export everything as JSON, remove sample data, or delete all data
-  (requires typing `DELETE`).
+## Security and privacy
 
-Jarvis has local accounts: the first one created owns the existing data, and anyone who can
-reach this computer can sign up for their own private journal at `/signup`. Jarvis can't send
-email, so each account gets a one-time recovery code at sign-up (a new one from Settings →
-Recovery code) and `/forgot-password` resets the password with it. `npm run dev` and `npm start`
-listen on `127.0.0.1` only, and `src/proxy.ts` answers only on a loopback host and refuses
-changes sent by other sites. It isn't built for a network: there's no HTTPS, and loosening
-these checks would expose your journal and your MT5 connection. Anyone who can
-read your Windows profile can read your data; the investor password's key is kept in
-`%LOCALAPPDATA%\Jarvis`, apart from the database, so a copied project folder doesn't carry it.
+- Local accounts with scrypt-hashed passwords, constant-time comparison, a login rate limit
+  and one-time recovery codes
+- Per-user data isolation on every query, verified by cross-user end-to-end tests
+- HTTP-only, same-site session cookies; a strict Content-Security-Policy; requests from other
+  sites and non-loopback hosts are refused before any route runs
+- MT5 investor passwords encrypted with AES-256-GCM, with the key stored apart from the database
+- The MT5 bridge contains no trading calls and only ever attaches to its own dedicated terminal
+- API keys stay on the server; chat content and notes are never logged
 
-CSV import: choose a number format and a date format if the file needs them. Rows
-that could be read two ways (`1,085`, `03/10/2026`) stay out of the import until you
-do. For files that give size in lots or contracts, map a contract size column or enter
-a contract size per symbol; check the Net P&L in the preview before importing. Rows the
-account already holds (same symbol, side, open time, entry and size) are skipped, so
-overlapping exports are safe; identical rows within one file are kept as partial fills.
-A swap column counts credits as positive, so fees can go negative.
+## Getting started
 
-Accounts in different currencies are never added together: Overview, Analytics,
-Patterns and Jarvis's totals cover one currency at a time, with a picker when you have more
-than one. If `npm run dev` keeps reloading the page after code changes, restart it.
+Requirements: Node.js 24.22.1+ (for `node:sqlite`) and npm. MT5 sync additionally needs
+Windows, Python 3 and the `MetaTrader5` package.
 
-## Trading Jarvis
+```bash
+npm install
+cp .env.example .env.local   # optional: add ANTHROPIC_API_KEY for the AI coach
+npm run dev                  # http://127.0.0.1:3000
+```
 
-### Providers and models
+Production build: `npm run build && npm start`. The first account created owns the
+installation; a sample journal can be loaded from the dashboard and removed in Settings.
 
-| Provider | Status | Needs |
-|---|---|---|
-| Demo mode | Always available, offline | Nothing. Replies are fixed templates filled from your own computed records. |
-| Anthropic (Claude) | Wired; streaming, cancellation, 60 s per-attempt timeout, 2 retries, 120 s overall cap | `ANTHROPIC_API_KEY` in `.env.local`, then restart |
+## Testing
 
-- Models are **discovered** from the provider's Models API (cached 10 min); Jarvis
-  only offers models the key can actually see. Default: `claude-opus-5-5`
-  (override with `KESTREL_ANTHROPIC_MODEL`). Server-side refusal fallbacks are
-  enabled for models that support them.
-- Switch in **Jarvis → Model**, or in chat: `/models`, `/model <id>`,
-  "switch to sonnet", "switch to demo". A switch is validated against the
-  discovered list; if the provider isn't configured or the model isn't available,
-  Jarvis says why and keeps the current model. If an external provider fails
-  mid-chat, a demo-mode reply is shown instead, labelled as such.
-- The active provider and model are always shown in the chat header.
-- To add a provider, implement `JarvisProvider` (`src/lib/server/ai/types.ts`) and
-  register it in `src/lib/server/ai/registry.ts`. The UI needs no changes.
-- Keys are read only on the server and never sent to the browser or logged.
-  Chat content and journal notes are not logged.
+```bash
+npm run lint
+npx tsc --noEmit
+npm test            # unit and integration tests
+npm run test:e2e    # Playwright end-to-end suite (isolated build and throwaway database)
+```
 
-### What Jarvis sends to an external provider
+The end-to-end suite covers the main journeys, responsive layouts from 320 px to 1920 px,
+and security: every API route rejects missing, forged and revoked sessions, and one user
+can never read or change another user's data.
 
-Controlled by Settings → Privacy → *Sharing with external AI providers*:
+## Disclaimer
 
-- **Metrics only** — totals, win rate, R statistics, detected pattern summaries.
-- **Trades without notes** (default) — plus up to 25 recent trades: symbol, side,
-  times, P&L, R, planned R, setup, feelings, plan flag, grade, sample flag.
-- **Trades with notes** — plus your plan notes and written notes.
-
-Always included: active memories (if memory is on), coaching style, display name,
-and the last 20 messages of the conversation. Never sent: API keys, account
-balances, the activity log. Settings shows a live preview of the exact list, and
-each chat's "What's shared?" shows what the last request included. Demo mode sends nothing.
-
-### What Jarvis records
-
-- **Conversations** are stored locally; delete one or all from the Jarvis page.
-- **Memories** exist only when you save them ("Remember something from this" or
-  Jarvis → Memory). You can correct, pause, resume, delete, reset all, or export them.
-  Pausing memory stops them being sent.
-- **Activity log** is **off by default**. When you opt in, it records only:
-  trade created/updated/deleted (ids and changed field names), CSV imports (row
-  count), Jarvis messages (length only, never text), and setting changes (names).
-  No page views, clicks, keystrokes or timing. It stays local and isn't sent to
-  Jarvis. View, pause or delete it in Settings → Privacy.
-
-### Boundaries (enforced in the system prompt and UI copy)
-
-Jarvis uses only your records, labels lines as **Recorded / Possible pattern /
-Suggestion**, cites trades as `[#id]` (clickable), says when data is missing,
-never gives buy/sell instructions or urges trading, never claims to see markets,
-and phrases behavioural readings tentatively. Patterns can be dismissed, and
-behavioural insights can be switched off entirely.
-
-## Market context (demo only)
-
-`/market` uses `demoMarketProvider`, a deterministic **simulated** series. Every
-screen showing it carries a "Simulated" banner and the provider's disclosure. To
-use real data, implement `MarketDataProvider` (`src/lib/server/market/types.ts`)
-with a licensed feed, report `dataKind` honestly (`delayed` / `live`), and return it
-from `marketProvider()`.
-
-## Accessibility and responsiveness
-
-Skip link, visible focus rings, native `<dialog>` (focus trap, Esc), labelled
-controls, `aria-live` for chat and toasts, sortable table headers with `aria-sort`,
-reduced-motion support, dark/light/system themes. Layouts were checked at
-375 px (phone) and desktop widths with no horizontal page scroll.
-
-## Known limitations
-
-- No broker sync (MT5, TradeLocker, Tradovate, cTrader need credentials/OAuth apps); use CSV import.
-- No live market data, news feed, X feed or daily reports (need licensed data).
-- No auth, billing, community, or copy trading (see `docs/FEATURE_MATRIX.md`).
-- Single local user; no multi-device sync.
-- Demo-mode Jarvis can't filter by date and only answers a few question types.
-- Only the Anthropic provider is wired; its live path was not exercised in review
-  because no API key was configured.
-- No automated test suite yet; domain math was verified through the API during review.
-- In `next dev`, React logs a warning about the inline theme script in `<head>`;
-  it's the pattern Next.js documents for avoiding a theme flash.
+Jarvis is a journaling and education tool. It does not place trades and does not provide
+financial, investment or psychological advice.

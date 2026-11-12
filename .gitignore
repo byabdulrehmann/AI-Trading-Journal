@@ -50,11 +50,5 @@ next-env.d.ts
 /services/mt5/__pycache__/
 /test-results/
 /playwright-report/
-.claude/settings.local.json
 /.next-*/
 
-/.hallmark/before/
-/.hallmark/after/
-
-# Impeccable engine binary: downloaded and checksum-verified by its launcher, not committed
-/.claude/skills/impeccable/scripts/bin/

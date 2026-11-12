@@ -7,7 +7,7 @@ import { Hero } from "./Hero";
 import { Peak } from "./Peak";
 import { Reveal } from "./Reveal";
 
-/** The homepage: nine acts, scored in scrollcraft/builds/jarvis-site/BRIEF.md. */
+/** The homepage: nine acts, from the first impression to early access. */
 export function Home() {
   return (
     <>
