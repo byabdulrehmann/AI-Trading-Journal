@@ -2,36 +2,44 @@
 name: Jarvis
 description: A private, local trading journal that turns a trader's own record into clear, honest figures.
 colors:
-  canvas: "#f4f5f8"
-  surface: "#ffffff"
-  raised: "#f7f8fb"
-  sunken: "#eef0f4"
-  line: "#e6e8ee"
-  line-strong: "#cfd3dc"
-  ink: "#1d1f2e"
-  ink-soft: "#3d4154"
-  muted: "#6e7387"
-  accent: "#5b4fe8"
+  canvas: "#e6e9ee"
+  surface: "#f3f5f8"
+  raised: "#eaedf2"
+  sunken: "#dde1e8"
+  glass: "rgb(255 255 255 / 0.6)"
+  line: "rgb(22 28 45 / 0.08)"
+  line-strong: "rgb(22 28 45 / 0.16)"
+  ink: "#10131a"
+  ink-soft: "#3c4350"
+  muted: "#5c6475"
+  accent: "#3d5bd1"
   accent-ink: "#ffffff"
-  profit: "#13906a"
-  profit-soft: "#dbf2e9"
-  profit-strong: "#b7e4d1"
-  loss: "#d23c55"
-  loss-soft: "#f9d3d6"
-  loss-strong: "#f2b0b6"
-  warn: "#9a6a00"
-  info: "#3d63c9"
-  nav-bg: "#1b1d3d"
-  nav-bg-end: "#231f49"
-  scale-low: "#e2475b"
-  scale-mid: "#f2b630"
-  scale-high: "#2fb07d"
+  profit: "#2f7d5f"
+  profit-soft: "#d3e8de"
+  profit-strong: "#b1d6c4"
+  loss: "#b2445b"
+  loss-soft: "#f0d5db"
+  loss-strong: "#e4b3bf"
+  warn: "#8a6100"
+  info: "#3d5bd1"
+  nav-bg: "rgb(255 255 255 / 0.5)"
+  nav-bg-end: "rgb(255 255 255 / 0.32)"
+  scale-low: "#c04f66"
+  scale-mid: "#c9963a"
+  scale-high: "#3f8f72"
 typography:
   page-title:
-    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "20px"
-    fontWeight: 600
+    fontFamily: "Bricolage Grotesque, Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "21px"
+    fontWeight: 500
     lineHeight: 1.2
+    letterSpacing: "-0.03em"
+  page-heading:
+    fontFamily: "Bricolage Grotesque, Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "30px"
+    fontWeight: 500
+    lineHeight: 1.05
+    letterSpacing: "-0.03em"
   kpi-value:
     fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "22px"
@@ -54,9 +62,9 @@ typography:
 rounded:
   xs: "3px"
   sm: "4px"
-  control: "6px"
+  control: "10px"
   lg: "8px"
-  panel: "10px"
+  panel: "18px"
   pill: "999px"
 spacing:
   3xs: "2px"
@@ -79,49 +87,50 @@ components:
     rounded: "{rounded.control}"
     height: "36px"
   card:
-    backgroundColor: "{colors.surface}"
+    backgroundColor: "{colors.glass}"
     rounded: "{rounded.panel}"
     padding: "16px"
   sidebar:
     backgroundColor: "{colors.nav-bg}"
-    textColor: "#ffffffe6"
+    textColor: "{colors.ink}"
     width: "196px"
   topbar:
-    backgroundColor: "{colors.surface}"
+    backgroundColor: "{colors.glass}"
     height: "62px"
 ---
 
 # Design System: Jarvis
 
-The tokens above are the light theme, which is the default. The source of truth is `src/app/tokens.css`; this file describes it. When the two disagree, the CSS wins: update this file, never the other way round. The dashboard layout is specified in `docs/dashboard-visual-spec.md`.
+The tokens above are the pearl (light) theme, the default. The source of truth is `src/app/tokens.css`; this file describes it. When the two disagree, the CSS wins: update this file, never the other way round. The dashboard layout is specified in `docs/dashboard-visual-spec.md`.
 
 ## Overview
 
-Jarvis is a financial instrument that a trader opens every day, so it is calm, dense and exact. The visual language is a light grey canvas holding white, softly rounded cards; a deep navy sidebar anchors the app, and one violet accent marks what can be acted on. Green and red are reserved for money: profit and loss are read before anything else on the screen.
+Jarvis is a financial instrument that a trader opens every day, so it is calm, dense and exact. Since 2026-11-12 it shares the website's world, the **glass studio**: a soft pearl room (obsidian at night) lit from the top left, frosted-glass cards and bars floating in it, and controls that look softly pressed out of the surface. One steel-blue accent marks what can be acted on. Green and red are reserved for money, and both are softened so the screen never feels saturated.
 
 Every number comes from the user's own record. Nothing on screen is decoration pretending to be data.
 
 ## Colors
 
 ### Primary
-- **Violet accent** (`#5b4fe8`): primary buttons, the active tab, the score radar, the today marker, focus rings. One accent, used sparingly.
+- **Steel blue** (`#3d5bd1`, `#8ea6ff` at night): primary buttons, the active tab, the score radar, the today marker, focus rings. One accent, used sparingly. At night it carries dark ink (`accent-ink`), never white.
 
 ### Neutral
-- **Canvas** (`#f4f5f8`) behind everything, **surface** (`#ffffff`) for cards, **sunken** (`#eef0f4`) for wells, pills and empty calendar days.
-- **Ink** (`#1d1f2e`) for text, **ink-soft** for secondary text, **muted** (`#6e7387`) for labels and axes.
-- **Navy** (`#1b1d3d` to `#231f49`) only for the sidebar, in both themes.
+- **Canvas** (`#e6e9ee`) with the `--room` light over it, **glass** (white at 60%) for cards and the top bar, **surface** (`#f3f5f8`) for solid controls, menus and dialogs, **raised** and **sunken** for wells and empty calendar days.
+- **Ink** (`#10131a`) for text, **ink-soft** for secondary text, **muted** (`#5c6475`) for labels and axes.
+- **Obsidian** (dark): canvas `#0b0d12`, glass white at 3.5%, ink `#eef1f7`.
 
 ### Named Rules
 - **Money colours are semantic.** `profit` and `loss` (and their soft and strong fills) mean a result went up or down. Never use them for decoration, branding or status that isn't money.
-- **No colour without a token.** Every colour comes from `tokens.css` through a Tailwind theme name (`bg-surface`, `text-loss`, and so on).
-- A dark theme exists (navy surfaces, the same roles) and is chosen in Settings; build every surface from tokens so it follows.
+- **No colour without a token.** Every colour comes from `tokens.css` through a Tailwind theme name (`bg-glass`, `text-loss`, and so on).
+- **Text on the accent is `text-accent-ink`**, never `text-white`, so it stays readable in both themes.
+- The theme is the Theme setting (System, Dark, Light); the sun/moon button in the top bar flips it and saves the same setting.
 
 ## Typography
 
-One family, Geist, at 400, 500 and 600. Numbers use tabular figures (`.num`).
+Geist at 400, 500 and 600 for everything people read and every figure (tabular, `.num`). Bricolage Grotesque 500 only for the page title in the top bar and page headings (`h1`), tightly tracked, the same display face as the website.
 
 ### Hierarchy
-- Page title 20px/600 in the top bar.
+- Page title 21px/500 Bricolage in the top bar; page heading 30px/500 Bricolage.
 - KPI values 22px/600 (19px in narrow cards).
 - Card titles 14px/600.
 - Body 15px/400; table text 12.5 to 13.5px; labels 12.5px/500 in muted ink; axis ticks 10.5px.
@@ -135,25 +144,33 @@ One family, Geist, at 400, 500 and 600. Numbers use tabular figures (`.num`).
 
 ## Elevation & Depth
 
-Flat. Cards carry a 1px `line` border and a barely visible shadow (`--card-shadow`); menus and dialogs use a stronger shadow. No glows, no glass, no gradients except the navy sidebar and the score's red-amber-green scale.
+Three materials, each with one job:
+- **Liquid glass** for things that float: cards (`bg-glass` with a bright top rim in `--card-shadow`) and the sidebar and top bar (`.glass-bar`, frosted with a backdrop blur). The blur sits on a pseudo-element so a bar never traps fixed popovers.
+- **Soft (neumorphic) controls** for things you press: `.neu` raises secondary buttons, the round top-bar buttons and the active nav link; `.neu-in` sinks inputs and segmented controls into the surface. Pressing a `.neu` control sinks it.
+- **Solid surface** for things that must stay readable over content: menus, dialogs (over a blurred scrim), tooltips.
+
+Primary buttons carry a soft glow of their own accent underneath. No other glows.
 
 ## Shapes
 
-Controls 6px, cards 10px, pills fully round, calendar cells 5px. Nothing sharp-cornered, nothing bubbly.
+Controls 10px, cards 18px, pills and round buttons fully round, calendar cells 5px.
 
 ## Components
 
 ### Buttons
-Primary: violet fill, white text, 34 to 36px tall. Secondary: white with a 1px line border. Ghost for low-emphasis actions. Every button has a visible focus ring.
+Primary: steel-blue fill, accent-ink text, a soft accent shadow, 34 to 36px tall. Secondary: a soft raised `.neu` key on the surface colour. Ghost for low-emphasis actions. Every button has a visible focus ring.
 
 ### Cards / Containers
-`Card` (white, 10px radius, line border). Headers are 44px with a divider under the title. KPI cards are 112px tall.
+`Card` and the dashboard's `panel` (glass, 18px radius, hairline border, rim highlight). Headers are 44px with a divider under the title. KPI cards are 112px tall.
+
+### Inputs
+`inputClass`: a sunken `.neu-in` well on `raised`, no visible border; invalid fields get a loss outline.
 
 ### Navigation
-Navy sidebar with grouped links, an active pill, a "NEW" chip and "Soon" for unbuilt modules (never a dead link). The top bar holds the page title, page controls and the bell.
+A pane of frosted glass on the left with grouped links; the active link is a raised white pill. A "NEW" chip and "Soon" for unbuilt modules (never a dead link). The top bar is frosted glass and holds the page title, page controls, the AI Coach button, the theme switch and the bell. The logo is a graphite tile with a steel-blue dot.
 
 ### Charts
-Thin marks, recessive dashed grid, currency axes, a hover tooltip on every chart, keyboard scrubbing, and a click that opens the day or trade behind a mark.
+Thin marks, recessive dashed grid, currency axes, a hover tooltip on every chart, keyboard scrubbing, and a click that opens the day or trade behind a mark. Chart colours read the tokens at draw time, so they follow the theme.
 
 ### Interaction
 Ctrl-K palette in the shell. Journal rows move with `j` and `k` and open with Enter; `/` focuses search; `n` logs a trade (never while typing in a field). Filters, ranges and the open trade live in the URL; per-browser preferences (sidebar, calendar month, columns) live in local storage through `useStored`.
@@ -172,8 +189,10 @@ Ctrl-K palette in the shell. Journal rows move with `j` and `k` and open with En
 ### Don't:
 - Don't invent metrics, testimonials or prices.
 - Don't use profit or loss colours for anything but money.
-- Don't add a second accent colour, a second font family, or a raw hex value outside `tokens.css`.
+- Don't add a second accent colour, a third font family, or a raw hex value outside `tokens.css`.
+- Don't put `backdrop-filter` directly on an element that contains fixed popovers; use `.glass-bar`.
+- Don't make menus or dialogs glass: they sit over content and must stay solid.
 - Don't use `transition: all`, em dashes in UI copy, or tracked all-caps labels outside the dashboard's existing tab and score labels.
 - Don't change the dashboard layout without being asked.
 
-History: this file replaced the earlier "Rim" system lock (dark, square, monospace figures) on 2026-11-10, after the redesign to the current look. The old version is in git history.
+History: on 2026-11-10 this file replaced the earlier "Rim" system lock (dark, square, monospace figures). On 2026-11-12 the navy-and-violet look was replaced by the glass studio to match the website. Older versions are in git history.

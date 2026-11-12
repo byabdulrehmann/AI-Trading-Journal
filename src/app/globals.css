@@ -1,4 +1,4 @@
-/* Jarvis look: light canvas, white rounded cards, navy sidebar, violet accent. Layout follows docs/dashboard-visual-spec.md. */
+/* Jarvis look: the glass studio (frosted cards, soft controls, steel-blue accent). Layout follows docs/dashboard-visual-spec.md. */
 @import "tailwindcss";
 @import "./tokens.css" layer(theme);
 @import "./base.css" layer(base);
@@ -9,6 +9,7 @@
 @theme inline {
   --color-canvas: var(--canvas);
   --color-surface: var(--surface);
+  --color-glass: var(--glass);
   --color-raised: var(--raised);
   --color-sunken: var(--sunken);
   --color-line: var(--line);
@@ -39,8 +40,8 @@
   --spacing-gutter: 1rem;
   --spacing-section: 1.5rem;
   --spacing-card: 1rem;
-  --radius-control: 6px;
-  --radius-panel: 10px;
+  --radius-control: 10px;
+  --radius-panel: 18px;
   --radius-xs: 3px;
   --radius-sm: 4px;
   --radius-md: 6px;
@@ -81,7 +82,16 @@ kbd {
   color: var(--muted);
 }
 
-dialog::backdrop { background: var(--scrim); }
+dialog::backdrop { background: var(--scrim); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+
+/* A bar of frosted glass. The blur lives on a pseudo-element so the bar never becomes the containing block of fixed popovers. */
+.glass-bar { isolation: isolate; }
+.glass-bar::before { content: ""; position: absolute; inset: 0; z-index: -1; -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6); pointer-events: none; }
+
+/* Soft controls: raised out of the surface, pressed in when held or chosen. */
+.neu { box-shadow: -3px -3px 8px var(--neu-hi), 4px 4px 10px var(--neu-lo); }
+.neu-in { box-shadow: inset 2px 2px 5px var(--neu-lo), inset -2px -2px 5px var(--neu-hi); }
+.neu:active { box-shadow: inset 2px 2px 5px var(--neu-lo), inset -2px -2px 5px var(--neu-hi); }
 
 .skip-link {
   position: absolute;

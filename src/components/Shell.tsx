@@ -64,9 +64,9 @@ export function Logo({ compact }: { compact?: boolean }) {
   return (
     <span className="flex items-center gap-2.5">
       <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden fill="none">
-        <rect width="26" height="26" rx="7" fill="var(--accent)" />
-        <path d="M6 16.5l4.5-5 3.5 3 6-7" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx="20" cy="7.5" r="1.6" fill="#fff" />
+        <rect width="26" height="26" rx="8" fill="var(--ink)" />
+        <path d="M6 16.5l4.5-5 3.5 3 6-7" stroke="var(--canvas)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="20" cy="7.5" r="1.6" fill="var(--accent)" />
       </svg>
       {!compact && <span className="text-[17px] font-semibold tracking-tight">Jarvis</span>}
     </span>
@@ -92,7 +92,7 @@ function NavLink({ item, pathname, onGo }: { item: NavItem; pathname: string; on
     <>
       <Icon d={item.icon} size={17} className={item.href ? "text-nav-ink" : "text-nav-muted"} />
       <span className="truncate lg:navmin:sr-only">{item.label}</span>
-      {item.badge && <span className="shrink-0 rounded-[3px] bg-accent px-1 py-px text-[8.5px] leading-[11px] font-bold text-white lg:navmin:hidden">{item.badge}</span>}
+      {item.badge && <span className="shrink-0 rounded-[3px] bg-accent px-1 py-px text-[8.5px] leading-[11px] font-bold text-accent-ink lg:navmin:hidden">{item.badge}</span>}
       {!item.href && <span className="ml-auto shrink-0 rounded-[3px] bg-nav-active px-1 py-px text-[9.5px] leading-[12px] text-nav-muted lg:navmin:hidden">Soon</span>}
       <span role="tooltip" className="pointer-events-none absolute top-1/2 left-full z-[var(--z-modal)] ml-3 hidden -translate-y-1/2 rounded-control bg-ink px-2 py-1 text-[12px] whitespace-nowrap text-surface lg:navmin:group-hover:block lg:navmin:group-focus-visible:block">
         {item.label}{item.href ? "" : ", coming soon"}
@@ -109,7 +109,7 @@ function NavLink({ item, pathname, onGo }: { item: NavItem; pathname: string; on
   }
   const active = isActive(item.href, pathname);
   return (
-    <Link href={item.href} aria-current={active ? "page" : undefined} onClick={onGo} className={cx(base, active ? "bg-nav-active text-white" : "text-nav-ink hover:bg-nav-active/60 hover:text-white")}>
+    <Link href={item.href} aria-current={active ? "page" : undefined} onClick={onGo} className={cx(base, active ? "neu bg-nav-active font-semibold text-ink" : "text-nav-ink hover:bg-nav-active/60 hover:text-ink")}>
       {body}
     </Link>
   );
@@ -121,7 +121,7 @@ function Bell() {
   return (
     <Dropdown
       label={items.length ? `Notifications, ${items.length}` : "Notifications"}
-      className="relative grid size-[38px] place-items-center rounded-full border border-line bg-surface text-ink-soft hover:bg-raised"
+      className="neu relative grid size-[38px] place-items-center rounded-full bg-surface text-ink-soft hover:text-ink"
       panelClassName="w-80 max-sm:fixed max-sm:inset-x-3 max-sm:top-16 max-sm:w-auto"
       button={
         <>
@@ -156,6 +156,35 @@ function Bell() {
   );
 }
 
+/** Flips between pearl and obsidian and saves it as the Theme setting, so Settings and every device stay in step. */
+function ThemeSwitch() {
+  const { settings, saveSettings } = useApp();
+  if (!settings) return null;
+  const dark = settings.theme === "dark" || (settings.theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+  return (
+    <button
+      type="button"
+      onClick={() => void saveSettings({ theme: dark ? "light" : "dark" })}
+      aria-pressed={dark}
+      aria-label={dark ? "Dark theme on. Switch to light" : "Light theme on. Switch to dark"}
+      title={dark ? "Light theme" : "Dark theme"}
+      className="neu grid size-[38px] place-items-center rounded-full bg-surface text-ink-soft hover:text-ink"
+      data-testid="app-theme-toggle"
+    >
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden>
+        {dark ? (
+          <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" />
+        ) : (
+          <>
+            <circle cx="12" cy="12" r="4.2" />
+            <path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" />
+          </>
+        )}
+      </svg>
+    </button>
+  );
+}
+
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { jarvisOpen, setJarvisOpen, settings, editTrade, user, signOut } = useApp();
@@ -182,13 +211,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       <aside
         className={cx(
-          "fixed inset-y-0 left-0 z-40 w-[214px] flex-col bg-gradient-to-b from-nav to-[var(--nav-bg-end)] text-nav-ink lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-[196px] lg:shrink-0 lg:navmin:w-14",
+          "glass-bar fixed inset-y-0 left-0 z-40 w-[214px] flex-col border-r border-[var(--nav-line)] bg-gradient-to-b from-nav to-[var(--nav-bg-end)] text-nav-ink lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-[196px] lg:shrink-0 lg:navmin:w-14",
           navOpen ? "flex" : "hidden",
         )}
         aria-label="Primary"
       >
         <div className="relative flex h-[62px] shrink-0 items-center px-4 lg:navmin:justify-center lg:navmin:px-0">
-          <Link href="/" aria-label="Jarvis home" onClick={close} className="text-white">
+          <Link href="/" aria-label="Jarvis home" onClick={close} className="text-nav-ink">
             <span className="lg:navmin:hidden"><Logo /></span>
             <span className="hidden lg:navmin:inline"><Logo compact /></span>
           </Link>
@@ -210,7 +239,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               close();
               editTrade("new");
             }}
-            className="flex h-[34px] w-full items-center gap-2.5 rounded-control bg-accent px-3 text-[13px] font-semibold text-white hover:bg-accent/90 lg:navmin:justify-center lg:navmin:px-0"
+            className="flex h-[34px] w-full items-center gap-2.5 rounded-control bg-accent px-3 text-[13px] font-semibold text-accent-ink shadow-[0_10px_22px_-12px_var(--accent)] hover:bg-accent/90 lg:navmin:justify-center lg:navmin:px-0"
             aria-label="Add trade"
           >
             <Icon d={ICONS.plus} size={16} />
@@ -234,18 +263,19 @@ export function Shell({ children }: { children: React.ReactNode }) {
       {navOpen && <div className="fixed inset-0 z-30 bg-[var(--scrim)] lg:hidden" onClick={close} aria-hidden />}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex min-h-[62px] flex-wrap items-center gap-x-2 gap-y-2 border-b border-line bg-surface px-4 py-2.5 sm:px-6">
+        <header className="sticky top-0 z-20 flex min-h-[62px] flex-wrap items-center gap-x-2 gap-y-2 glass-bar border-b border-line bg-glass px-4 py-2.5 sm:px-6">
           <button type="button" className="grid size-9 place-items-center rounded-control text-ink-soft hover:bg-raised lg:hidden" onClick={() => setNavOpen(true)} aria-label="Open navigation" aria-expanded={navOpen}>
             <Icon d={ICONS.menu} size={18} />
           </button>
-          <p className="mr-auto truncate text-[20px] font-semibold text-ink" data-testid="page-title">{pageTitle(pathname)}</p>
+          <p className="mr-auto truncate font-[family-name:var(--font-head)] text-[21px] font-medium tracking-[-0.03em] text-ink" data-testid="page-title">{pageTitle(pathname)}</p>
           <div id="topbar-slot" className="flex flex-wrap items-center gap-2 max-md:order-last max-md:w-full" />
           <div className="flex items-center gap-2">
             {coachEnabled && (
-              <button type="button" aria-expanded={jarvisOpen} aria-controls="jarvis-panel" onClick={() => setJarvisOpen(!jarvisOpen)} title="AI Coach" aria-label="AI Coach" className="grid size-[38px] place-items-center rounded-full border border-line bg-surface text-ink-soft hover:bg-raised">
+              <button type="button" aria-expanded={jarvisOpen} aria-controls="jarvis-panel" onClick={() => setJarvisOpen(!jarvisOpen)} title="AI Coach" aria-label="AI Coach" className="neu grid size-[38px] place-items-center rounded-full bg-surface text-ink-soft hover:text-ink">
                 <Icon d={ICONS.coach} size={18} />
               </button>
             )}
+            <ThemeSwitch />
             <Bell />
           </div>
         </header>

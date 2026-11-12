@@ -1,4 +1,6 @@
-/* Jarvis tokens: light canvas, white cards, navy sidebar, violet accent. Every colour and face in the app comes from here. */
+/* Jarvis tokens: the glass studio. Pearl by day, obsidian at night, the same world as the website.
+   Cards are frosted glass over a soft room light, controls are soft and pressable, one steel-blue accent.
+   Every colour and face in the app comes from here. */
 :root {
   color-scheme: light;
 
@@ -10,117 +12,146 @@
   --z-raised: 10; --z-sticky: 200; --z-modal: 400; --z-toast: 500;
   --container: 1760px;
 
-  /* Light, the default. */
-  --canvas: #f4f5f8;
-  --surface: #ffffff;
-  --raised: #f7f8fb;
-  --sunken: #eef0f4;
-  --line: #e6e8ee;
-  --line-strong: #cfd3dc;
-  --ink: #1d1f2e;
-  --ink-soft: #3d4154;
-  --muted: #6e7387;
-  --accent: #5b4fe8;
+  /* Pearl, the default. */
+  --canvas: #e6e9ee;
+  --surface: #f3f5f8;
+  --raised: #eaedf2;
+  --sunken: #dde1e8;
+  --glass: rgb(255 255 255 / 0.6);
+  --line: rgb(22 28 45 / 0.08);
+  --line-strong: rgb(22 28 45 / 0.16);
+  --ink: #10131a;
+  --ink-soft: #3c4350;
+  --muted: #5c6475;
+  --accent: #3d5bd1;
   --accent-ink: #ffffff;
-  --accent-soft: rgb(91 79 232 / 0.1);
-  --focus: #5b4fe8;
-  --info: #3d63c9;
-  --info-soft: rgb(61 99 201 / 0.1);
-  --profit: #13906a;
-  --profit-soft: #dbf2e9;
-  --profit-strong: #b7e4d1;
-  --loss: #d23c55;
-  --loss-soft: #f9d3d6;
-  --loss-strong: #f2b0b6;
-  --warn: #9a6a00;
+  --accent-soft: rgb(61 91 209 / 0.1);
+  --focus: #3d5bd1;
+  --info: #3d5bd1;
+  --info-soft: rgb(61 91 209 / 0.08);
+  --profit: #2f7d5f;
+  --profit-soft: #d3e8de;
+  --profit-strong: #b1d6c4;
+  --loss: #b2445b;
+  --loss-soft: #f0d5db;
+  --loss-strong: #e4b3bf;
+  --warn: #8a6100;
   --warn-soft: rgb(230 168 23 / 0.14);
-  --scrim: rgb(20 22 40 / 0.4);
-  --card-shadow: 0 1px 2px rgb(20 22 40 / 0.04), 0 1px 1px rgb(20 22 40 / 0.02);
+  --scrim: rgb(20 24 38 / 0.32);
+  --card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.85), 0 1px 2px rgb(30 40 70 / 0.05), 0 16px 36px -22px rgb(30 40 70 / 0.3);
+  /* Soft, pressed-from-the-surface controls. */
+  --neu-hi: rgb(255 255 255 / 0.9);
+  --neu-lo: rgb(150 160 185 / 0.45);
+  /* The room light the glass sits in. */
+  --room: radial-gradient(120% 70% at 10% -10%, rgb(255 255 255 / 0.85), transparent 55%), radial-gradient(90% 60% at 100% 100%, rgb(186 198 226 / 0.4), transparent 60%);
 
-  /* The sidebar is navy in both themes. */
-  --nav-bg: #1b1d3d;
-  --nav-bg-end: #231f49;
-  --nav-ink: rgb(255 255 255 / 0.9);
-  --nav-muted: rgb(255 255 255 / 0.58);
-  --nav-active: rgb(255 255 255 / 0.1);
-  --nav-line: rgb(255 255 255 / 0.08);
+  /* The sidebar is a pane of glass. */
+  --nav-bg: rgb(255 255 255 / 0.5);
+  --nav-bg-end: rgb(255 255 255 / 0.32);
+  --nav-ink: #1e2330;
+  --nav-muted: #5c6475;
+  --nav-active: rgb(255 255 255 / 0.85);
+  --nav-line: rgb(22 28 45 / 0.07);
 
-  /* The score's red, amber, green scale. */
-  --scale-low: #e2475b;
-  --scale-mid: #f2b630;
-  --scale-high: #2fb07d;
+  /* The score's low, middle, high scale. */
+  --scale-low: #c04f66;
+  --scale-mid: #c9963a;
+  --scale-high: #3f8f72;
 
   --font-display: var(--font-ui), ui-sans-serif, system-ui, sans-serif;
+  --font-head: var(--font-heading), var(--font-display);
   --font-body: var(--font-display);
   --font-outlier: var(--font-display);
-  --radius-card: 10px;
+  --radius-card: 18px;
   --radius-pill: 999px;
   --rule-hair: 1px;
-  --tracking-display: -0.015em;
+  --tracking-display: -0.03em;
   --display-weight: 600;
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --canvas: #0f1124;
-  --surface: #171a33;
-  --raised: #1e2241;
-  --sunken: #0b0d1d;
-  --line: #272b4a;
-  --line-strong: #3b4067;
-  --ink: #eceefa;
-  --ink-soft: #c7cade;
-  --muted: #9599b4;
-  --accent: #7f74ff;
-  --accent-ink: #ffffff;
-  --accent-soft: rgb(127 116 255 / 0.16);
-  --focus: #9d94ff;
-  --info: #84a6ff;
-  --info-soft: rgb(132 166 255 / 0.14);
-  --profit: #41cf9c;
-  --profit-soft: rgb(65 207 156 / 0.14);
-  --profit-strong: rgb(65 207 156 / 0.28);
-  --loss: #f26b80;
-  --loss-soft: rgb(242 107 128 / 0.15);
-  --loss-strong: rgb(242 107 128 / 0.3);
-  --warn: #f2c35a;
-  --warn-soft: rgb(242 195 90 / 0.13);
-  --scrim: rgb(5 6 15 / 0.65);
-  --card-shadow: none;
-  --nav-bg: #12142b;
-  --nav-bg-end: #171535;
+  --canvas: #0b0d12;
+  --surface: #151922;
+  --raised: #1c212c;
+  --sunken: #08090d;
+  --glass: rgb(255 255 255 / 0.035);
+  --line: rgb(214 224 255 / 0.08);
+  --line-strong: rgb(214 224 255 / 0.16);
+  --ink: #eef1f7;
+  --ink-soft: #b9c0ce;
+  --muted: #8b94a5;
+  --accent: #8ea6ff;
+  --accent-ink: #0b0d12;
+  --accent-soft: rgb(142 166 255 / 0.14);
+  --focus: #8ea6ff;
+  --info: #8ea6ff;
+  --info-soft: rgb(142 166 255 / 0.12);
+  --profit: #6cc9a2;
+  --profit-soft: rgb(108 201 162 / 0.13);
+  --profit-strong: rgb(108 201 162 / 0.27);
+  --loss: #ee8fa3;
+  --loss-soft: rgb(238 143 163 / 0.13);
+  --loss-strong: rgb(238 143 163 / 0.27);
+  --warn: #e6b35a;
+  --warn-soft: rgb(230 179 90 / 0.12);
+  --scrim: rgb(0 0 0 / 0.6);
+  --card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 18px 40px -24px rgb(0 0 0 / 0.9);
+  --neu-hi: rgb(255 255 255 / 0.05);
+  --neu-lo: rgb(0 0 0 / 0.65);
+  --room: radial-gradient(110% 70% at 10% -10%, rgb(120 140 200 / 0.14), transparent 55%), radial-gradient(80% 60% at 100% 100%, rgb(90 70 160 / 0.1), transparent 60%);
+  --nav-bg: rgb(255 255 255 / 0.03);
+  --nav-bg-end: rgb(255 255 255 / 0.015);
+  --nav-ink: #dfe4ee;
+  --nav-muted: #8b94a5;
+  --nav-active: rgb(255 255 255 / 0.08);
+  --nav-line: rgb(255 255 255 / 0.06);
+  --scale-low: #ee8fa3;
+  --scale-mid: #e6b35a;
+  --scale-high: #6cc9a2;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     color-scheme: dark;
-    --canvas: #0f1124;
-    --surface: #171a33;
-    --raised: #1e2241;
-    --sunken: #0b0d1d;
-    --line: #272b4a;
-    --line-strong: #3b4067;
-    --ink: #eceefa;
-    --ink-soft: #c7cade;
-    --muted: #9599b4;
-    --accent: #7f74ff;
-    --accent-ink: #ffffff;
-    --accent-soft: rgb(127 116 255 / 0.16);
-    --focus: #9d94ff;
-    --info: #84a6ff;
-    --info-soft: rgb(132 166 255 / 0.14);
-    --profit: #41cf9c;
-    --profit-soft: rgb(65 207 156 / 0.14);
-    --profit-strong: rgb(65 207 156 / 0.28);
-    --loss: #f26b80;
-    --loss-soft: rgb(242 107 128 / 0.15);
-    --loss-strong: rgb(242 107 128 / 0.3);
-    --warn: #f2c35a;
-    --warn-soft: rgb(242 195 90 / 0.13);
-    --scrim: rgb(5 6 15 / 0.65);
-    --card-shadow: none;
-    --nav-bg: #12142b;
-    --nav-bg-end: #171535;
+    --canvas: #0b0d12;
+    --surface: #151922;
+    --raised: #1c212c;
+    --sunken: #08090d;
+    --glass: rgb(255 255 255 / 0.035);
+    --line: rgb(214 224 255 / 0.08);
+    --line-strong: rgb(214 224 255 / 0.16);
+    --ink: #eef1f7;
+    --ink-soft: #b9c0ce;
+    --muted: #8b94a5;
+    --accent: #8ea6ff;
+    --accent-ink: #0b0d12;
+    --accent-soft: rgb(142 166 255 / 0.14);
+    --focus: #8ea6ff;
+    --info: #8ea6ff;
+    --info-soft: rgb(142 166 255 / 0.12);
+    --profit: #6cc9a2;
+    --profit-soft: rgb(108 201 162 / 0.13);
+    --profit-strong: rgb(108 201 162 / 0.27);
+    --loss: #ee8fa3;
+    --loss-soft: rgb(238 143 163 / 0.13);
+    --loss-strong: rgb(238 143 163 / 0.27);
+    --warn: #e6b35a;
+    --warn-soft: rgb(230 179 90 / 0.12);
+    --scrim: rgb(0 0 0 / 0.6);
+    --card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 18px 40px -24px rgb(0 0 0 / 0.9);
+    --neu-hi: rgb(255 255 255 / 0.05);
+    --neu-lo: rgb(0 0 0 / 0.65);
+    --room: radial-gradient(110% 70% at 10% -10%, rgb(120 140 200 / 0.14), transparent 55%), radial-gradient(80% 60% at 100% 100%, rgb(90 70 160 / 0.1), transparent 60%);
+    --nav-bg: rgb(255 255 255 / 0.03);
+    --nav-bg-end: rgb(255 255 255 / 0.015);
+    --nav-ink: #dfe4ee;
+    --nav-muted: #8b94a5;
+    --nav-active: rgb(255 255 255 / 0.08);
+    --nav-line: rgb(255 255 255 / 0.06);
+    --scale-low: #ee8fa3;
+    --scale-mid: #e6b35a;
+    --scale-high: #6cc9a2;
   }
 }
 

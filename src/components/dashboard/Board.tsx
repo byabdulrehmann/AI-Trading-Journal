@@ -16,7 +16,7 @@ import { Tip, useScrub } from "@/components/charts";
 import { Dropdown, ICONS, Icon } from "@/components/Dropdown";
 import { Dialog, cx } from "@/components/ui";
 
-export const panel = "rounded-panel border border-line bg-surface shadow-card";
+export const panel = "rounded-panel border border-line bg-glass shadow-card";
 const LABEL = 10.5;
 
 /** The "i" beside a title: the formula, on hover or focus. */
@@ -135,7 +135,7 @@ export function KpiRow({ data, display, search }: { data: Analytics; display: st
       <div className="grid grid-cols-[minmax(0,1fr)] gap-[21px] @[34rem]:grid-cols-2 @[48rem]:grid-cols-3 @[74rem]:grid-cols-5">
       <KpiCard testId="kpi-net" label="Net P&L" info={`Realized, closed trades only: ${D.netPnl.formula}. ${D.netPnl.meaning}`}
         visual={
-          <Link href={all} aria-label="Open the trades behind Net P&L" title="Open these trades" className="grid size-[30px] place-items-center rounded-control bg-accent-soft text-accent hover:bg-accent hover:text-white">
+          <Link href={all} aria-label="Open the trades behind Net P&L" title="Open these trades" className="grid size-[30px] place-items-center rounded-control bg-accent-soft text-accent hover:bg-accent hover:text-accent-ink">
             <Icon d={ICONS.open} size={15} />
           </Link>
         }
@@ -741,7 +741,7 @@ export function MonthCalendar({ data, display, dayHref, today }: { data: Analyti
             const label = `${c.key}${d ? `: ${money(d.pnl, display)}, ${d.trades} ${d.trades === 1 ? "trade" : "trades"}, ${pct(d.trades ? d.wins / d.trades : null, 1)} won` : ", no trades"}. Open the daily journal`;
             const body = (
               <>
-                <span className={cx("num absolute top-1.5 right-2 text-[11px]", isToday ? "grid size-5 place-items-center rounded-full bg-accent font-semibold text-white" : "text-ink-soft")}>{c.day}</span>
+                <span className={cx("num absolute top-1.5 right-2 text-[11px]", isToday ? "grid size-5 place-items-center rounded-full bg-accent font-semibold text-accent-ink" : "text-ink-soft")}>{c.day}</span>
                 {d && (
                   <span className="mt-auto block text-right">
                     <span className="num block text-[13px] leading-tight font-bold text-ink sm:text-[14px]" data-testid="day-pnl">{fmt(d.pnl)}</span>

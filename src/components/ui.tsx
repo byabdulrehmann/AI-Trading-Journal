@@ -23,8 +23,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       className={cx(
         "inline-flex items-center justify-center gap-2 rounded-control font-medium whitespace-nowrap transition-colors active:translate-y-px disabled:cursor-not-allowed disabled:opacity-55",
         size === "sm" ? "h-8 px-3 text-[13px]" : "h-9 px-3.5 text-sm",
-        variant === "primary" && "bg-accent text-accent-ink hover:bg-accent/90",
-        variant === "secondary" && "border border-line bg-surface text-ink hover:bg-raised",
+        variant === "primary" && "bg-accent text-accent-ink shadow-[0_10px_22px_-12px_var(--accent)] hover:bg-accent/90",
+        variant === "secondary" && "neu bg-surface text-ink hover:bg-raised",
         variant === "ghost" && "text-ink-soft hover:bg-raised hover:text-ink",
         variant === "danger" && "border border-loss/50 text-loss hover:bg-loss-soft",
         className,
@@ -36,7 +36,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 
 export function Card({ className, children, ...rest }: React.HTMLAttributes<HTMLElement>) {
   return (
-    <section className={cx("rounded-panel border border-line bg-surface px-card pb-card shadow-card", className)} {...rest}>
+    <section className={cx("rounded-panel border border-line bg-glass px-card pb-card shadow-card", className)} {...rest}>
       {children}
     </section>
   );
@@ -77,7 +77,7 @@ export function PageHeader({ title, description, actions }: { title: string; des
   return (
     <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-[26px] leading-[1.1] font-medium text-ink">{title}</h1>
+        <h1 className="text-[30px] leading-[1.05] text-ink">{title}</h1>
         {description && <p className="mt-1 max-w-2xl text-[14px] text-muted">{description}</p>}
       </div>
       {actions && <div className="flex max-w-full min-w-0 flex-wrap gap-2">{actions}</div>}
@@ -113,7 +113,7 @@ export function Metric({ def, value, tone, note }: { def: MetricDefinition; valu
 
 export function EmptyState({ title, body, action }: { title: string; body: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <div className="rounded-panel border border-line bg-surface px-card py-8 shadow-card">
+    <div className="rounded-panel border border-line bg-glass px-card py-8 shadow-card">
       <h3 className="text-[20px] font-medium text-ink">{title}</h3>
       <div className="mt-1 max-w-xl text-[14px] text-ink-soft">{body}</div>
       {action && <div className="mt-4 flex flex-wrap gap-2">{action}</div>}
@@ -162,7 +162,7 @@ export function Field({
 }
 
 export const inputClass =
-  "h-9 w-full min-w-0 rounded-control border border-line-strong bg-surface px-2.5 text-[14px] text-ink placeholder:text-muted aria-[invalid=true]:outline aria-[invalid=true]:outline-loss disabled:cursor-not-allowed disabled:opacity-55";
+  "neu-in h-9 w-full min-w-0 rounded-control border border-transparent bg-raised px-2.5 text-[14px] text-ink placeholder:text-muted aria-[invalid=true]:outline aria-[invalid=true]:outline-loss disabled:cursor-not-allowed disabled:opacity-55";
 
 export function Toggle({ checked, onChange, label, description, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; description?: React.ReactNode; disabled?: boolean }) {
   const id = useId();
@@ -257,7 +257,7 @@ export function Spinner({ label = "Loading" }: { label?: string }) {
 
 export function Segmented<T extends string>({ value, onChange, options, label }: { value: T; onChange: (v: T) => void; options: { value: T; label: string }[]; label: string }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex max-w-full overflow-x-auto rounded-control border border-line-strong bg-sunken p-0.5 [scrollbar-width:none]">
+    <div role="radiogroup" aria-label={label} className="neu-in inline-flex max-w-full overflow-x-auto rounded-control bg-raised p-1 [scrollbar-width:none]">
       {options.map((o) => (
         <button
           key={o.value}
@@ -266,8 +266,8 @@ export function Segmented<T extends string>({ value, onChange, options, label }:
           aria-checked={value === o.value}
           onClick={() => onChange(o.value)}
           className={cx(
-            "rounded-[5px] px-2.5 py-1 text-[13px] whitespace-nowrap transition-colors",
-            value === o.value ? "bg-surface font-medium text-ink shadow-card ring-1 ring-line" : "text-muted hover:text-ink",
+            "rounded-[7px] px-2.5 py-1 text-[13px] whitespace-nowrap transition-colors",
+            value === o.value ? "bg-surface font-medium text-ink shadow-[0_2px_6px_-2px_var(--neu-lo)]" : "text-muted hover:text-ink",
           )}
         >
           {o.label}

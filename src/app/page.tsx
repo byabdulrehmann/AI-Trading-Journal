@@ -85,7 +85,7 @@ function StatusRow({ live, filters, editing, setEditing, today, dayHref }: { liv
         )}
       </p>
       <div className="ml-auto flex items-center gap-2">
-        <Link href={dayHref(today)} className="inline-flex h-[34px] items-center gap-2 rounded-control bg-accent px-3.5 text-[13px] font-semibold text-white hover:bg-accent/90" data-testid="start-my-day">
+        <Link href={dayHref(today)} className="inline-flex h-[34px] items-center gap-2 rounded-control bg-accent px-3.5 text-[13px] font-semibold text-accent-ink shadow-[0_10px_22px_-12px_var(--accent)] hover:bg-accent/90" data-testid="start-my-day">
           <Icon d={ICONS.rocket} size={15} />
           Start my day
         </Link>
@@ -158,7 +158,7 @@ function Dashboard() {
       {none && filters.active && <EmptyState title="No trades match these filters" body="Widen the date range or clear the filters to see more." action={<Button onClick={filters.clear}>Clear filters</Button>} />}
       {none && !filters.active && data.sampleHidden && <EmptyState title="Only sample trades so far" body="Include the sample data above to explore, or log your own first trade." action={<Button variant="primary" onClick={() => editTrade("new")}>Add a trade</Button>} />}
       {fresh && !settings?.onboardingDismissed && (
-        <section className="rounded-panel border border-line bg-surface shadow-card">
+        <section className="rounded-panel border border-line bg-glass shadow-card">
           <div className="flex items-start justify-between gap-3 px-card py-3">
             <div>
               <h2 className="text-[14px] font-semibold text-ink">Start your journal</h2>

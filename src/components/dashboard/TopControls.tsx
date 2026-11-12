@@ -61,7 +61,7 @@ export function TopControls({ filters, currency, currencies, unitNote }: { filte
             <>
               <Icon d={ICONS.filter} size={15} className="text-ink-soft" />
               <span className="max-sm:sr-only">Filters</span>
-              {count > 0 && <span className="num rounded-full bg-accent px-1.5 text-[10.5px] leading-4 text-white">{count}</span>}
+              {count > 0 && <span className="num rounded-full bg-accent px-1.5 text-[10.5px] leading-4 text-accent-ink">{count}</span>}
               <Caret />
             </>
           }

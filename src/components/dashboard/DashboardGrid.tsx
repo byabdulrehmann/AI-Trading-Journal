@@ -134,7 +134,7 @@ export function DashboardGrid({ ctx, editing }: { ctx: WidgetContext; editing: b
   return (
     <div>
       {editing && (
-        <div className="mb-3 rounded-panel border border-line bg-surface px-card pt-3 shadow-card" data-testid="widget-editor">
+        <div className="mb-3 rounded-panel border border-line bg-glass px-card pt-3 shadow-card" data-testid="widget-editor">
           <p className="text-[14px] font-semibold text-ink">Dashboard widgets</p>
           <p className="mb-2 text-[13px] text-muted">The cards above are fixed. Add, remove, reorder and resize the widgets below them, and save arrangements as views.</p>
           <label className="mb-2 flex items-center gap-2 text-[13px] text-muted">
