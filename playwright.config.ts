@@ -33,7 +33,6 @@ export default defineConfig({
     env: {
       KESTREL_DIST_DIR: ".next-e2e",
       KESTREL_DB_PATH: path.join(process.env.E2E_DATA_DIR, "kestrel.db"),
-      TRADBOT_URL: "http://127.0.0.1:9", // Nothing listens there, so no test can reach a real TradBot.
       ANTHROPIC_API_KEY: "",
     },
   },

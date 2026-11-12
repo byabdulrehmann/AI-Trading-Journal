@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { Button, Segmented } from "../ui";
-import { TradBotConsole } from "../tradbot/TradBotConsole";
+import { useEffect, useRef } from "react";
+import { Button } from "../ui";
 import { JarvisChat } from "./JarvisChat";
 import { useJarvisChat } from "./useJarvisChat";
 
@@ -11,7 +10,6 @@ import { useJarvisChat } from "./useJarvisChat";
 export function JarvisPanel({ onClose }: { onClose: () => void }) {
   const chat = useJarvisChat();
   const ref = useRef<HTMLElement>(null);
-  const [mode, setMode] = useState<"coach" | "tradbot">("coach");
 
   useEffect(() => {
     ref.current?.querySelector<HTMLTextAreaElement>("textarea")?.focus();
@@ -41,25 +39,8 @@ export function JarvisPanel({ onClose }: { onClose: () => void }) {
           </Button>
         </div>
       </div>
-      <div className="px-4 pb-2">
-        <Segmented
-          label="Which assistant"
-          value={mode}
-          onChange={setMode}
-          options={[
-            { value: "coach", label: "Journal coach" },
-            { value: "tradbot", label: "TradBot-I live" },
-          ]}
-        />
-      </div>
       <div className="min-h-0 flex-1 border-t border-line">
-        {/* Both stay mounted so switching never drops a reply or the mic. */}
-        <div className={mode === "coach" ? "h-full" : "hidden"}>
-          <JarvisChat chat={chat} compact />
-        </div>
-        <div className={mode === "tradbot" ? "h-full" : "hidden"}>
-          <TradBotConsole compact />
-        </div>
+        <JarvisChat chat={chat} compact />
       </div>
     </aside>
   );

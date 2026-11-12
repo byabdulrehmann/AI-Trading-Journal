@@ -63,7 +63,7 @@ email, so each account gets a one-time recovery code at sign-up (a new one from 
 Recovery code) and `/forgot-password` resets the password with it. `npm run dev` and `npm start`
 listen on `127.0.0.1` only, and `src/proxy.ts` answers only on a loopback host and refuses
 changes sent by other sites. It isn't built for a network: there's no HTTPS, and loosening
-these checks would expose your journal, your MT5 connection and TradBot-I. Anyone who can
+these checks would expose your journal and your MT5 connection. Anyone who can
 read your Windows profile can read your data; the investor password's key is kept in
 `%LOCALAPPDATA%\Jarvis`, apart from the database, so a copied project folder doesn't carry it.
 
@@ -137,102 +137,6 @@ never gives buy/sell instructions or urges trading, never claims to see markets,
 and phrases behavioural readings tentatively. Patterns can be dismissed, and
 behavioural insights can be switched off entirely.
 
-## TradBot-I integration (your own Jarvis)
-
-Jarvis can drive your existing **TradBot-I** Jarvis, the PyQt6 + Gemini Live desktop
-assistant, as the same assistant with the same personality, tools, memory, MT5
-trading monitor and voice. TradBot-I's code is used unchanged: Jarvis connects
-to the remote dashboard TradBot-I already runs (`dashboard/server.py`, port 8000),
-as one more paired client alongside the phone dashboard.
-
-Open it from **Jarvis → TradBot-I live**, or the **TradBot-I live** switch in the Jarvis side panel.
-The built-in journal coach stays separate and keeps working when TradBot-I is stopped.
-
-### Run both
-
-```bash
-# 1) TradBot-I, in its own folder (first run: python setup.py)
-cd TradBot-I-main
-.venv\Scripts\activate          # macOS/Linux: source .venv/bin/activate
-python main.py
-
-# 2) Jarvis, in another terminal
-cd kestrel
-npm run dev
-```
-
-Then pair once per TradBot-I launch:
-
-1. In the TradBot-I window press **Remote Control**. It shows a QR code and a 6-character key (single use, 10 minutes).
-2. In Jarvis → Jarvis → TradBot-I live, type the key and press **Pair**.
-
-TradBot-I keeps pairings in memory, so after it restarts Jarvis shows
-"no longer recognises this pairing" and asks for a new key.
-
-> **TradBot-I patch needed for Auto-Start / `pythonw.exe`.** TradBot-I's Auto-Start on
-> Boot registers a `JARVIS_AI` startup entry that runs `pythonw.exe` (no console). Unpatched,
-> `sys.stdout` is `None` there and uvicorn's log setup raises
-> `AttributeError: 'NoneType' object has no attribute 'isatty'`. The dashboard task dies
-> silently, nothing listens on port 8000, and both Jarvis and TradBot-I's phone Remote
-> Control can't connect. Fix (applied to the local copy on 2026-11-03; original backed up
-> as `dashboard-server.py.backup-2026-11-03` next to the TradBot-I folder): add
-> `log_config=None` to the two `uvicorn.Config(...)` calls in `dashboard/server.py`.
-> Without the patch, start TradBot-I with `python.exe main.py` instead. Run only one copy
-> at a time. (On Windows each run shows two `pythonw.exe` processes, the venv
-> launcher and its interpreter; that's one copy.)
-
-### How it's wired
-
-| Browser (Jarvis UI) | Jarvis server (`src/lib/server/tradbot/bridge.ts`) | TradBot-I dashboard |
-|---|---|---|
-| `POST /api/tradbot/pair {pin}` | `POST /login` → bearer token, stored server-side in SQLite (`settings.tradbot_session`) | issues token |
-| `POST /api/tradbot/command {text}` | `POST /api/command` | queued into the live Gemini session (`_process_dashboard_commands`) |
-| `GET /api/tradbot/events` (SSE) | one WebSocket to `/ws` | `log` (user/jarvis transcripts), `status`, `sys` events |
-| `POST /api/tradbot/audio` (PCM16 chunks) | WebSocket to `/ws/phone-audio` | fed into the live session (`_relay_phone_audio`) |
-| `GET /api/tradbot/status` | probes `GET /login` | — |
-
-The bearer token never reaches the browser, logs or the JSON export. Set
-`TRADBOT_URL` if TradBot-I's dashboard isn't on `http://127.0.0.1:8000`.
-
-### Voice
-
-- **Input:** the mic button captures your browser microphone, converts it to
-  16 kHz mono PCM16 exactly as TradBot-I's own phone dashboard does, and streams it
-  into TradBot-I's live session. While it streams, TradBot-I mutes its PC mic. It also
-  ignores incoming audio while it is speaking, which is its existing echo guard.
-  Browsers allow microphone access on `http://localhost`. Jarvis doesn't accept
-  connections from other devices (see Data storage).
-- **Output:** TradBot-I speaks through the **speakers of the computer running it**, in
-  the voice selected in its HUD (Charon, Puck, Kore, Fenrir or Aoede, saved in its own
-  config). Its dashboard API doesn't stream reply audio, so Jarvis shows the reply text
-  and doesn't fake a voice in the browser. If you use Jarvis on another device, you'll
-  read replies there but hear them at the TradBot-I computer.
-- Voice choice, audio devices, push-to-talk, wake settings and trading settings are
-  changed in TradBot-I's ⚙ drawer. Jarvis doesn't touch its config file, which also
-  holds its Gemini key.
-
-### What TradBot-I supports through Jarvis
-
-| Capability | Through Jarvis | Notes |
-|---|---|---|
-| Typed conversation with TradBot-I's persona and tools | Yes | Replies arrive as text when its turn completes (not token-streamed) |
-| Voice input | Yes | Browser mic → its live session |
-| Voice output in its own voice | Yes, on the TradBot-I computer | Not streamed to the browser |
-| Proactive messages, check-ins, alerts it speaks | Shown as they're logged | Same feed as its phone dashboard |
-| Model switching | No | TradBot-I uses one fixed model (`LIVE_MODEL = gemini-3.1-flash-live-preview`); its `core/llm_client.py` isn't wired into the app |
-| Voice switching | In TradBot-I's HUD | 5 Gemini voices; not exposed by its dashboard API |
-| Confirming shutdown/restart/Wi-Fi | In TradBot-I's window only | Its confirmation gate is UI-issued by design |
-| MT5 monthly history, file upload | Not surfaced yet | Its dashboard has `/api/trading/monthly` and `/api/upload`; Jarvis doesn't call them yet |
-
-### Requirements and privacy
-
-TradBot-I needs Python 3.11–3.13, its dependencies (`python setup.py`), a Gemini key
-from its first-run setup, plus a microphone and speakers. MT5 features need its own
-MT5 setup. Anything you type or say to it is sent to Google Gemini by TradBot-I,
-as its README describes. Jarvis shares nothing else with it: not your Jarvis
-journal, memories or settings. With activity recording on, Jarvis logs only the
-length of messages you type to TradBot-I.
-
 ## Market context (demo only)
 
 `/market` uses `demoMarketProvider`, a deterministic **simulated** series. Every
@@ -257,12 +161,6 @@ reduced-motion support, dark/light/system themes. Layouts were checked at
 - Demo-mode Jarvis can't filter by date and only answers a few question types.
 - Only the Anthropic provider is wired; its live path was not exercised in review
   because no API key was configured.
-- TradBot-I: pairing and typed conversation verified live against a running
-  `python main.py` session with Gemini. Voice input through the browser mic couldn't be
-  tested in the review browser (microphone blocked); its server-side path was verified
-  with synthetic PCM against TradBot-I's real dashboard code. TradBot-I doesn't
-  broadcast typed dashboard messages, so Jarvis shows your typed messages from its
-  own copy; they don't appear on TradBot-I's phone dashboard.
 - No automated test suite yet; domain math was verified through the API during review.
 - In `next dev`, React logs a warning about the inline theme script in `<head>`;
   it's the pattern Next.js documents for avoiding a theme flash.

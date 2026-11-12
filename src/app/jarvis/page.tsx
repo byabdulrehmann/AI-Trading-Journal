@@ -8,7 +8,6 @@ import { dateTime } from "@/lib/client/format";
 import { MEMORY_KINDS, type Memory } from "@/lib/domain/types";
 import { JarvisChat } from "@/components/jarvis/JarvisChat";
 import { useJarvisChat } from "@/components/jarvis/useJarvisChat";
-import { TradBotConsole } from "@/components/tradbot/TradBotConsole";
 import { Badge, Button, EmptyState, Notice, PageHeader, Segmented, Spinner, cx, inputClass } from "@/components/ui";
 
 interface Conversation { id: number; title: string; createdAt: string; messageCount: number }
@@ -23,7 +22,7 @@ interface ProvidersResponse {
 
 export default function JarvisPage() {
   const { settings, saveSettings } = useApp();
-  const [tab, setTab] = useState<"chat" | "tradbot" | "memory" | "model">("chat");
+  const [tab, setTab] = useState<"chat" | "memory" | "model">("chat");
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [modelVersion, setModelVersion] = useState(0);
   const chat = useJarvisChat();
@@ -49,26 +48,8 @@ export default function JarvisPage() {
       <PageHeader
         title="AI Coach"
         description="A reflective companion that works from your own records. It doesn't see markets, place trades, or tell you what to trade."
-        actions={<Segmented label="AI Coach section" value={tab} onChange={setTab} options={[{ value: "chat", label: "Coach chat" }, { value: "tradbot", label: "TradBot-I live" }, { value: "memory", label: "Memory" }, { value: "model", label: "Model" }]} />}
+        actions={<Segmented label="AI Coach section" value={tab} onChange={setTab} options={[{ value: "chat", label: "Coach chat" }, { value: "memory", label: "Memory" }, { value: "model", label: "Model" }]} />}
       />
-
-      {tab === "tradbot" && (
-        <div className="grid grid-cols-[minmax(0,1fr)] gap-x-8 gap-y-5 border-t border-line lg:grid-cols-[minmax(0,1fr)_17.5rem]">
-          <section aria-label="TradBot-I console" className="h-[calc(100dvh-13rem)] min-h-[480px] overflow-hidden">
-            <TradBotConsole />
-          </section>
-          <aside className="self-start text-[13px] text-ink-soft lg:pt-3">
-            <h2 className="mb-2 text-[14px] font-medium text-ink">Your TradBot-I assistant</h2>
-            <p>This is the same assistant as the TradBot-I desktop app: its personality, tools, memory, trading monitor and Gemini Live voice. Jarvis is a remote control for it.</p>
-            <ul className="mt-2 list-disc space-y-1 pl-4">
-              <li>Replies are spoken on the computer running TradBot-I, in the voice chosen in its HUD (Charon, Puck, Kore, Fenrir or Aoede).</li>
-              <li>Change voice, audio devices, push-to-talk and trading settings in TradBot-I&apos;s settings drawer.</li>
-              <li>It doesn&apos;t see this journal. Its own journal lives in TradBot-I.</li>
-              <li>Actions that need confirmation (shutdown, restart, Wi-Fi) still wait for the button in the TradBot-I window.</li>
-            </ul>
-          </aside>
-        </div>
-      )}
 
       {tab === "chat" && (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-x-6 gap-y-5 border-t border-line lg:grid-cols-[15rem_minmax(0,1fr)]">

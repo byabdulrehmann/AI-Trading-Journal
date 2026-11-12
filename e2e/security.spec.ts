@@ -26,8 +26,7 @@ const ROUTES: [string, string][] = [
   ["GET", "notifications"], ["PATCH", "playbooks/ID"], ["DELETE", "playbooks/ID"], ["GET", "playbooks"], ["POST", "playbooks"], ["GET", "progress"],
   ["GET", "reconcile"], ["POST", "reconcile"], ["GET", "replay/day"], ["GET", "reviews"], ["POST", "reviews"], ["PATCH", "routine/ID"], ["PUT", "routine/checks"],
   ["GET", "routine"], ["POST", "routine"], ["GET", "settings"], ["PATCH", "settings"], ["DELETE", "tag-rules/ID"], ["GET", "tag-rules"], ["POST", "tag-rules"],
-  ["POST", "tradbot/audio"], ["DELETE", "tradbot/audio"], ["POST", "tradbot/command"], ["GET", "tradbot/events"], ["POST", "tradbot/pair"],
-  ["DELETE", "tradbot/pair"], ["GET", "tradbot/status"], ["POST", "trades/ID/attachments"], ["GET", "trades/ID/bars"], ["GET", "trades/ID"], ["PUT", "trades/ID"],
+  ["POST", "trades/ID/attachments"], ["GET", "trades/ID/bars"], ["GET", "trades/ID"], ["PUT", "trades/ID"],
   ["POST", "trades/ID"], ["GET", "trades/ID/rules"], ["PUT", "trades/ID/rules"], ["POST", "trades/bulk"], ["POST", "trades/delete"], ["GET", "trades/export"],
   ["GET", "trades"], ["POST", "trades"], ["GET", "early-access"], ["DELETE", "early-access/ID"],
 ];

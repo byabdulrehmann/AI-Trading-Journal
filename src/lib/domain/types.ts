@@ -323,6 +323,5 @@ export const ACTIVITY_TYPES: Record<string, string> = {
   "trade.deleted": "You deleted or restored a trade (trade id)",
   "import.committed": "You imported a CSV or Excel file (row count)",
   "jarvis.chat": "You sent the AI Coach a message (length only, never the text)",
-  "tradbot.message": "You typed a message to TradBot-I (length only, never the text)",
   "settings.changed": "You changed a setting (setting name)",
 };

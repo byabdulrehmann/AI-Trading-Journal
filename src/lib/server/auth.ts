@@ -135,7 +135,7 @@ export async function requireUser(): Promise<User | Response> {
   return (await currentUser()) ?? Response.json({ error: "Please sign in." }, { status: 401 });
 }
 
-/** For what belongs to the computer rather than to one user, such as the TradBot-I link. */
+/** For what belongs to the computer rather than to one user, such as early-access requests. */
 export async function requireOwner(): Promise<User | Response> {
   const user = await requireUser();
   if (user instanceof Response || user.isOwner) return user;

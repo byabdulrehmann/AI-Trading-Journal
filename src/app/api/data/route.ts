@@ -4,7 +4,6 @@ import { requireUser } from "@/lib/server/auth";
 import { deleteAllData, exportAll } from "@/lib/server/repo/journal";
 import { stopService } from "@/lib/server/mt5/client";
 import { listConnections } from "@/lib/server/repo/mt5";
-import { tradbot } from "@/lib/server/tradbot/bridge";
 
 /** Full JSON export of everything Jarvis stores. */
 export async function GET() {
@@ -28,7 +27,5 @@ export async function DELETE(req: Request) {
   deleteAllData(user.id);
   // The terminal may still be signed in to an account just deleted.
   if (hadConnection) await stopService();
-  // The bridge belongs to the owner: it keeps the pairing token and recent transcript in memory.
-  if (user.isOwner) tradbot().forget();
   return json({ ok: true });
 }
