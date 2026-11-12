@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { cx } from "@/components/ui";
 import type { SceneProgress } from "./CandleScene";
+import { useSiteTheme } from "./theme";
 import { useReducedMotion } from "./scroll";
 
 // three.js loads only when a scene is about to be seen, never on the other pages.
@@ -36,6 +37,7 @@ export function SceneMount({ mode, progress, className, poster }: { mode: "field
   const [near, setNear] = useState(false);
   const [visible, setVisible] = useState(false);
   const still = useReducedMotion();
+  const [theme] = useSiteTheme();
   const gl = useSyncExternalStore(noop, hasWebGL, () => true);
   const compact = useSyncExternalStore(subscribeWidth, () => window.innerWidth < 768, () => false);
 
@@ -55,10 +57,11 @@ export function SceneMount({ mode, progress, className, poster }: { mode: "field
   return (
     <div ref={box} className={cx("absolute inset-0", className)} aria-hidden>
       {/* The poster sits underneath: it is what shows while the scene loads, and all that shows without WebGL. */}
-      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${poster})` }} />
+      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${poster.replace(".webp", `-${theme}.webp`)})` }} />
       {gl && near && (
         <div className="absolute inset-0 animate-[site-fade_900ms_var(--s-ease-out)_both]">
-          <CandleScene mode={mode} progress={progress} active={visible} still={still} compact={compact} />
+          {/* Keyed by theme: the studio lighting is baked once per mount. */}
+          <CandleScene key={theme} mode={mode} progress={progress} active={visible} still={still} compact={compact} theme={theme} />
         </div>
       )}
     </div>

@@ -1,86 +1,140 @@
 /*
- * Jarvis marketing site: the working book. Green-black ground, bone ink, a light serif for display, mono for figures
- * and one red pencil for marks and the action. Scoped under .site so the journal's own tokens never change.
- * Brief and score: scrollcraft/builds/jarvis-site/BRIEF.md.
+ * Jarvis marketing site: an instrument cut from liquid glass. A pearl studio (obsidian at night), frosted glass panels
+ * with a specular rim and a sheen that follows the pointer, soft neumorphic controls that press in, and hyperreal glass
+ * candles in the 3D scenes. Scoped under .site so the journal's own tokens never change.
+ * Direction: .impeccable/surfaces/src-app-site.md.
  */
-html:has(.site) { background: #090c0b; color-scheme: dark; }
+html:has(.site) { background: #e6e9ee; color-scheme: light; }
+html[data-site-theme="dark"]:has(.site) { background: #0b0d12; color-scheme: dark; }
 
 .site {
-  /* Ground and surfaces: green-black, like a ledger at night. Never #000. */
-  --s-canvas: #090c0b;
-  --s-ground-2: #0d1211;
-  --s-surface: #101614;
-  --s-raised: #17201c;
-  --s-line: rgb(236 233 221 / 0.07);
-  --s-line-strong: rgb(236 233 221 / 0.16);
-  /* Bone ink, tinted from the ground. */
-  --s-ink: #ece9dd;
-  --s-ink-soft: #aeb8b0;
-  --s-muted: #7d8880;
-  /* One red pencil: the action, the marks, nothing else. */
-  --s-accent: #ff6a4a;
-  --s-accent-strong: #ff8569;
-  --s-accent-ink: #1a0a05;
-  /* Quiet bone for secondary marks and hairlines. */
-  --s-metal: #c9c4b4;
-  /* Money only, kept muted. */
-  --s-profit: #93c4a2;
-  --s-loss: #ff7a5c;
-  /* The paper band. */
-  --s-paper: #e8e4d6;
+  /* Pearl studio: cool mist, never pure white, never grey mud. */
+  --s-canvas: #e6e9ee;
+  --s-ground-2: #dde1e8;
+  --s-surface: #eef1f5;
+  --s-raised: #f4f6f9;
+  --s-line: rgb(22 28 45 / 0.07);
+  --s-line-strong: rgb(22 28 45 / 0.14);
+  --s-ink: #10131a;
+  --s-ink-soft: #434a58;
+  --s-muted: #646c7b;
+  /* One cool steel-blue, used for marks and focus; the main action is graphite glass. */
+  --s-accent: #3d5bd1;
+  --s-accent-strong: #2c49bd;
+  --s-accent-ink: #ffffff;
+  --s-cta: #151821;
+  --s-cta-hover: #232838;
+  --s-cta-ink: #f6f7fa;
+  --s-metal: #a3abb9;
+  /* Money only, softened. */
+  --s-profit: #3f8f72;
+  --s-loss: #c04f66;
+  --s-cell-empty: #e1e5ec;
+  --s-cell-up: #d3e6dd;
+  --s-cell-up-strong: #b6d7c8;
+  --s-cell-down: #efd7dd;
+  --s-cell-down-strong: #e3bcc6;
+  /* Materials. */
+  --s-glass: rgb(255 255 255 / 0.46);
+  --s-glass-strong: rgb(255 255 255 / 0.68);
+  --s-glass-rim: rgb(255 255 255 / 0.85);
+  --s-glass-edge: rgb(22 28 45 / 0.08);
+  --s-sheen: rgb(255 255 255 / 0.75);
+  --s-neu-hi: rgb(255 255 255 / 0.95);
+  --s-neu-lo: rgb(150 160 182 / 0.55);
+  --s-shadow-1: 0 1px 2px rgb(30 40 70 / 0.06), 0 10px 30px -14px rgb(30 40 70 / 0.28);
+  --s-shadow-2: 0 2px 6px rgb(30 40 70 / 0.05), 0 40px 80px -36px rgb(30 40 70 / 0.45);
+  /* The studio light: a soft key from the upper left, a cool fill low right. */
+  --s-room: radial-gradient(120% 80% at 12% -10%, rgb(255 255 255 / 0.9), transparent 55%), radial-gradient(90% 70% at 100% 100%, rgb(186 198 226 / 0.45), transparent 60%);
   /* Scale, motion and depth. */
   --s-gutter: clamp(16px, 4vw, 56px);
   --s-measure: 62ch;
-  --s-radius: 3px;
-  --s-radius-lg: 6px;
+  --s-radius: 14px;
+  --s-radius-lg: 24px;
   --s-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --s-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --s-dur-fast: 140ms;
   --s-dur: 240ms;
-  --s-shadow-1: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 12px 32px -12px rgb(0 0 0 / 0.7);
-  --s-shadow-2: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 40px 80px -24px rgb(0 0 0 / 0.85), 0 8px 24px -8px rgb(0 0 0 / 0.6);
-  --s-font-display: var(--font-site-display), Georgia, serif;
+  --s-font-display: var(--font-site-display), ui-sans-serif, system-ui, sans-serif;
   --s-font-text: var(--font-ui), ui-sans-serif, system-ui, sans-serif;
   --s-font-data: var(--font-site-mono), ui-monospace, monospace;
 
   position: relative;
   min-height: 100dvh;
-  background: var(--s-canvas);
+  background: var(--s-room), var(--s-canvas);
+  background-attachment: fixed;
   color: var(--s-ink);
   font-family: var(--s-font-text);
   font-size: 16px;
   line-height: 1.6;
-  letter-spacing: 0.005em;
+  letter-spacing: 0.003em;
   -webkit-font-smoothing: antialiased;
 }
 
+/* Obsidian studio: the same room with the lights down. */
+html[data-site-theme="dark"] .site {
+  --s-canvas: #0b0d12;
+  --s-ground-2: #10131a;
+  --s-surface: #141821;
+  --s-raised: #1a1f2a;
+  --s-line: rgb(214 224 255 / 0.07);
+  --s-line-strong: rgb(214 224 255 / 0.14);
+  --s-ink: #eef1f7;
+  --s-ink-soft: #aab2c2;
+  --s-muted: #828b9c;
+  --s-accent: #8ea6ff;
+  --s-accent-strong: #aabcff;
+  --s-accent-ink: #0b0d12;
+  --s-cta: #eef1f7;
+  --s-cta-hover: #ffffff;
+  --s-cta-ink: #0b0d12;
+  --s-metal: #5b6476;
+  --s-profit: #74c2a1;
+  --s-loss: #e2899b;
+  --s-cell-empty: #151922;
+  --s-cell-up: #16261f;
+  --s-cell-up-strong: #1c3529;
+  --s-cell-down: #2a1a21;
+  --s-cell-down-strong: #3b2029;
+  --s-glass: rgb(255 255 255 / 0.055);
+  --s-glass-strong: rgb(255 255 255 / 0.1);
+  --s-glass-rim: rgb(255 255 255 / 0.16);
+  --s-glass-edge: rgb(0 0 0 / 0.5);
+  --s-sheen: rgb(255 255 255 / 0.16);
+  --s-neu-hi: rgb(255 255 255 / 0.05);
+  --s-neu-lo: rgb(0 0 0 / 0.65);
+  --s-shadow-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 10px 30px -14px rgb(0 0 0 / 0.8);
+  --s-shadow-2: 0 2px 6px rgb(0 0 0 / 0.35), 0 40px 80px -36px rgb(0 0 0 / 0.9);
+  --s-room: radial-gradient(110% 80% at 15% -10%, rgb(120 140 200 / 0.16), transparent 55%), radial-gradient(90% 70% at 100% 100%, rgb(90 70 160 / 0.12), transparent 60%);
+}
+
 .site ::selection { background: var(--s-accent); color: var(--s-accent-ink); }
-.site :focus-visible { outline: 2px solid var(--s-accent); outline-offset: 3px; border-radius: 2px; }
+.site :focus-visible { outline: 2px solid var(--s-accent); outline-offset: 3px; border-radius: 8px; }
 .site a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 .site input, .site textarea { caret-color: var(--s-accent); }
-.site { scrollbar-color: var(--s-raised) var(--s-canvas); }
+.site { scrollbar-color: var(--s-metal) var(--s-canvas); }
 
-/* Grain keeps the dark ground from banding on real displays. */
+/* Grain keeps the soft gradients from banding on real displays. */
 .site-grain {
   pointer-events: none;
   position: fixed;
   inset: 0;
   z-index: 60;
-  opacity: 0.045;
+  opacity: 0.035;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 
 /* ---------- type ---------- */
 .s-display {
   font-family: var(--s-font-display);
-  font-weight: 300;
-  line-height: 1.04;
-  letter-spacing: -0.025em;
+  font-weight: 500;
+  line-height: 0.98;
+  letter-spacing: -0.04em;
   text-wrap: balance;
 }
-.s-h1 { font-size: clamp(2.6rem, 7.4vw, 6.6rem); }
-.s-h2 { font-size: clamp(2.1rem, 5vw, 4.4rem); }
-.s-h3 { font-size: clamp(1.45rem, 2.4vw, 2.05rem); letter-spacing: -0.015em; line-height: 1.12; }
+.s-h1 { font-size: clamp(2.7rem, 7.6vw, 6.4rem); }
+.s-h2 { font-size: clamp(2.1rem, 5vw, 4.3rem); }
+.s-h3 { font-size: clamp(1.45rem, 2.4vw, 2rem); letter-spacing: -0.025em; line-height: 1.1; }
 .s-lede { font-size: clamp(1.05rem, 1.3vw, 1.25rem); line-height: 1.6; color: var(--s-ink-soft); max-width: 46ch; text-wrap: pretty; }
 .s-body { color: var(--s-ink-soft); max-width: var(--s-measure); text-wrap: pretty; }
 .s-data { font-family: var(--s-font-data); font-variant-numeric: tabular-nums; letter-spacing: 0; }
@@ -92,6 +146,52 @@ html:has(.site) { background: #090c0b; color-scheme: dark; }
 .s-wrap { width: 100%; max-width: 1400px; margin-inline: auto; padding-inline: var(--s-gutter); }
 .s-section { position: relative; padding-block: clamp(96px, 14vh, 180px); }
 
+/* ---------- materials ---------- */
+/* Liquid glass: frosted, a bright rim on the lit edge, and a sheen that sits where the pointer is (--mx, --my). */
+.s-glass {
+  position: relative;
+  background: var(--s-glass);
+  -webkit-backdrop-filter: blur(22px) saturate(1.6);
+  backdrop-filter: blur(22px) saturate(1.6);
+  border: 1px solid var(--s-glass-edge);
+  box-shadow: inset 0 1px 0 var(--s-glass-rim), inset 0 -1px 0 var(--s-glass-edge), var(--s-shadow-1);
+  isolation: isolate;
+}
+.s-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: -1;
+  background: radial-gradient(380px circle at var(--mx, 30%) var(--my, 0%), var(--s-sheen), transparent 65%);
+  opacity: 0.55;
+  transition: opacity var(--s-dur) var(--s-ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .s-glass:hover::before { opacity: 1; }
+}
+/* Neumorphism: the surface pushed up out of the room, lit from the upper left. */
+.s-neu {
+  background: var(--s-canvas);
+  box-shadow: -10px -10px 24px var(--s-neu-hi), 12px 14px 28px var(--s-neu-lo);
+  transition: box-shadow var(--s-dur) var(--s-ease-out), transform var(--s-dur) var(--s-ease-out);
+}
+.s-neu-in { background: var(--s-canvas); box-shadow: inset 5px 6px 12px var(--s-neu-lo), inset -5px -5px 12px var(--s-neu-hi); }
+.s-neu-btn {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  color: var(--s-ink-soft);
+  background: var(--s-canvas);
+  box-shadow: -4px -4px 10px var(--s-neu-hi), 5px 5px 12px var(--s-neu-lo);
+  transition: box-shadow var(--s-dur) var(--s-ease-out), color var(--s-dur-fast) var(--s-ease-out), transform var(--s-dur) var(--s-ease-out);
+}
+.s-neu-btn:hover { color: var(--s-ink); }
+.s-neu-btn:active, .s-neu-btn[aria-pressed="true"] { box-shadow: inset 3px 3px 7px var(--s-neu-lo), inset -3px -3px 7px var(--s-neu-hi); color: var(--s-accent); }
+
 /* ---------- buttons ---------- */
 .s-btn {
   position: relative;
@@ -99,54 +199,82 @@ html:has(.site) { background: #090c0b; color-scheme: dark; }
   align-items: center;
   justify-content: center;
   gap: 10px;
-  height: 48px;
-  padding-inline: 22px;
-  border-radius: var(--s-radius);
+  height: 50px;
+  padding-inline: 24px;
+  border-radius: 999px;
   font-size: 15px;
   font-weight: 600;
   white-space: nowrap;
   text-decoration: none;
-  transition: transform var(--s-dur) var(--s-ease-out), background-color var(--s-dur-fast) var(--s-ease-out), border-color var(--s-dur-fast) var(--s-ease-out), color var(--s-dur-fast) var(--s-ease-out);
+  isolation: isolate;
+  overflow: hidden;
+  transition: transform var(--s-dur) var(--s-ease-out), background-color var(--s-dur-fast) var(--s-ease-out), box-shadow var(--s-dur) var(--s-ease-out), color var(--s-dur-fast) var(--s-ease-out);
 }
 .s-btn:active { transform: scale(0.97); }
-.s-btn-primary { background: var(--s-accent); color: var(--s-accent-ink); box-shadow: 0 10px 24px -12px rgb(0 0 0 / 0.7); }
-.s-btn-primary:hover { background: var(--s-accent-strong); }
-.s-btn-ghost { border: 1px solid var(--s-line-strong); color: var(--s-ink); background: rgb(255 255 255 / 0.02); }
-.s-btn-ghost:hover { border-color: rgb(236 233 221 / 0.4); background: rgb(255 255 255 / 0.05); }
+/* Graphite glass: a dark lens with a lit top edge and a highlight that slides across on hover. */
+.s-btn-primary {
+  background: var(--s-cta);
+  color: var(--s-cta-ink);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 1px 2px rgb(0 0 0 / 0.2), 0 14px 30px -12px rgb(20 26 45 / 0.55);
+}
+.s-btn-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(115deg, transparent 30%, rgb(255 255 255 / 0.28) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 700ms var(--s-ease-out);
+}
+.s-btn-primary:hover { background: var(--s-cta-hover); }
+@media (hover: hover) and (pointer: fine) {
+  .s-btn-primary:hover::after { transform: translateX(120%); }
+}
+/* The quiet action is a soft extruded pill that presses into the room. */
+.s-btn-ghost {
+  color: var(--s-ink);
+  background: var(--s-canvas);
+  box-shadow: -6px -6px 14px var(--s-neu-hi), 7px 7px 16px var(--s-neu-lo);
+}
+.s-btn-ghost:hover { box-shadow: -4px -4px 10px var(--s-neu-hi), 5px 5px 12px var(--s-neu-lo); }
+.s-btn-ghost:active { box-shadow: inset 4px 4px 9px var(--s-neu-lo), inset -4px -4px 9px var(--s-neu-hi); }
 .s-btn[aria-disabled="true"], .s-btn:disabled { opacity: 0.55; pointer-events: none; }
 .s-btn-arrow { transition: transform var(--s-dur) var(--s-ease-out); }
 @media (hover: hover) and (pointer: fine) {
   .s-btn:hover .s-btn-arrow { transform: translateX(3px); }
 }
 
-/* ---------- product frames ---------- */
+/* ---------- product frames: a glass bezel holding a real screen ---------- */
 .s-frame {
   position: relative;
   overflow: hidden;
+  padding: 6px;
   border-radius: var(--s-radius-lg);
-  border: 1px solid var(--s-line-strong);
-  background: var(--s-surface);
-  box-shadow: var(--s-shadow-2);
+  background: var(--s-glass-strong);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid var(--s-glass-edge);
+  box-shadow: inset 0 1px 0 var(--s-glass-rim), var(--s-shadow-2);
   isolation: isolate;
 }
-.s-frame img { display: block; width: 100%; height: auto; }
-/* Light that follows the pointer across a product screen. */
+.s-frame img { display: block; width: 100%; height: auto; border-radius: calc(var(--s-radius-lg) - 6px); }
+/* Light that follows the pointer across the glass. */
 .s-frame::after {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
   opacity: 0;
-  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgb(236 233 221 / 0.14), transparent 60%);
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), var(--s-sheen), transparent 60%);
+  mix-blend-mode: soft-light;
   transition: opacity var(--s-dur) var(--s-ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
   .s-frame:hover::after { opacity: 1; }
 }
-/* The screen leans in a touch under a fine pointer. */
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
   .s-frame img { transition: transform 700ms var(--s-ease-out); }
-  .s-frame:hover img { transform: scale(1.02); }
+  .s-frame:hover img { transform: scale(1.015); }
 }
 
 /* Text links: an underline that draws in from the left. */
@@ -155,39 +283,41 @@ html:has(.site) { background: #090c0b; color-scheme: dark; }
 
 .s-caption { margin-top: 12px; font-size: 13px; color: var(--s-muted); }
 
-/* ---------- chips ---------- */
+/* ---------- chips: small glass lozenges ---------- */
 .s-tag {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 24px;
-  padding-inline: 10px;
+  height: 26px;
+  padding-inline: 11px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
+  background: var(--s-glass-strong);
+  box-shadow: inset 0 1px 0 var(--s-glass-rim), 0 0 0 1px var(--s-glass-edge);
 }
-.s-tag-built { background: rgb(147 196 162 / 0.12); color: var(--s-profit); }
-.s-tag-soon { background: rgb(236 233 221 / 0.08); color: var(--s-ink-soft); }
-.s-tag-needs { background: rgb(255 106 74 / 0.12); color: var(--s-accent-strong); }
+.s-tag-built { color: var(--s-profit); }
+.s-tag-soon { color: var(--s-muted); }
+.s-tag-needs { color: var(--s-accent); }
 
-/* ---------- form ---------- */
+/* ---------- form: wells pressed into the surface ---------- */
 .s-field { display: flex; flex-direction: column; gap: 8px; }
 .s-field label { font-size: 14px; font-weight: 500; color: var(--s-ink); }
 .s-input {
-  height: 48px;
+  height: 50px;
   width: 100%;
-  padding-inline: 14px;
+  padding-inline: 16px;
   border-radius: var(--s-radius);
-  border: 1px solid var(--s-line-strong);
-  background: var(--s-surface);
+  border: 1px solid transparent;
+  background: var(--s-canvas);
+  box-shadow: inset 4px 4px 9px var(--s-neu-lo), inset -4px -4px 9px var(--s-neu-hi);
   color: var(--s-ink);
   font-size: 16px;
-  transition: border-color var(--s-dur-fast) var(--s-ease-out), background-color var(--s-dur-fast) var(--s-ease-out);
+  transition: border-color var(--s-dur-fast) var(--s-ease-out), box-shadow var(--s-dur) var(--s-ease-out);
 }
 textarea.s-input { height: auto; min-height: 120px; padding-block: 12px; resize: vertical; }
-.s-input:hover { border-color: rgb(236 233 221 / 0.3); }
-.s-input:focus-visible { outline: 2px solid var(--s-accent-strong); outline-offset: 2px; background: var(--s-raised); }
+.s-input:focus-visible { outline: 2px solid var(--s-accent); outline-offset: 2px; }
 .s-input[aria-invalid="true"] { border-color: var(--s-loss); }
 .s-input::placeholder { color: var(--s-muted); }
 .s-error { font-size: 13px; color: var(--s-loss); }
@@ -215,11 +345,11 @@ textarea.s-input { height: auto; min-height: 120px; padding-block: 12px; resize:
 .s-cursor[data-visible] { opacity: 1; }
 .s-cursor-dot, .s-cursor-ring { position: fixed; top: 0; left: 0; will-change: transform; }
 .s-cursor-dot span, .s-cursor-ring span { display: block; border-radius: 999px; transition: transform 280ms var(--s-ease-out), opacity var(--s-dur) var(--s-ease-out), background-color var(--s-dur) var(--s-ease-out), border-color var(--s-dur) var(--s-ease-out); }
-.s-cursor-dot span { width: 8px; height: 8px; background: var(--s-accent-strong); box-shadow: 0 0 12px rgb(236 233 221 / 0.7); }
-.s-cursor-ring span { width: 36px; height: 36px; border: 1px solid rgb(236 233 221 / 0.28); background: transparent; }
-.s-cursor[data-state="link"] .s-cursor-ring span { transform: scale(1.5); border-color: rgb(236 233 221 / 0.7); background: rgb(236 233 221 / 0.06); }
+.s-cursor-dot span { width: 8px; height: 8px; background: var(--s-accent-strong); box-shadow: 0 0 10px color-mix(in oklab, var(--s-accent) 60%, transparent); }
+.s-cursor-ring span { width: 36px; height: 36px; border: 1px solid color-mix(in oklab, var(--s-ink) 28%, transparent); background: transparent; }
+.s-cursor[data-state="link"] .s-cursor-ring span { transform: scale(1.5); border-color: color-mix(in oklab, var(--s-accent) 70%, transparent); background: color-mix(in oklab, var(--s-accent) 8%, transparent); backdrop-filter: blur(2px); }
 .s-cursor[data-state="link"] .s-cursor-dot span { transform: scale(0.5); }
-.s-cursor[data-state="cta"] .s-cursor-ring span { transform: scale(2.1); border-color: transparent; background: rgb(236 233 221 / 0.16); }
+.s-cursor[data-state="cta"] .s-cursor-ring span { transform: scale(2.1); border-color: var(--s-glass-rim); background: var(--s-glass); backdrop-filter: blur(6px) saturate(1.6); }
 .s-cursor[data-state="cta"] .s-cursor-dot span { transform: scale(0); }
 .s-cursor[data-state="text"] .s-cursor-dot span, .s-cursor[data-state="text"] .s-cursor-ring span { opacity: 0; }
 .s-cursor[data-down] .s-cursor-ring span { transform: scale(0.8); transition-duration: 120ms; }
@@ -232,31 +362,15 @@ textarea.s-input { height: auto; min-height: 120px; padding-block: 12px; resize:
 .hero-depth { translate: calc(var(--px, 0) * var(--depth, 0px) * -1) calc(var(--py, 0) * var(--depth, 0px) * -0.6); transition: translate 900ms var(--s-ease-out); }
 @media (prefers-reduced-motion: reduce) { .hero-depth { translate: none; } }
 
-/* ---------- the paper band: one act set on bone, like the page of the book ---------- */
-.s-paper {
-  --s-canvas: var(--s-paper);
-  --s-surface: #ddd8c8;
-  --s-raised: #d3cdbb;
-  --s-ink: #141a17;
-  --s-ink-soft: #3e4a43;
-  --s-muted: #5f6a63;
-  --s-line: rgb(20 26 23 / 0.1);
-  --s-line-strong: rgb(20 26 23 / 0.2);
-  --s-metal: #3e4a43;
-  --s-accent-strong: #d4472a;
-  background: var(--s-canvas);
-  color: var(--s-ink);
-}
-
 /* ---------- drawn report illustrations (home/Charts.tsx) ---------- */
 .ch-panel svg { display: block; width: 100%; height: auto; overflow: visible; }
 .ch-rule { stroke: var(--s-line-strong); stroke-width: 1; }
 .ch-line { fill: none; stroke: var(--s-ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 0; }
-.ch-line-neg { stroke: var(--s-accent); }
+.ch-line-neg { stroke: var(--s-loss); }
 .ch-dot { fill: var(--s-accent); }
 .ch-bar, .ch-hbar, .ch-cell { fill: var(--s-metal); }
-.ch-neg { fill: var(--s-accent); }
-.ch-hatch { stroke: var(--s-accent); stroke-width: 1.2; opacity: 0.55; }
+.ch-neg { fill: var(--s-loss); }
+.ch-hatch { stroke: var(--s-loss); stroke-width: 1.2; opacity: 0.55; }
 .ch-area { stroke: none; }
 .ch-text { fill: var(--s-muted); font-family: var(--s-font-data); font-size: 13px; }
 /* Armed by script: hidden until the panel arrives, then drawn. With no script or reduced motion, shown as is. */
@@ -275,8 +389,8 @@ textarea.s-input { height: auto; min-height: 120px; padding-block: 12px; resize:
   [data-armed] [data-in] .ch-cell { transform: scale(1); }
 }
 
-/* Real app screens keep their layout but drop most of the app's navy and violet, so they sit in the book's palette. */
-.site img[src*="/site/screens/"] { filter: saturate(0.4) sepia(0.12) brightness(0.97); }
+/* Real app screens sit behind glass: a little of the app's violet comes off so they belong to the studio. */
+.site img[src*="/site/screens/"] { filter: saturate(0.7); }
 
 /* SplitText's word masks clip at the line box; the serif's descenders (y, g, p) need room below it. */
 [data-reveal="words"] > div { padding-bottom: 0.2em; margin-bottom: -0.2em; }

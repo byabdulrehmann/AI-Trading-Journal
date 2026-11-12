@@ -1,22 +1,24 @@
 "use client";
 
-import { IBM_Plex_Serif } from "next/font/google";
+import { Bricolage_Grotesque } from "next/font/google";
 import Link from "next/link";
 import { useState } from "react";
 import { Button, Notice } from "@/components/ui";
 import { Logo } from "@/components/Shell";
+import { ThemeScript } from "@/components/site/theme";
 
-const serif = IBM_Plex_Serif({ subsets: ["latin"], weight: ["300"] });
+const display = Bricolage_Grotesque({ subsets: ["latin"], weight: ["500"] });
 
-/** The narrow column every sign-in screen shares: sign in, sign up, forgot password. In the website's palette. */
+/** The narrow column every sign-in screen shares: sign in, sign up, forgot password. A glass pane in the website's studio. */
 export function AuthFrame({ title, intro, children, footer }: { title: string; intro: React.ReactNode; children: React.ReactNode; footer?: React.ReactNode }) {
   return (
-    <main className="auth-book flex min-h-dvh items-center justify-center bg-canvas px-gutter py-10">
-      <div className="w-full max-w-sm">
+    <main className="auth-book flex min-h-dvh items-center justify-center px-gutter py-10">
+      <ThemeScript />
+      <div className="auth-pane w-full max-w-[420px]">
         <Link href="/welcome" aria-label="Jarvis website" className="inline-flex no-underline">
           <Logo />
         </Link>
-        <h1 className={`${serif.className} mt-6 border-t border-line pt-6 text-[34px] leading-[1.08] font-light tracking-[-0.02em]`}>{title}</h1>
+        <h1 className={`${display.className} mt-6 border-t border-line pt-6 text-[34px] leading-[1.02] font-medium tracking-[-0.035em]`}>{title}</h1>
         <p className="mt-1.5 text-[14px] text-muted">{intro}</p>
         <div className="mt-6">{children}</div>
         {footer && <div className="mt-6 space-y-2 border-t border-line pt-5 text-[13.5px] text-muted">{footer}</div>}

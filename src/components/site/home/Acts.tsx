@@ -105,7 +105,7 @@ export function Introducing() {
           <ol className="grid gap-10 lg:grid-cols-5 lg:gap-6">
             {PIPELINE.map(([name, line], i) => (
               <li key={name} className="intro-node relative flex gap-5 lg:block">
-                <span className="relative z-10 grid size-11 shrink-0 place-items-center rounded-full border border-[var(--s-line-strong)] bg-[var(--s-canvas)] s-data text-[13px] text-[var(--s-ink)]">{i + 1}</span>
+                <span className="s-neu relative z-10 grid size-11 shrink-0 place-items-center rounded-full s-data text-[13px] text-[var(--s-ink)]">{i + 1}</span>
                 <div className="lg:mt-6">
                   <h3 className="text-[18px] font-semibold tracking-[-0.01em] text-[var(--s-ink)]">{name}</h3>
                   <p className="s-body mt-1.5 text-[15px]">{line}</p>
@@ -168,9 +168,9 @@ export function Mt5() {
           </div>
         </div>
         <figure className="m-0">
-          <div className="mt5-diagram rounded-[var(--s-radius-lg)] border border-[var(--s-line-strong)] bg-[var(--s-surface)] p-6 shadow-[var(--s-shadow-2)] sm:p-10" role="img" aria-label="Diagram: your broker's MT5 server sends trades, positions and balances one way to Jarvis on your computer, through the read-only investor password.">
+          <div className="mt5-diagram s-glass rounded-[var(--s-radius-lg)] p-6 sm:p-10" role="img" aria-label="Diagram: your broker's MT5 server sends trades, positions and balances one way to Jarvis on your computer, through the read-only investor password.">
             <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-6">
-              <div className="rounded-[var(--s-radius)] border border-[var(--s-line)] bg-[var(--s-raised)] p-4">
+              <div className="s-neu-in rounded-[var(--s-radius)] p-4">
                 <p className="s-label">Your broker</p>
                 <p className="mt-1 text-[16px] font-semibold">MetaTrader 5</p>
                 <p className="s-data mt-3 text-[12px] text-[var(--s-muted)]">history, positions, balance</p>
@@ -186,7 +186,7 @@ export function Mt5() {
                   read-only
                 </span>
               </div>
-              <div className="rounded-[var(--s-radius)] border border-[var(--s-accent)] bg-[var(--s-raised)] p-4">
+              <div className="s-neu rounded-[var(--s-radius)] p-4 ring-1 ring-[var(--s-accent)]/40">
                 <p className="s-label">Your computer</p>
                 <p className="mt-1 text-[16px] font-semibold">Jarvis</p>
                 <p className="s-data mt-3 text-[12px] text-[var(--s-muted)]">synced on the interval you set</p>
@@ -299,7 +299,7 @@ export function Psychology() {
   );
   const title = "Jarvis doesn't read your mind. It reads your record.";
   return (
-    <section id="psychology" data-sc-act="psychology" ref={root} className="s-section s-paper" aria-labelledby="psy-title">
+    <section id="psychology" data-sc-act="psychology" ref={root} className="s-section" aria-labelledby="psy-title">
       <div className="s-wrap">
         <h2 id="psy-title" className="psy-title s-display s-h2 ml-auto max-w-[18ch] text-right">
           {title.split(" ").map((w, i) => (
@@ -307,15 +307,15 @@ export function Psychology() {
           ))}
         </h2>
         <p className="s-lede mt-6 ml-auto text-right">You tag emotions, mistakes and whether you followed your plan. Jarvis checks your results against them with plain rules you can read.</p>
-        <ol className="mt-16 grid gap-px overflow-hidden rounded-[var(--s-radius-lg)] border border-[var(--s-line)] bg-[var(--s-line)] lg:grid-cols-2">
+        <ol className="mt-16 grid gap-6 lg:grid-cols-2 lg:gap-8">
           {RULES.map(([topic, name, rule]) => (
-            <li key={name} className="psy-rule bg-[var(--s-canvas)] p-6 sm:p-8">
+            <li key={name} className="psy-rule s-neu rounded-[var(--s-radius-lg)] p-6 sm:p-8">
               <p className="s-label">{topic}</p>
               <h3 className="mt-2 text-[19px] font-semibold tracking-[-0.01em] text-[var(--s-ink)]">{name}</h3>
               <p className="s-body mt-2 text-[15px]">{rule}</p>
             </li>
           ))}
-          <li className="psy-rule bg-[var(--s-canvas)] p-6 sm:p-8">
+          <li className="psy-rule s-neu-in rounded-[var(--s-radius-lg)] p-6 sm:p-8">
             <p className="s-body text-[15px]">These are checks over your own trades, shown only when there are enough of them. They describe what happened. They don&apos;t diagnose anyone, and they aren&apos;t advice.</p>
           </li>
         </ol>

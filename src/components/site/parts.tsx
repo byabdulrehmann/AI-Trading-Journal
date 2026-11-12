@@ -126,7 +126,7 @@ export function SessionRail({ chapters }: { chapters: { id: string; label: strin
               aria-current={current === i ? "step" : undefined}
               className="group flex items-center gap-3 py-0.5 no-underline"
             >
-              <span className={cx("s-data text-[11.5px] transition-opacity duration-200", current === i ? "text-[var(--s-ink)] opacity-100" : "text-[var(--s-muted)] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100")}>
+              <span className={cx("s-data rounded-full bg-[var(--s-glass-strong)] px-2 py-0.5 text-[11.5px] backdrop-blur-md transition-opacity duration-200", current === i ? "text-[var(--s-ink)] opacity-100" : "text-[var(--s-muted)] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100")}>
                 {String(i + 1).padStart(2, "0")} {c.label}
               </span>
               <span aria-hidden className={cx("block h-px transition-[width,background-color] duration-300", current === i ? "w-7 bg-[var(--s-accent-strong)]" : "w-3.5 bg-[var(--s-line-strong)] group-hover:bg-[var(--s-ink-soft)]")} />

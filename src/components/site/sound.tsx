@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useStored } from "@/lib/client/use-stored";
 
 /**
- * The site's sound, synthesised in the browser with Web Audio: an ambient bed and four short cues. Nothing is
+ * The site's sound, synthesised in the browser with Web Audio: an original generative score and short cues. Nothing is
  * downloaded and nothing plays until the visitor turns sound on; the choice is remembered per browser, but even then
  * audio only starts after the visitor's first gesture on the page, as browsers require.
  */
@@ -27,8 +27,6 @@ const GAP: Record<Cue, number> = { tick: 120, hover: 70, click: 60, nav: 500, po
 class Engine {
   ctx: AudioContext;
   master: GainNode;
-  bed: GainNode | null = null;
-  bedNodes: AudioScheduledSourceNode[] = [];
   last: Partial<Record<Cue, number>> = {};
 
   constructor(volume: number) {
@@ -47,52 +45,163 @@ class Engine {
     return src;
   }
 
-  /** A low, slowly breathing room tone: two detuned sines and filtered air. */
-  startBed() {
-    if (this.bed) return;
-    const t = this.ctx.currentTime;
-    const bed = this.ctx.createGain();
-    bed.gain.setValueAtTime(0, t);
-    bed.gain.linearRampToValueAtTime(0.05, t + 3);
-    bed.connect(this.master);
-    for (const f of [55, 82.6, 110.3]) {
-      const o = this.ctx.createOscillator();
-      o.type = "sine";
-      o.frequency.value = f;
-      const g = this.ctx.createGain();
-      g.gain.value = f === 55 ? 0.5 : 0.22;
-      o.connect(g).connect(bed);
-      o.start();
-      this.bedNodes.push(o);
+  score: { timer: ReturnType<typeof setInterval>; nodes: AudioNode[]; voices: AudioScheduledSourceNode[] } | null = null;
+
+  /** A synthetic hall: decaying stereo noise as the impulse response, so the score has space without any file. */
+  hall(seconds = 3.2) {
+    const len = Math.floor(this.ctx.sampleRate * seconds);
+    const ir = this.ctx.createBuffer(2, len, this.ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = ir.getChannelData(ch);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6);
     }
-    const air = this.noise(4);
-    air.loop = true;
-    const lp = this.ctx.createBiquadFilter();
-    lp.type = "lowpass";
-    lp.frequency.value = 380;
-    const lfo = this.ctx.createOscillator();
-    lfo.frequency.value = 0.06;
-    const depth = this.ctx.createGain();
-    depth.gain.value = 160;
-    lfo.connect(depth).connect(lp.frequency);
-    const ag = this.ctx.createGain();
-    ag.gain.value = 0.35;
-    air.connect(lp).connect(ag).connect(bed);
-    air.start();
-    lfo.start();
-    this.bedNodes.push(air, lfo);
-    this.bed = bed;
+    const c = this.ctx.createConvolver();
+    c.buffer = ir;
+    return c;
+  }
+
+  /**
+   * The score: an original, endless piece written for the site. Four lush chords (Dmaj9, Bm9, Gmaj9, Asus) change
+   * every eight seconds under soft detuned pads and a quiet bass, while a glass-bell arpeggio picks chord tones at
+   * random, so it never loops audibly. Everything runs through one bus into the hall.
+   */
+  startBed() {
+    if (this.score) return;
+    const ctx = this.ctx;
+    const t0 = ctx.currentTime + 0.05;
+    const bus = ctx.createGain();
+    bus.gain.setValueAtTime(0, t0);
+    bus.gain.linearRampToValueAtTime(0.22, t0 + 4);
+    const dry = ctx.createGain();
+    dry.gain.value = 0.65;
+    const wet = ctx.createGain();
+    wet.gain.value = 0.55;
+    const hall = this.hall();
+    bus.connect(dry).connect(this.master);
+    bus.connect(hall).connect(wet).connect(this.master);
+    // Pads sit under a slowly breathing low-pass, so the chords swell and darken rather than buzz.
+    const tone = ctx.createBiquadFilter();
+    tone.type = "lowpass";
+    tone.frequency.value = 1100;
+    tone.Q.value = 0.4;
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 0.045;
+    const depth = ctx.createGain();
+    depth.gain.value = 420;
+    lfo.connect(depth).connect(tone.frequency);
+    lfo.start(t0);
+    tone.connect(bus);
+
+    const hz = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
+    const CHORDS = [
+      [50, 54, 57, 61, 64],
+      [47, 50, 54, 57, 61],
+      [43, 47, 50, 54, 57],
+      [45, 50, 52, 54, 59],
+    ];
+    const BAR = 8;
+    const voices: AudioScheduledSourceNode[] = [lfo];
+    const hold = (o: AudioScheduledSourceNode) => {
+      voices.push(o);
+      o.onended = () => voices.splice(voices.indexOf(o), 1);
+    };
+
+    const chordAt = (at: number, notes: number[]) => {
+      for (const n of notes) {
+        const env = ctx.createGain();
+        env.gain.setValueAtTime(0.0001, at);
+        env.gain.exponentialRampToValueAtTime(0.05, at + 2.6);
+        env.gain.setValueAtTime(0.05, at + BAR - 0.4);
+        env.gain.exponentialRampToValueAtTime(0.0001, at + BAR + 3);
+        env.connect(tone);
+        for (const cents of [-7, 6]) {
+          const o = ctx.createOscillator();
+          o.type = "triangle";
+          o.frequency.value = hz(n);
+          o.detune.value = cents;
+          o.connect(env);
+          o.start(at);
+          o.stop(at + BAR + 3.2);
+          hold(o);
+        }
+      }
+      const bass = ctx.createOscillator();
+      const benv = ctx.createGain();
+      bass.frequency.value = hz(notes[0] - 12);
+      benv.gain.setValueAtTime(0.0001, at);
+      benv.gain.exponentialRampToValueAtTime(0.09, at + 1.2);
+      benv.gain.exponentialRampToValueAtTime(0.0001, at + BAR + 1);
+      bass.connect(benv).connect(bus);
+      bass.start(at);
+      bass.stop(at + BAR + 1.2);
+      hold(bass);
+    };
+
+    const bell = (at: number, midi: number) => {
+      const o = ctx.createOscillator();
+      const o2 = ctx.createOscillator();
+      const env = ctx.createGain();
+      o.type = "sine";
+      o.frequency.value = hz(midi);
+      // A quiet partial a twelfth up gives the glass its ring.
+      o2.type = "sine";
+      o2.frequency.value = hz(midi) * 3;
+      const p2 = ctx.createGain();
+      p2.gain.value = 0.18;
+      env.gain.setValueAtTime(0.0001, at);
+      env.gain.exponentialRampToValueAtTime(0.045, at + 0.012);
+      env.gain.exponentialRampToValueAtTime(0.0001, at + 2.2);
+      o.connect(env);
+      o2.connect(p2).connect(env);
+      env.connect(bus);
+      for (const x of [o, o2]) {
+        x.start(at);
+        x.stop(at + 2.3);
+        hold(x);
+      }
+    };
+
+    // A look-ahead scheduler: every 200 ms it books whatever falls in the next second.
+    let bar = 0;
+    let nextBar = t0;
+    let nextStep = t0 + 1;
+    const STEP = 0.375;
+    const tick = () => {
+      const horizon = ctx.currentTime + 1;
+      while (nextBar < horizon) {
+        chordAt(nextBar, CHORDS[bar % CHORDS.length]);
+        bar++;
+        nextBar += BAR;
+      }
+      while (nextStep < horizon) {
+        const chord = CHORDS[Math.floor((nextStep - t0) / BAR) % CHORDS.length];
+        if (Math.random() < 0.42) bell(nextStep, chord[Math.floor(Math.random() * chord.length)] + (Math.random() < 0.7 ? 12 : 24));
+        nextStep += STEP;
+      }
+    };
+    tick();
+    this.score = { timer: setInterval(tick, 200), nodes: [bus, dry, wet, hall, tone, depth], voices };
   }
 
   stopBed() {
-    if (!this.bed) return;
+    if (!this.score) return;
+    const { timer, nodes, voices } = this.score;
+    this.score = null;
+    clearInterval(timer);
+    const bus = nodes[0] as GainNode;
     const t = this.ctx.currentTime;
-    this.bed.gain.cancelScheduledValues(t);
-    this.bed.gain.setTargetAtTime(0, t, 0.3);
-    const nodes = this.bedNodes;
-    this.bedNodes = [];
-    this.bed = null;
-    setTimeout(() => nodes.forEach((n) => n.stop()), 1500);
+    bus.gain.cancelScheduledValues(t);
+    bus.gain.setTargetAtTime(0, t, 0.4);
+    setTimeout(() => {
+      for (const v of [...voices]) {
+        try {
+          v.stop();
+        } catch {
+          // already stopped
+        }
+      }
+      nodes.forEach((n) => n.disconnect());
+    }, 2000);
   }
 
   play(cue: Cue) {

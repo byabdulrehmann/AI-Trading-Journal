@@ -7,6 +7,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { cx } from "@/components/ui";
 import { useSound } from "./sound";
 import { useReducedMotion } from "./scroll";
+import { ThemeToggle } from "./theme";
 
 export const CTA_LABEL = "Experience Jarvis";
 export const CTA_HREF = "/contact#early-access";
@@ -23,17 +24,17 @@ const LINKS = [
   { href: "/contact", label: "Contact" },
 ];
 
-/** The Jarvis mark: the app's rising-line glyph, in metal for the dark ground. */
+/** The Jarvis mark: the app's rising-line glyph on a graphite glass tile. */
 export function Mark({ size = 28 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 26 26" aria-hidden fill="none">
-      <rect x="0.5" y="0.5" width="25" height="25" rx="7" fill="url(#mark-fill)" stroke="rgb(255 255 255 / 0.18)" />
-      <path d="M6 16.5l4.5-5 3.5 3 6-7" style={{ stroke: "var(--s-accent-ink)" }} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="20" cy="7.5" r="1.7" style={{ fill: "var(--s-accent-ink)" }} />
+      <rect x="0.5" y="0.5" width="25" height="25" rx="7" fill="url(#mark-fill)" style={{ stroke: "var(--s-glass-rim)" }} />
+      <path d="M6 16.5l4.5-5 3.5 3 6-7" style={{ stroke: "var(--s-cta-ink)" }} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="20" cy="7.5" r="1.7" style={{ fill: "var(--s-cta-ink)" }} />
       <defs>
         <linearGradient id="mark-fill" x1="0" y1="0" x2="26" y2="26" gradientUnits="userSpaceOnUse">
-          <stop style={{ stopColor: "var(--s-accent-strong)" }} />
-          <stop offset="1" style={{ stopColor: "var(--s-accent)" }} />
+          <stop style={{ stopColor: "var(--s-cta-hover)" }} />
+          <stop offset="1" style={{ stopColor: "var(--s-cta)" }} />
         </linearGradient>
       </defs>
     </svg>
@@ -72,7 +73,7 @@ export function SoundControl({ compact }: { compact?: boolean }) {
           setEnabled(!enabled);
           if (!enabled) setTimeout(() => play("power"), 60);
         }}
-        className={cx("grid size-10 place-items-center rounded-full border transition-colors", enabled ? "border-[var(--s-accent)] text-[var(--s-accent-strong)]" : "border-[var(--s-line-strong)] text-[var(--s-ink-soft)] hover:text-[var(--s-ink)]")}
+        className="s-neu-btn"
       >
         <SpeakerIcon on={enabled} />
       </button>
@@ -89,7 +90,7 @@ export function SoundControl({ compact }: { compact?: boolean }) {
 /** A soft pill that slides between nav items as the pointer moves across them. */
 function HoverPill() {
   const reduced = useReducedMotion();
-  return <motion.span layoutId="nav-hover" aria-hidden className="absolute inset-y-1 inset-x-0 -z-10 rounded-full bg-[rgb(255_255_255/0.06)]" transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 42 }} />;
+  return <motion.span layoutId="nav-hover" aria-hidden className="absolute inset-y-1 inset-x-0 -z-10 rounded-full bg-[var(--s-glass-strong)] shadow-[inset_0_1px_0_var(--s-glass-rim)]" transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 42 }} />;
 }
 
 function PlatformMenu({ active, hovered, onHover }: { active: boolean; hovered: boolean; onHover: () => void }) {
@@ -176,14 +177,13 @@ export function SiteNav({ chapters }: { chapters?: { id: string; label: string }
   return (
     <header
       className={cx(
-        "fixed inset-x-0 top-0 z-50 transition-[transform,background-color,border-color] duration-300",
-        scrolled ? "border-b border-[var(--s-line)] bg-[rgb(9_12_11/0.86)]" : "border-b border-transparent",
-        hidden && !reduced ? "-translate-y-full" : "translate-y-0",
+        "fixed inset-x-0 top-0 z-50 px-3 pt-3 transition-transform duration-300",
+        hidden && !reduced ? "-translate-y-[120%]" : "translate-y-0",
       )}
       data-testid="site-nav"
     >
       <a href="#site-main" className="skip-link">Skip to content</a>
-      <nav aria-label="Main" className="s-wrap flex h-[72px] items-center gap-4">
+      <nav aria-label="Main" className={cx("s-glass mx-auto flex h-[62px] max-w-[1320px] items-center gap-4 rounded-full pr-2.5 pl-5 transition-shadow duration-300", scrolled && "shadow-[var(--s-shadow-2)]")}>
         <Wordmark />
         <LayoutGroup>
           <ul className="ml-6 hidden items-center lg:flex" onMouseLeave={() => setHover(null)}>
@@ -200,7 +200,7 @@ export function SiteNav({ chapters }: { chapters?: { id: string; label: string }
           </ul>
         </LayoutGroup>
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
-          <span className="hidden sm:block"><SoundControl /></span>
+          <span className="hidden items-center gap-2 sm:flex"><ThemeToggle /><SoundControl /></span>
           <Link href="/login" className="hidden h-10 items-center px-3 text-[14.5px] text-[var(--s-ink-soft)] no-underline transition-colors hover:text-[var(--s-ink)] md:flex">Sign in</Link>
           <Link href="/signup" className="hidden h-10 items-center px-3 text-[14.5px] text-[var(--s-ink-soft)] no-underline transition-colors hover:text-[var(--s-ink)] xl:flex">Sign up</Link>
           <Link href={CTA_HREF} className="s-btn s-btn-primary hidden h-10! px-5! text-[14px]! sm:inline-flex">{CTA_LABEL}</Link>
@@ -209,7 +209,7 @@ export function SiteNav({ chapters }: { chapters?: { id: string; label: string }
           </button>
         </div>
       </nav>
-      <div id="site-menu" hidden={!menu} className="fixed inset-x-0 top-[72px] bottom-0 overflow-y-auto border-t border-[var(--s-line)] bg-[var(--s-canvas)] lg:hidden" data-testid="site-menu">
+      <div id="site-menu" hidden={!menu} className="fixed inset-x-0 top-[84px] bottom-0 overflow-y-auto bg-[var(--s-canvas)] lg:hidden" data-testid="site-menu">
         <div className="s-wrap flex flex-col gap-8 py-8">
           <ul className="flex flex-col">
             {[...PLATFORM.slice(0, 1).map((l) => ({ ...l, label: "Platform" })), ...LINKS, { href: "/login", label: "Sign in" }, { href: "/signup", label: "Sign up" }].map((l) => (
@@ -235,11 +235,12 @@ export function SiteNav({ chapters }: { chapters?: { id: string; label: string }
           )}
           <div className="flex flex-wrap items-center gap-4">
             <Link href={CTA_HREF} onClick={() => setMenu(false)} className="s-btn s-btn-primary">{CTA_LABEL}</Link>
+            <ThemeToggle />
             <SoundControl compact />
           </div>
         </div>
       </div>
-      <div ref={bar} aria-hidden className="absolute inset-x-0 -bottom-px h-px origin-left scale-x-0 bg-[linear-gradient(90deg,transparent,var(--s-accent-strong))]" />
+      <div ref={bar} aria-hidden className="pointer-events-none absolute inset-x-12 bottom-[-3px] h-[2px] origin-left scale-x-0 rounded-full bg-[linear-gradient(90deg,transparent,var(--s-accent))]" />
     </header>
   );
 }

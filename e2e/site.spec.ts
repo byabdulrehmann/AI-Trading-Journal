@@ -111,3 +111,22 @@ guarded("the cursor follower grows over links, never takes clicks, and stays off
   await expect(phone.getByTestId("site-cursor")).toHaveCount(0);
   await touch.close();
 });
+
+guarded("the theme switch moves between the light and dark studio and is remembered", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/about");
+  const html = page.locator("html");
+  await expect(html).toHaveAttribute("data-site-theme", "light");
+  const toggle = page.getByTestId("theme-toggle").first();
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await toggle.click();
+  await expect(html).toHaveAttribute("data-site-theme", "dark");
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  // Set before the first paint on the next page, sign-in screens included.
+  await page.goto("/login");
+  await expect(html).toHaveAttribute("data-site-theme", "dark");
+  await page.goto("/features");
+  await expect(html).toHaveAttribute("data-site-theme", "dark");
+  await page.getByTestId("theme-toggle").first().click();
+  await expect(html).toHaveAttribute("data-site-theme", "light");
+});

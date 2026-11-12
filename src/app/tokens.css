@@ -144,29 +144,70 @@
 @keyframes caret { 50% { opacity: 0; } }
 .typing-caret::after { content: "▍"; margin-left: var(--space-3xs); color: var(--accent); animation: caret 1s steps(1) infinite; }
 
-/* Sign in, sign up and forgot password: the website's book palette (green-black, bone, red pencil), so they read as
-   part of the site the visitor came from. Only these screens use it. */
+/* Sign in, sign up and forgot password: the website's glass studio, pearl by day and obsidian when the visitor chose
+   dark on the site (html[data-site-theme]). Only these screens use it. */
 .auth-book {
+  color-scheme: light;
+  --canvas: #e6e9ee;
+  --surface: #eef1f5;
+  --raised: #f4f6f9;
+  --sunken: #e1e5ec;
+  --line: rgb(22 28 45 / 0.08);
+  --line-strong: rgb(22 28 45 / 0.16);
+  --ink: #10131a;
+  --ink-soft: #434a58;
+  --muted: #5f6777;
+  --accent: #151821;
+  --accent-ink: #f6f7fa;
+  --accent-soft: rgb(61 91 209 / 0.1);
+  --focus: #3d5bd1;
+  --info: #3d5bd1;
+  --info-soft: rgb(61 91 209 / 0.08);
+  --loss: #c04f66;
+  --loss-soft: rgb(192 79 102 / 0.1);
+  --warn: #8a6100;
+  --warn-soft: rgb(230 168 23 / 0.14);
+  --radius-card: 24px;
+  color: var(--ink);
+  background: radial-gradient(120% 80% at 12% -10%, rgb(255 255 255 / 0.9), transparent 55%), radial-gradient(90% 70% at 100% 100%, rgb(186 198 226 / 0.45), transparent 60%), var(--canvas);
+}
+html[data-site-theme="dark"] .auth-book {
   color-scheme: dark;
-  --canvas: #090c0b;
-  --surface: #101614;
-  --raised: #17201c;
-  --sunken: #0d1211;
-  --line: rgb(236 233 221 / 0.08);
-  --line-strong: rgb(236 233 221 / 0.18);
-  --ink: #ece9dd;
-  --ink-soft: #aeb8b0;
-  --muted: #8a948c;
-  --accent: #ff6a4a;
-  --accent-ink: #1a0a05;
-  --accent-soft: rgb(255 106 74 / 0.12);
-  --focus: #ff6a4a;
-  --info: #c9c4b4;
-  --info-soft: rgb(236 233 221 / 0.07);
-  --loss: #ff7a5c;
-  --loss-soft: rgb(255 122 92 / 0.12);
+  --canvas: #0b0d12;
+  --surface: #141821;
+  --raised: #1a1f2a;
+  --sunken: #10131a;
+  --line: rgb(214 224 255 / 0.08);
+  --line-strong: rgb(214 224 255 / 0.16);
+  --ink: #eef1f7;
+  --ink-soft: #aab2c2;
+  --muted: #8b94a5;
+  --accent: #eef1f7;
+  --accent-ink: #0b0d12;
+  --accent-soft: rgb(142 166 255 / 0.12);
+  --focus: #8ea6ff;
+  --info: #8ea6ff;
+  --info-soft: rgb(142 166 255 / 0.1);
+  --loss: #e2899b;
+  --loss-soft: rgb(226 137 155 / 0.12);
   --warn: #e6b35a;
   --warn-soft: rgb(230 179 90 / 0.12);
-  --radius-card: 4px;
-  color: var(--ink);
+  background: radial-gradient(110% 80% at 15% -10%, rgb(120 140 200 / 0.16), transparent 55%), radial-gradient(90% 70% at 100% 100%, rgb(90 70 160 / 0.12), transparent 60%), var(--canvas);
 }
+/* The form sits on a pane of frosted glass. */
+.auth-pane {
+  border-radius: 28px;
+  padding: 32px;
+  background: rgb(255 255 255 / 0.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  backdrop-filter: blur(24px) saturate(1.6);
+  border: 1px solid rgb(22 28 45 / 0.07);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 40px 80px -36px rgb(30 40 70 / 0.45);
+}
+html[data-site-theme="dark"] .auth-pane {
+  background: rgb(255 255 255 / 0.05);
+  border-color: rgb(0 0 0 / 0.5);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 40px 80px -36px rgb(0 0 0 / 0.9);
+}
+.auth-pane input { border-radius: 12px; height: 42px; }
+.auth-pane button { border-radius: 999px; }

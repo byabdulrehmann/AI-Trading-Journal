@@ -14,7 +14,7 @@ import { useReducedMotion, useScroller } from "../scroll";
 function NearCandle({ className, up, h }: { className: string; up: boolean; h: number }) {
   return (
     <div className={`pointer-events-none absolute ${className}`} aria-hidden>
-      <div className="relative mx-auto w-[3px] rounded-full bg-[rgb(236_233_221/0.3)]" style={{ height: h * 1.7 }} />
+      <div className="relative mx-auto w-[3px] rounded-full bg-[var(--s-metal)]" style={{ height: h * 1.7 }} />
       <div className="absolute top-1/2 left-1/2 w-[42px] -translate-x-1/2 -translate-y-1/2 rounded-[6px]" style={{ height: h, background: up ? "linear-gradient(180deg,var(--s-metal),color-mix(in oklab,var(--s-metal) 45%,var(--s-canvas)))" : "linear-gradient(180deg,var(--s-loss),color-mix(in oklab,var(--s-loss) 45%,var(--s-canvas)))" }} />
     </div>
   );
@@ -64,9 +64,9 @@ export function Hero() {
       <div className="sticky top-0 h-[100svh] overflow-hidden motion-reduce:relative">
         <SceneMount mode="field" progress={progress} poster="/site/poster-field.webp" />
         {/* Atmosphere: a low violet rim from the left, the floor fading to ground. */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_15%_85%,rgb(255_106_74/0.07),transparent_60%),linear-gradient(180deg,rgb(9_12_11/0.55)_0%,transparent_28%,transparent_55%,rgb(9_12_11/0.9)_100%)]" />
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,transparent_0%,transparent_58%,var(--s-canvas)_100%)]" />
 
-        <div aria-hidden className="hero-light pointer-events-none absolute inset-0 hidden bg-[radial-gradient(520px_circle_at_var(--hx,70%)_var(--hy,40%),rgb(236_233_221/0.06),transparent_65%)] lg:block" />
+        <div aria-hidden className="hero-light pointer-events-none absolute inset-0 hidden bg-[radial-gradient(560px_circle_at_var(--hx,70%)_var(--hy,40%),var(--s-sheen),transparent_65%)] opacity-50 lg:block" />
         <div className="hero-near-a hero-depth pointer-events-none absolute inset-0 hidden md:block [--depth:22px]" aria-hidden>
           <NearCandle className="top-[18%] right-[30%] blur-[6px] opacity-60" up h={120} />
           <NearCandle className="top-[58%] right-[8%] blur-[10px] opacity-50" up={false} h={170} />
@@ -87,7 +87,7 @@ export function Hero() {
           <h1 id="hero-title" className="s-display s-h1">
             <span className="block overflow-hidden pb-[0.2em] -mb-[0.14em]"><span className="hero-line block">Your trades.</span></span>
             <span className="block overflow-hidden pb-[0.2em] -mb-[0.14em]"><span className="hero-line block">Your intelligence.</span></span>
-            <span className="block overflow-hidden pb-[0.2em] -mb-[0.14em]"><span className="hero-line block text-[var(--s-metal)]">Your edge.</span></span>
+            <span className="block overflow-hidden pb-[0.2em] -mb-[0.14em]"><span className="hero-line block text-[var(--s-accent)]">Your edge.</span></span>
           </h1>
           <p className="hero-after s-lede mt-6">A smarter way to understand your trading performance, monitor your accounts and build a more disciplined trading process.</p>
           <div className="hero-after mt-8 flex flex-wrap items-center gap-3">

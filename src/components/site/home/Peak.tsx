@@ -27,8 +27,9 @@ const DAYS = Array.from({ length: 31 }, (_, i) => {
 });
 const pct = (v: number, of: number) => `${(v / of) * 100}%`;
 // Literal colours: GSAP tweens these backgrounds and cannot interpolate CSS variables.
-const FILL: Record<string, string> = { u: "#26302b", U: "#34413a", d: "#3a2620", D: "#56302a", "-": "#121816" };
-const BODY: Record<string, string> = { u: "#d8d3c3", U: "#d8d3c3", d: "#ff6a4a", D: "#ff6a4a" };
+// Theme tokens (site.css): the cells and candles follow light and dark without rebuilding the timeline.
+const FILL: Record<string, string> = { u: "--s-cell-up", U: "--s-cell-up-strong", d: "--s-cell-down", D: "--s-cell-down-strong", "-": "--s-cell-empty" };
+const BODY: Record<string, string> = { u: "var(--s-profit)", U: "var(--s-profit)", d: "var(--s-loss)", D: "var(--s-loss)" };
 
 const TILES: { key: ScreenKey; area: string; label: string }[] = [
   { key: "kpis", area: "kpi", label: "Net P&L, win rate, profit factor, day win rate, average win and loss" },
@@ -96,7 +97,7 @@ export function Peak() {
           const at = 0.04 + (i % 7) * 0.012 + Math.floor(i / 7) * 0.035;
           tl.fromTo(el, { yPercent: -900 - (i % 5) * 120, rotation: (i % 2 ? 1 : -1) * (40 + (i * 13) % 50), opacity: 0 }, { yPercent: 0, rotation: 0, opacity: 1, duration: 0.14, ease: "power2.in" }, at)
             // and flatten into the day cell
-            .to(el, { scaleX: 6.5, scaleY: 1.6, borderRadius: "6px", backgroundColor: el.dataset.fill, duration: 0.06, ease: "power3.out" }, at + 0.15)
+            .to(el, { scaleX: 6.5, scaleY: 1.6, borderRadius: "6px", duration: 0.06, ease: "power3.out" }, at + 0.15)
             .to(el.querySelector(".peak-wick"), { opacity: 0, duration: 0.03 }, at + 0.15);
         });
         tl.to(".peak-cell", { opacity: 1, duration: 0.05, stagger: 0.004 }, 0.3)
@@ -137,13 +138,13 @@ export function Peak() {
                 <div className="absolute inset-0 bg-[var(--s-surface)]" />
                 <div className="peak-month absolute top-[3.2%] left-[9%] font-[family-name:var(--s-font-text)] text-[clamp(10px,1.5vw,18px)] font-semibold text-[var(--s-ink)]">October 2026</div>
                 {DAYS.map((d) => (
-                  <div key={d.day} className="peak-cell absolute rounded-[5px]" style={{ left: pct(COLS[d.col], IMG.w), top: pct(ROWS[d.row], IMG.h), width: pct(CELL.w, IMG.w), height: pct(CELL.h, IMG.h), background: FILL[d.kind] }}>
+                  <div key={d.day} className="peak-cell absolute rounded-[5px]" style={{ left: pct(COLS[d.col], IMG.w), top: pct(ROWS[d.row], IMG.h), width: pct(CELL.w, IMG.w), height: pct(CELL.h, IMG.h), background: `var(${FILL[d.kind]})` }}>
                     <span className="absolute top-[6%] right-[8%] text-[clamp(7px,0.8vw,11px)] text-[var(--s-ink-soft)]">{d.day}</span>
                   </div>
                 ))}
                 {DAYS.filter((d) => d.kind !== "-").map((d) => (
                   <div key={`c${d.day}`} className="absolute grid place-items-center" style={{ left: pct(COLS[d.col], IMG.w), top: pct(ROWS[d.row], IMG.h), width: pct(CELL.w, IMG.w), height: pct(CELL.h, IMG.h) }}>
-                    <div className="peak-candle relative h-[62%] w-[15%] rounded-[2px] opacity-0" style={{ background: BODY[d.kind] }} data-fill={FILL[d.kind]}>
+                    <div className="peak-candle relative h-[62%] w-[15%] rounded-[2px] opacity-0" style={{ background: BODY[d.kind] }}>
                       <span className="peak-wick absolute top-[-22%] bottom-[-22%] left-1/2 -z-10 w-[14%] -translate-x-1/2 rounded-full" style={{ background: BODY[d.kind], opacity: 0.6 }} />
                     </div>
                   </div>

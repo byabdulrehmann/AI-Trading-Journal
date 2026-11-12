@@ -1,5 +1,6 @@
 "use client";
 
+import { Environment, Lightformer } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
@@ -14,10 +15,16 @@ export interface SceneProgress {
   current: number;
 }
 
-// WebGL materials need literal colours: bone (--s-ink), red pencil (--s-accent) and the green-black surface, tuned for scene light.
-const UP = new THREE.Color("#d8d3c3");
-const DOWN = new THREE.Color("#e8603f");
-const METAL = new THREE.Color("#1b2420");
+export type SceneTheme = "light" | "dark";
+
+/**
+ * WebGL needs literal colours. Each theme's glass tints and studio colours match the site tokens: the ground is the
+ * fog, so the far rows dissolve into the room, and the glass is tinted cool for up candles and rose for down ones.
+ */
+const LOOK = {
+  light: { up: "#b9c9ea", down: "#e6aebb", wick: "#c9ced8", ground: "#e6e9ee", dust: "#7d879b", dustOpacity: 0.32, key: "#ffffff", fill: "#c7d2ee", dark: "#1a2033" },
+  dark: { up: "#9fb6ff", down: "#f0a2b4", wick: "#dfe4ee", ground: "#0b0d12", dust: "#c9d4ff", dustOpacity: 0.42, key: "#f3f6ff", fill: "#6f7fc4", dark: "#000000" },
+} as const;
 
 function rng(seed: number) {
   let s = seed >>> 0;
@@ -98,33 +105,50 @@ function buildCandles(count: number): Candle[] {
 
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
-function Candles({ mode, progress, count, still }: { mode: "field" | "mark"; progress: SceneProgress; count: number; still: boolean }) {
+function Candles({ mode, progress, count, still, theme }: { mode: "field" | "mark"; progress: SceneProgress; count: number; still: boolean; theme: SceneTheme }) {
   const candles = useMemo(() => buildCandles(count), [count]);
   const bodies = useRef<THREE.InstancedMesh>(null);
   const wicks = useRef<THREE.InstancedMesh>(null);
   const tmp = useMemo(() => new THREE.Object3D(), []);
   const color = useMemo(() => new THREE.Color(), []);
+  const probe = useMemo(() => new THREE.Vector3(), []);
+  // How far each candle has been nudged by the pointer, eased every frame so the field flows rather than jumps.
+  const nudge = useMemo(() => new Float32Array(count * 2), [count]);
+  const look = LOOK[theme];
 
   useEffect(() => {
-    candles.forEach((c, i) => {
-      color.copy(c.up ? UP : DOWN).lerp(METAL, 0.12);
-      bodies.current?.setColorAt(i, color);
-      wicks.current?.setColorAt(i, color.clone().lerp(METAL, 0.2));
-    });
+    candles.forEach((c, i) => bodies.current?.setColorAt(i, color.set(c.up ? look.up : look.down)));
     if (bodies.current?.instanceColor) bodies.current.instanceColor.needsUpdate = true;
-    if (wicks.current?.instanceColor) wicks.current.instanceColor.needsUpdate = true;
-  }, [candles, color]);
+  }, [candles, color, look]);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, camera, pointer, size }) => {
     const t = still ? 0 : clock.getElapsedTime();
     // Held still, the close shows the finished mark and the hero its opening frame.
     const p = still ? (mode === "mark" ? 1 : 0) : progress.current;
+    const reach = !still && mode === "field" && typeof window !== "undefined" && matchMedia("(pointer: fine)").matches;
+    const aspect = size.width / Math.max(1, size.height);
     candles.forEach((c, i) => {
       let x = c.x;
       let y = c.y + Math.sin(t * 0.6 + c.phase) * 0.06;
       let z = c.z;
       let rot = 0;
       let s = 1;
+      // The field answers the pointer: candles near it part sideways and lift, like glass in a current.
+      let tx = 0;
+      let ty = 0;
+      if (reach) {
+        probe.set(x, y, z).project(camera);
+        const dx = (probe.x - pointer.x) * aspect;
+        const dy = probe.y - pointer.y;
+        const k = Math.max(0, 1 - Math.hypot(dx, dy) / 0.42);
+        tx = Math.sign(dx || 1) * k * k * 0.9;
+        ty = k * k * 1.3;
+      }
+      nudge[i * 2] += (tx - nudge[i * 2]) * 0.08;
+      nudge[i * 2 + 1] += (ty - nudge[i * 2 + 1]) * 0.08;
+      x += nudge[i * 2];
+      y += nudge[i * 2 + 1];
+      rot += nudge[i * 2] * 0.35;
       if (mode === "field") {
         // The exit: the field falls away under the camera, the nearest rows first.
         const fall = Math.max(0, p - 0.25 - (c.z / -40) * 0.2) / 0.75;
@@ -157,19 +181,21 @@ function Candles({ mode, progress, count, still }: { mode: "field" | "mark"; pro
 
   return (
     <>
+      {/* Hyperreal glass: transmissive, a clear coat and a thin-film shimmer, lit by the studio's light panels. */}
       <instancedMesh ref={bodies} args={[undefined, undefined, candles.length]} frustumCulled={false}>
         <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial metalness={0.3} roughness={0.38} />
+        <meshPhysicalMaterial transmission={1} thickness={0.9} roughness={0.14} ior={1.48} clearcoat={1} clearcoatRoughness={0.06} iridescence={0.45} iridescenceIOR={1.3} envMapIntensity={1.4} />
       </instancedMesh>
+      {/* Polished chrome wicks. */}
       <instancedMesh ref={wicks} args={[undefined, undefined, candles.length]} frustumCulled={false}>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial metalness={0.2} roughness={0.5} />
+        <cylinderGeometry args={[0.5, 0.5, 1, 12]} />
+        <meshStandardMaterial color={look.wick} metalness={1} roughness={0.14} envMapIntensity={1.6} />
       </instancedMesh>
     </>
   );
 }
 
-function Dust({ count, still }: { count: number; still: boolean }) {
+function Dust({ count, still, theme }: { count: number; still: boolean; theme: SceneTheme }) {
   const ref = useRef<THREE.Points>(null);
   const positions = useMemo(() => {
     const r = rng(7);
@@ -191,7 +217,7 @@ function Dust({ count, still }: { count: number; still: boolean }) {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
-      <pointsMaterial size={0.045} color="#cfc9b8" transparent opacity={0.55} sizeAttenuation depthWrite={false} />
+      <pointsMaterial size={0.04} color={LOOK[theme].dust} transparent opacity={LOOK[theme].dustOpacity} sizeAttenuation depthWrite={false} />
     </points>
   );
 }
@@ -224,26 +250,32 @@ function Rig({ mode, progress, still }: { mode: "field" | "mark"; progress: Scen
   return null;
 }
 
-export default function CandleScene({ mode, progress, active, still, compact }: { mode: "field" | "mark"; progress: SceneProgress; active: boolean; still: boolean; compact: boolean }) {
-  const count = compact ? (mode === "mark" ? 60 : 96) : mode === "mark" ? 84 : 168;
+export default function CandleScene({ mode, progress, active, still, compact, theme }: { mode: "field" | "mark"; progress: SceneProgress; active: boolean; still: boolean; compact: boolean; theme: SceneTheme }) {
+  const count = compact ? (mode === "mark" ? 60 : 90) : mode === "mark" ? 84 : 150;
+  const look = LOOK[theme];
   return (
     <Canvas
       dpr={[1, compact ? 1.5 : 1.75]}
       frameloop={active ? (still ? "demand" : "always") : "never"}
-      gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
+      gl={{ antialias: true, alpha: true, powerPreference: "high-performance", toneMapping: THREE.ACESFilmicToneMapping }}
       camera={{ position: [0, 1.2, 11], fov: compact ? 58 : 46, near: 0.1, far: 80 }}
       aria-hidden
       data-testid={`scene-${mode}`}
     >
-      <fog attach="fog" args={["#090c0b", mode === "field" ? 8 : 10, mode === "field" ? 30 : 26]} />
-      <ambientLight intensity={0.7} />
-      <directionalLight position={[6, 8, 6]} intensity={2.4} color="#f4efe2" />
-      <directionalLight position={[-6, 3, -4]} intensity={0.8} color="#9fb8a8" />
-      <pointLight position={[-8, 2, -6]} intensity={70} distance={40} color="#ff6a4a" />
-      <pointLight position={[8, -2, 4]} intensity={18} distance={30} color="#cfc9b8" />
-      {mode === "field" && <gridHelper args={[90, 60, "#1e2723", "#121815"]} position={[0, -4.2, -10]} />}
-      <Candles mode={mode} progress={progress} count={count} still={still} />
-      <Dust count={compact ? 260 : 620} still={still} />
+      <fog attach="fog" args={[look.ground, mode === "field" ? 9 : 11, mode === "field" ? 30 : 26]} />
+      <ambientLight intensity={theme === "light" ? 0.9 : 0.35} />
+      <directionalLight position={[6, 8, 6]} intensity={theme === "light" ? 1.6 : 2.2} color={look.key} />
+      <directionalLight position={[-6, 2, -4]} intensity={0.8} color={look.fill} />
+      {/* A studio built from light panels, so reflections never come from the network (the CSP forbids it). */}
+      <Environment resolution={256} frames={1}>
+        <Lightformer form="rect" intensity={3} color="#ffffff" position={[0, 6, -2]} rotation-x={Math.PI / 2} scale={[14, 4, 1]} />
+        <Lightformer form="rect" intensity={2} color="#ffffff" position={[-6, 1, 3]} rotation-y={Math.PI / 2} scale={[8, 3, 1]} />
+        <Lightformer form="rect" intensity={1.4} color={look.fill} position={[6, 0, 2]} rotation-y={-Math.PI / 2} scale={[8, 4, 1]} />
+        <Lightformer form="ring" intensity={2.5} color="#ffffff" position={[3, 3, 6]} scale={2} />
+        <Lightformer form="rect" intensity={1} color={look.dark} position={[0, -5, 0]} rotation-x={-Math.PI / 2} scale={[20, 20, 1]} />
+      </Environment>
+      <Candles mode={mode} progress={progress} count={count} still={still} theme={theme} />
+      <Dust count={compact ? 220 : 520} still={still} theme={theme} />
       <Rig mode={mode} progress={progress} still={still} />
     </Canvas>
   );
