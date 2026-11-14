@@ -10,12 +10,12 @@ import { useSound } from "./sound";
 
 export const SCREENS = {
   dashboard: { src: "/site/screens/dashboard.webp", w: 2400, h: 1500, alt: "The Jarvis dashboard: KPI cards, the Jarvis Performance Score radar, cumulative and daily P&L charts, recent trades and a month calendar" },
-  calendar: { src: "/site/screens/calendar.webp", w: 1586, h: 1138, alt: "The Jarvis month calendar with each day's P&L, trade count and win rate, and weekly totals" },
-  kpis: { src: "/site/screens/kpi-row.webp", w: 2400, h: 226, alt: "Jarvis KPI cards: net P&L, trade win rate, profit factor, day win rate and average win to loss" },
-  score: { src: "/site/screens/score-card.webp", w: 772, h: 736, alt: "The Jarvis Performance Score radar with six axes" },
-  cumulative: { src: "/site/screens/cumulative.webp", w: 772, h: 736, alt: "Daily net cumulative P&L chart" },
-  daily: { src: "/site/screens/daily.webp", w: 772, h: 736, alt: "Net daily P&L bar chart" },
-  trades: { src: "/site/screens/trades-card.webp", w: 772, h: 1044, alt: "Recent trades and open positions table" },
+  calendar: { src: "/site/screens/calendar.webp", w: 1920, h: 1138, alt: "The Jarvis month calendar with each day's P&L, trade count and win rate, and weekly totals" },
+  kpis: { src: "/site/screens/kpi-row.webp", w: 1920, h: 492, alt: "Jarvis KPI cards: net P&L, trade win rate, profit factor, day win rate and average win to loss" },
+  score: { src: "/site/screens/score-card.webp", w: 736, h: 700, alt: "The Jarvis Performance Score radar with six axes" },
+  cumulative: { src: "/site/screens/cumulative.webp", w: 888, h: 582, alt: "Daily net cumulative P&L chart" },
+  daily: { src: "/site/screens/daily.webp", w: 890, h: 582, alt: "Net daily P&L bar chart" },
+  trades: { src: "/site/screens/trades-card.webp", w: 736, h: 1044, alt: "Recent trades and open positions table" },
   journal: { src: "/site/screens/journal.webp", w: 2400, h: 1500, alt: "The Jarvis trades list with filters, side, strategy, size, P&L and R" },
   drawer: { src: "/site/screens/trade-drawer.webp", w: 2400, h: 1500, alt: "A single trade opened in Jarvis with its fills, costs and notes" },
   reportsOverview: { src: "/site/screens/reports-overview.webp", w: 2400, h: 1500, alt: "Jarvis reports overview: P&L by period and the equity curve" },
@@ -113,7 +113,7 @@ export function SessionRail({ chapters }: { chapters: { id: string; label: strin
     return () => io.disconnect();
   }, [chapters, play]);
   return (
-    <nav aria-label="Chapters" className="fixed top-1/2 right-[max(12px,1.2vw)] z-40 hidden -translate-y-1/2 lg:block" data-testid="session-rail">
+    <nav aria-label="Chapters" className="fixed top-1/2 right-[max(14px,1.4vw)] z-40 hidden -translate-y-1/2 mix-blend-difference lg:block" data-testid="session-rail">
       <ol className="flex flex-col items-end gap-2.5">
         {chapters.map((c, i) => (
           <li key={c.id}>
@@ -126,10 +126,10 @@ export function SessionRail({ chapters }: { chapters: { id: string; label: strin
               aria-current={current === i ? "step" : undefined}
               className="group flex items-center gap-3 py-0.5 no-underline"
             >
-              <span className={cx("s-data rounded-full bg-[var(--s-glass-strong)] px-2 py-0.5 text-[11.5px] backdrop-blur-md transition-opacity duration-200", current === i ? "text-[var(--s-ink)] opacity-100" : "text-[var(--s-muted)] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100")}>
+              <span className={cx("s-data text-[11.5px] text-white transition-opacity duration-300", "opacity-0 group-hover:opacity-80 group-focus-visible:opacity-80")}>
                 {String(i + 1).padStart(2, "0")} {c.label}
               </span>
-              <span aria-hidden className={cx("block h-px transition-[width,background-color] duration-300", current === i ? "w-7 bg-[var(--s-accent-strong)]" : "w-3.5 bg-[var(--s-line-strong)] group-hover:bg-[var(--s-ink-soft)]")} />
+              <span aria-hidden className={cx("block h-px bg-white transition-[width,opacity] duration-300", current === i ? "w-7 opacity-100" : "w-3.5 opacity-35 group-hover:opacity-70")} />
             </a>
           </li>
         ))}
@@ -140,7 +140,7 @@ export function SessionRail({ chapters }: { chapters: { id: string; label: strin
 
 export function SiteFooter() {
   return (
-    <footer className="relative z-10 border-t border-[var(--s-line)] bg-[var(--s-canvas)]" data-testid="site-footer">
+    <footer data-tone="dark" className="relative z-10 border-t border-[var(--s-line)]" data-testid="site-footer">
       <div className="s-wrap grid gap-12 py-16 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div className="max-w-sm">
           <Wordmark />

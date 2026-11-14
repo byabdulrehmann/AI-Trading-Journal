@@ -3,6 +3,11 @@ import { expect, guarded, open, test, uniqueEmail } from "./helpers";
 // The public website: presentation only. Signed out it shows pages and takes early-access requests, and nothing else.
 const PAGES = ["/welcome", "/platform", "/features", "/about", "/contact"];
 
+// Every test here starts past the entry gate, as a visitor who already came in this session; the gate has its own test.
+guarded.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => sessionStorage.setItem("jarvis-site-entered", "1"));
+});
+
 for (const path of PAGES) {
   guarded(`signed out, ${path} loads with no app inside it`, async ({ page }) => {
     const res = await page.goto(path);
@@ -112,21 +117,58 @@ guarded("the cursor follower grows over links, never takes clicks, and stays off
   await touch.close();
 });
 
-guarded("the theme switch moves between the light and dark studio and is remembered", async ({ page }) => {
+guarded("the homepage alternates light and dark sections, and the nav takes the tone beneath it", async ({ page }) => {
+  await page.goto("/welcome");
+  const tones = await page.locator("main section[data-tone]").evaluateAll((els) => els.map((e) => e.getAttribute("data-tone")));
+  expect(tones).toContain("light");
+  expect(tones).toContain("dark");
+  await expect(page.getByTestId("site-nav")).toHaveAttribute("data-tone", "dark");
+  await page.locator("#problem").scrollIntoViewIfNeeded();
+  await page.evaluate(() => window.scrollTo(0, document.getElementById("problem")!.getBoundingClientRect().top + scrollY));
+  await expect(page.getByTestId("site-nav")).toHaveAttribute("data-tone", "light");
+});
+
+guarded("the site opens dark, the mode switch moves to light, and the choice is remembered", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/about");
   const html = page.locator("html");
-  await expect(html).toHaveAttribute("data-site-theme", "light");
-  const toggle = page.getByTestId("theme-toggle").first();
-  await expect(toggle).toHaveAttribute("aria-pressed", "false");
-  await toggle.click();
+  // Black and red by default, whatever the system prefers.
   await expect(html).toHaveAttribute("data-site-theme", "dark");
+  const toggle = page.getByTestId("theme-toggle").first();
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await toggle.click();
+  await expect(html).toHaveAttribute("data-site-theme", "light");
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
   // Set before the first paint on the next page, sign-in screens included.
   await page.goto("/login");
-  await expect(html).toHaveAttribute("data-site-theme", "dark");
-  await page.goto("/features");
-  await expect(html).toHaveAttribute("data-site-theme", "dark");
-  await page.getByTestId("theme-toggle").first().click();
   await expect(html).toHaveAttribute("data-site-theme", "light");
+  await page.goto("/features");
+  await expect(html).toHaveAttribute("data-site-theme", "light");
+  await page.getByTestId("theme-toggle").first().click();
+  await expect(html).toHaveAttribute("data-site-theme", "dark");
+});
+
+guarded("a new visitor waits for loading, chooses sound, and the gate shows once per session", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL });
+  const page = await context.newPage();
+  await page.goto("/welcome");
+  const gate = page.getByTestId("enter-gate");
+  await expect(gate).toBeVisible();
+  await expect(gate.getByRole("status")).toContainText("Loading");
+  // The page behind can't be reached until the visitor comes in.
+  expect(await page.locator("#site-main").evaluate((m) => (m as HTMLElement).inert)).toBe(true);
+  await gate.getByTestId("enter-sound").click({ timeout: 30_000 });
+  await expect(gate).toHaveCount(0);
+  await expect(page.getByTestId("sound-control").first().getByRole("button")).toHaveAttribute("aria-pressed", "true");
+  await page.goto("/about");
+  await expect(page.getByTestId("enter-gate")).toBeHidden();
+  await context.close();
+
+  const fresh = await browser.newContext({ baseURL });
+  const quiet = await fresh.newPage();
+  await quiet.goto("/about");
+  await quiet.getByTestId("enter-silent").click({ timeout: 30_000 });
+  await expect(quiet.getByTestId("enter-gate")).toHaveCount(0);
+  await expect(quiet.getByTestId("sound-control").first().getByRole("button")).toHaveAttribute("aria-pressed", "false");
+  await fresh.close();
 });

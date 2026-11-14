@@ -21,6 +21,7 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   poweredByHeader: false,
+  devIndicators: false,
   // The proxy buffers request bodies and cuts them at this size; attachments go up to 10 MB plus multipart wrapping.
   experimental: { proxyClientMaxBodySize: "11mb" },
   turbopack: {

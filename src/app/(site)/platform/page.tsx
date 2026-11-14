@@ -46,7 +46,7 @@ export default function PlatformPage() {
         </div>
       </section>
 
-      <section id="mt5" className="s-section scroll-mt-20 border-t border-[var(--s-line)]" aria-labelledby="mt5-h">
+      <section id="mt5" data-tone="dark" className="s-section scroll-mt-20" aria-labelledby="mt5-h">
         <div className="s-wrap grid gap-12 lg:grid-cols-2">
           <div>
             <h2 id="mt5-h" className="s-display s-h2" data-reveal="words">MT5, read-only.</h2>
@@ -90,7 +90,7 @@ export default function PlatformPage() {
         </div>
       </section>
 
-      <section id="technology" className="s-section scroll-mt-20 border-t border-[var(--s-line)]" aria-labelledby="tech-h">
+      <section id="technology" data-tone="mist" className="s-section scroll-mt-20" aria-labelledby="tech-h">
         <div className="s-wrap">
           <h2 id="tech-h" className="s-display s-h2 max-w-[16ch]" data-reveal="words">What it is built with.</h2>
           <dl className="s-rise mt-14 grid gap-px overflow-hidden rounded-[var(--s-radius-lg)] border border-[var(--s-line)] bg-[var(--s-line)] md:grid-cols-2 lg:grid-cols-3">

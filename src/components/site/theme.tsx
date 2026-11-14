@@ -3,40 +3,45 @@
 import { useSyncExternalStore } from "react";
 
 export type SiteTheme = "light" | "dark";
-const KEY = "jarvis-site-theme";
+import { SITE_THEME_KEY as KEY } from "./boot-scripts";
+
 const EVENT = "jarvis-site-theme";
+// The mode is set before the first paint by SITE_THEME_SCRIPT in the root layout, so a returning visitor never sees the other mode flash.
 
-/**
- * Runs before the first paint (an inline script) so a returning visitor never sees the other theme flash. A stored
- * choice wins; otherwise the system's light or dark preference decides.
- */
-export const THEME_SCRIPT = `try{var t=localStorage.getItem("${KEY}");if(t!=="light"&&t!=="dark")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.siteTheme=t}catch(e){document.documentElement.dataset.siteTheme="light"}`;
-
-export function ThemeScript() {
-  return <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />;
-}
-
-const read = (): SiteTheme => (document.documentElement.dataset.siteTheme === "dark" ? "dark" : "light");
+const read = (): SiteTheme => (document.documentElement.dataset.siteTheme === "light" ? "light" : "dark");
 const subscribe = (cb: () => void) => {
   window.addEventListener(EVENT, cb);
   return () => window.removeEventListener(EVENT, cb);
 };
 
-export function useSiteTheme(): [SiteTheme, (t: SiteTheme) => void] {
-  const theme = useSyncExternalStore<SiteTheme>(subscribe, read, () => "light");
-  const set = (t: SiteTheme) => {
-    document.documentElement.dataset.siteTheme = t;
-    try {
-      localStorage.setItem(KEY, t);
-    } catch {
-      // Private windows can refuse storage; the choice still holds for this page.
-    }
-    window.dispatchEvent(new Event(EVENT));
+function apply(t: SiteTheme) {
+  document.documentElement.dataset.siteTheme = t;
+  try {
+    localStorage.setItem(KEY, t);
+  } catch {
+    // Private windows can refuse storage; the choice still holds for this page.
+  }
+  window.dispatchEvent(new Event(EVENT));
+}
+
+export function useSiteTheme(): [SiteTheme, (t: SiteTheme, from?: { x: number; y: number }) => void] {
+  const theme = useSyncExternalStore<SiteTheme>(subscribe, read, () => "dark");
+  const set = (t: SiteTheme, from?: { x: number; y: number }) => {
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!from || still || !document.startViewTransition) return apply(t);
+    // The new mode spreads out in a circle from the switch that was pressed.
+    const r = Math.hypot(Math.max(from.x, innerWidth - from.x), Math.max(from.y, innerHeight - from.y));
+    document.startViewTransition(() => apply(t)).ready.then(() => {
+      document.documentElement.animate(
+        { clipPath: [`circle(0px at ${from.x}px ${from.y}px)`, `circle(${r}px at ${from.x}px ${from.y}px)`] },
+        { duration: 750, easing: "cubic-bezier(0.65, 0, 0.35, 1)", pseudoElement: "::view-transition-new(root)" },
+      );
+    });
   };
   return [theme, set];
 }
 
-/** A soft, pressable switch between the pearl and obsidian rooms. */
+/** A pressable switch between light and dark mode: the sun sets into a moon. */
 export function ThemeToggle() {
   const [theme, setTheme] = useSiteTheme();
   const dark = theme === "dark";
@@ -45,11 +50,14 @@ export function ThemeToggle() {
       type="button"
       className="s-neu-btn"
       aria-pressed={dark}
-      aria-label={dark ? "Dark theme on. Switch to light" : "Light theme on. Switch to dark"}
-      onClick={() => setTheme(dark ? "light" : "dark")}
+      aria-label={dark ? "Dark mode on. Switch to light" : "Light mode on. Switch to dark"}
+      onClick={(e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        setTheme(dark ? "light" : "dark", { x: r.left + r.width / 2, y: r.top + r.height / 2 });
+      }}
       data-testid="theme-toggle"
     >
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden className="transition-transform duration-500 ease-[var(--s-ease-out)]" style={{ transform: dark ? "rotate(-40deg)" : "rotate(0deg)" }}>
         {dark ? (
           <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" />
         ) : (

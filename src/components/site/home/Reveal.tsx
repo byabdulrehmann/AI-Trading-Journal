@@ -3,25 +3,21 @@
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import Link from "next/link";
-import { useRef, useState } from "react";
-import type { SceneProgress } from "../CandleScene";
+import { useRef } from "react";
 import { Arrow, Magnetic } from "../parts";
-import { SceneMount } from "../SceneMount";
 import { CTA_HREF, CTA_LABEL, Mark } from "../SiteNav";
 import { useReducedMotion } from "../scroll";
 import { useSound } from "../sound";
 
-/** Act 09: the hero's candles come back and settle on the Jarvis mark's rising line. Then one line and one action. */
+/** Act 09: a red light rises out of the black, the Jarvis mark lands in it, then one line and one action. */
 export function Reveal() {
   const root = useRef<HTMLElement>(null);
-  // A plain mutable box the WebGL frame loop reads; scroll writes it without re-rendering.
-  const [progress] = useState<SceneProgress>(() => ({ current: 0 }));
   const reduced = useReducedMotion();
   const { play } = useSound();
 
   useGSAP(
     () => {
-      // Under reduced motion the scene draws the finished mark by itself (see CandleScene's still mode).
+      // Under reduced motion everything simply shows.
       if (reduced) return;
       const tl = gsap.timeline({
         scrollTrigger: {
@@ -29,13 +25,11 @@ export function Reveal() {
           start: "top top",
           end: "bottom bottom",
           scrub: 0.8,
-          onUpdate: (st) => {
-            progress.current = st.progress;
-            if (st.progress > 0.8) play("finale");
-          },
+          onUpdate: (st) => st.progress > 0.8 && play("finale"),
         },
       });
-      tl.fromTo(".reveal-mark", { opacity: 0, scale: 0.92 }, { opacity: 1, scale: 1, duration: 0.18, ease: "power2.out" }, 0.62)
+      tl.fromTo(".reveal-glow", { scale: 0.35, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.6, ease: "power2.out" }, 0.05)
+        .fromTo(".reveal-mark", { opacity: 0, scale: 0.92 }, { opacity: 1, scale: 1, duration: 0.18, ease: "power2.out" }, 0.62)
         .fromTo(".reveal-line", { yPercent: 70, opacity: 0 }, { yPercent: 0, opacity: 1, duration: 0.16, stagger: 0.05, ease: "power3.out" }, 0.66)
         .fromTo(".reveal-cta", { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.12, ease: "power3.out" }, 0.78)
         .to({}, { duration: 0.12 });
@@ -44,23 +38,24 @@ export function Reveal() {
   );
 
   return (
-    <section id="reveal" data-sc-act="reveal" ref={root} className="relative h-[170svh] motion-reduce:h-auto" aria-labelledby="reveal-title">
+    <section id="reveal" data-sc-act="reveal" data-tone="dark" ref={root} className="relative h-[150svh] motion-reduce:h-auto" aria-labelledby="reveal-title">
       <div className="sticky top-0 flex h-[100svh] flex-col overflow-hidden motion-reduce:relative motion-reduce:h-auto motion-reduce:min-h-[100svh]">
-        <SceneMount mode="mark" progress={progress} poster="/site/poster-mark.webp" />
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,var(--s-canvas)_0%,transparent_16%,transparent_72%,var(--s-canvas)_100%)]" />
-        <div className="s-wrap relative z-10 mt-auto flex flex-col items-center pb-[10vh] text-center">
-          <div className="reveal-mark mb-8"><Mark size={56} /></div>
-          <h2 id="reveal-title" className="s-display s-h1 max-w-[20ch]">
+        {/* One deep red light rising out of the black behind the close. */}
+        <div aria-hidden className="reveal-glow pointer-events-none absolute top-1/2 left-1/2 aspect-square w-[min(1100px,140vw)] -translate-1/2 rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--s-accent-strong)_38%,transparent),color-mix(in_oklab,var(--s-accent-strong)_10%,transparent)_55%,transparent)] blur-2xl" />
+        <div className="s-wrap relative z-10 my-auto flex flex-col items-center py-[10vh] text-center">
+          <div className="reveal-mark mb-7"><Mark size={44} /></div>
+          <h2 id="reveal-title" className="s-display s-h2 max-w-[18ch] text-[clamp(1.9rem,3.8vw,3.4rem)]!">
             <span className="block overflow-hidden pb-[0.2em] -mb-[0.14em]"><span className="reveal-line block">Stop guessing.</span></span>
-            <span className="block overflow-hidden pb-[0.2em] -mb-[0.14em]"><span className="reveal-line block text-[var(--s-accent)]">Start understanding your trading.</span></span>
+            <span className="block overflow-hidden pb-[0.2em] -mb-[0.14em]"><span className="reveal-line block">Start understanding your trading.</span></span>
           </h2>
+          <p className="reveal-cta s-lede mx-auto mt-7 max-w-[38ch]">Bring your trading activity, performance and intelligence together with Jarvis.</p>
           <div className="reveal-cta mt-10 flex flex-wrap items-center justify-center gap-3">
             <Magnetic strength={0.35}>
-              <Link href={CTA_HREF} className="s-btn s-btn-primary h-14! px-8! text-[16px]!">
-                {CTA_LABEL} <Arrow />
+              <Link href="/platform" className="s-btn s-btn-primary h-14! px-8! text-[17px]!">
+                Discover Jarvis <Arrow />
               </Link>
             </Magnetic>
-            <Link href="/login" className="s-btn s-btn-ghost h-14! px-7!">Sign in</Link>
+            <Link href={CTA_HREF} className="s-btn s-btn-ghost h-14! px-7! text-[17px]!">{CTA_LABEL}</Link>
           </div>
           <p className="reveal-cta s-caption mt-6">Early access is by request. Jarvis runs on your own computer.</p>
         </div>

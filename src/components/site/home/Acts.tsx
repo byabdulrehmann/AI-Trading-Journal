@@ -2,23 +2,56 @@
 
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-import { Status } from "../parts";
+import { Arrow, SAMPLE_NOTE, SCREENS, Status, type ScreenKey } from "../parts";
 import { useReducedMotion } from "../scroll";
 import { useSound } from "../sound";
 import { CHARTS } from "./Charts";
 
+/* ---------- The instrument ribbon: symbols drifting past in two directions ---------- */
+
+const SYMBOLS = ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "US30", "NAS100", "XAGUSD", "GBPJPY", "BTCUSD", "AUDUSD"];
+
+function Row({ reverse, big }: { reverse?: boolean; big?: boolean }) {
+  // Two copies side by side, so the loop is seamless at -50%.
+  return (
+    <div className="s-marquee" data-reverse={reverse || undefined}>
+      {[0, 1].map((copy) => (
+        <div key={copy} className="flex items-center">
+          {SYMBOLS.map((sym) => (
+            <span key={sym} className={big ? "s-outline flex items-center font-[family-name:var(--s-font-display)] text-[clamp(2.2rem,6vw,5.2rem)] font-semibold tracking-[-0.04em]" : "s-data flex items-center text-[clamp(1rem,1.6vw,1.35rem)] text-[var(--s-muted)]"}>
+              {sym}
+              <span aria-hidden className={big ? "mx-[0.35em] inline-block size-[0.14em] rounded-full bg-[var(--s-accent-strong)]" : "mx-6 inline-block size-1.5 rounded-full bg-[var(--s-line-strong)]"} />
+            </span>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function Ribbon() {
+  return (
+    <section data-tone="mist" className="s-ribbon relative overflow-hidden py-[clamp(48px,8vh,96px)]" aria-label="Instruments">
+      <div aria-hidden className="flex flex-col gap-4">
+        <Row big />
+        <Row reverse />
+      </div>
+      <p className="s-wrap s-caption mt-8 text-center">Forex, metals, indices and crypto: whatever your MT5 account trades.</p>
+    </section>
+  );
+}
+
 /* ---------- Act 02: the trader's problem (kinetic lines over a ground that drifts colder) ---------- */
 
 const PROBLEMS = [
-  ["Fragmented trading data", "The statement is in an email, the trades are in MT5, the reasons are in your head."],
-  ["Poor journaling", "A spreadsheet started with good intentions and abandoned by the second losing week."],
-  ["Inconsistent strategies", "Three setups this week. Nothing checks which one actually pays."],
+  ["Fragmented information", "The statement is in an email, the trades are in MT5, the reasons are in your head."],
+  ["Inconsistent journaling", "A spreadsheet started with good intentions and abandoned by the second losing week."],
+  ["Limited performance visibility", "Ask which session is your best. Most traders guess."],
   ["Emotional decisions", "The trade after a loss is rarely the one you planned."],
-  ["Overtrading", "Trade after trade on the day you meant to take two."],
-  ["Revenge trading", "Win it back, then win back the win-it-back."],
-  ["No performance visibility", "Ask which session is your best. Most traders guess."],
+  ["No structured analysis", "Three setups this week. Nothing checks which one actually pays."],
 ];
 
 export function Problem() {
@@ -27,9 +60,8 @@ export function Problem() {
   useGSAP(
     () => {
       if (reduced) return;
-      gsap.to(root.current, { "--problem-ground": 1, ease: "none", scrollTrigger: { trigger: root.current, start: "top bottom", end: "bottom top", scrub: true } });
       gsap.utils.toArray<HTMLElement>(".problem-row").forEach((row, i, all) => {
-        gsap.fromTo(row, { opacity: 0.18, x: 24 }, { opacity: 1, x: 0, ease: "power2.out", scrollTrigger: { trigger: row, start: "top 78%", end: "top 52%", scrub: true } });
+        gsap.fromTo(row, { opacity: 0.12, x: 60, rotateY: -18, transformPerspective: 900 }, { opacity: 1, x: 0, rotateY: 0, ease: "power2.out", scrollTrigger: { trigger: row, start: "top 82%", end: "top 52%", scrub: true } });
         // Each problem is struck through as the next one arrives: the list never settles.
         if (i < all.length - 1)
           gsap.fromTo(row.querySelector(".problem-strike"), { scaleX: 0 }, { scaleX: 1, ease: "none", scrollTrigger: { trigger: all[i + 1], start: "top 70%", end: "top 50%", scrub: true } });
@@ -38,24 +70,18 @@ export function Problem() {
     { scope: root, dependencies: [reduced], revertOnUpdate: true },
   );
   return (
-    <section
-      id="problem" data-sc-act="problem"
-      ref={root}
-      className="s-section relative"
-      style={{ ["--problem-ground" as string]: 0, background: "linear-gradient(180deg, var(--s-canvas), color-mix(in oklab, var(--s-canvas), color-mix(in oklab, var(--s-loss) 12%, var(--s-canvas)) calc(var(--problem-ground) * 70%)) 60%, var(--s-canvas))" }}
-      aria-labelledby="problem-title"
-    >
-      <div className="s-wrap grid gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-20">
-        <div className="lg:sticky lg:top-[22vh] lg:self-start">
-          <h2 id="problem-title" className="s-display s-h2" data-reveal="words">Your trading is spread across your week.</h2>
-          <p className="s-lede mt-6">Your memory keeps the best parts. The rest decides your results.</p>
+    <section id="problem" data-sc-act="problem" data-tone="light" ref={root} className="s-section relative" aria-labelledby="problem-title">
+      <div className="s-wrap">
+        <div>
+          <h2 id="problem-title" className="s-display s-h2 max-w-[17ch]" data-reveal="words">Trading generates data. Understanding it is another challenge.</h2>
+          <p className="s-lede mt-7">Your memory keeps the best parts. The rest decides your results.</p>
         </div>
-        <ol className="flex flex-col">
+        <ol className="mt-[clamp(64px,10vh,120px)] flex flex-col lg:ml-[40%]">
           {PROBLEMS.map(([name, line]) => (
-            <li key={name} className="problem-row border-t border-[var(--s-line)] py-7 last:border-b">
-              <p className="relative inline-block font-[family-name:var(--s-font-display)] text-[clamp(1.5rem,2.6vw,2.3rem)] leading-tight font-semibold tracking-[-0.02em]">
+            <li key={name} className="problem-row border-t border-[var(--s-line)] py-9 last:border-b">
+              <p className="relative inline-block font-[family-name:var(--s-font-display)] text-[clamp(1.15rem,1.9vw,1.7rem)] leading-tight font-medium tracking-[-0.03em]">
                 {name}
-                <span aria-hidden className="problem-strike absolute top-[54%] left-0 h-[2px] w-full origin-left scale-x-0 bg-[var(--s-loss)] motion-reduce:hidden" />
+                <span aria-hidden className="problem-strike absolute top-[54%] left-0 h-[2px] w-full origin-left scale-x-0 bg-[var(--s-accent-strong)] shadow-[0_0_10px_var(--s-accent-strong)] motion-reduce:hidden" />
               </p>
               <p className="s-body mt-2 text-[15.5px]">{line}</p>
             </li>
@@ -76,40 +102,61 @@ const PIPELINE = [
   ["Improvement", "A plan for tomorrow, checked against what you did."],
 ];
 
+// Three real screens drift in from the edges and settle into one layered composition.
+const LAYERS: { key: ScreenKey; cls: string }[] = [
+  { key: "journal", cls: "intro-a top-[4%] left-0 z-10 w-[60%]" },
+  { key: "reportsOverview", cls: "intro-b top-0 right-0 z-10 w-[56%]" },
+  { key: "calendarPage", cls: "intro-c bottom-0 left-[18%] z-20 w-[64%]" },
+];
+
 export function Introducing() {
   const root = useRef<HTMLElement>(null);
   const reduced = useReducedMotion();
+  const { play } = useSound();
   useGSAP(
     () => {
       if (reduced) return;
-      const st = { trigger: ".intro-flow", start: "top 75%", end: "bottom 55%", scrub: 0.5 };
-      gsap.fromTo(".intro-line", { strokeDashoffset: 1 }, { strokeDashoffset: 0, ease: "none", scrollTrigger: st });
+      gsap
+        .timeline({ defaults: { ease: "none" }, scrollTrigger: { trigger: ".intro-stage", start: "top 92%", end: "center 52%", scrub: 0.8, onLeave: () => play("reveal") } })
+        .from(".intro-a", { xPercent: -38, rotateY: 26, rotateZ: -3, opacity: 0 }, 0)
+        .from(".intro-b", { xPercent: 38, rotateY: -26, rotateZ: 3, opacity: 0 }, 0)
+        .from(".intro-c", { yPercent: 34, scale: 0.9, opacity: 0 }, 0.15);
+      const st = { trigger: ".intro-flow", start: "top 80%", end: "bottom 60%", scrub: 0.5 };
+      gsap.fromTo(".intro-line", { scaleX: 0 }, { scaleX: 1, ease: "none", scrollTrigger: st });
       gsap.utils.toArray<HTMLElement>(".intro-node").forEach((n, i, all) => {
-        gsap.fromTo(n, { opacity: 0.25 }, { opacity: 1, scrollTrigger: { trigger: ".intro-flow", start: () => `top+=${(i / all.length) * 100}% 75%`, end: () => `top+=${((i + 0.6) / all.length) * 100}% 65%`, scrub: true } });
+        gsap.fromTo(n, { opacity: 0.25 }, { opacity: 1, scrollTrigger: { trigger: ".intro-flow", start: () => `top+=${(i / all.length) * 100}% 80%`, end: () => `top+=${((i + 0.6) / all.length) * 100}% 70%`, scrub: true } });
       });
-      gsap.from(".intro-statement", { opacity: 0, y: 30, ease: "power2.out", scrollTrigger: { trigger: ".intro-statement", start: "top 85%", end: "top 55%", scrub: true } });
     },
     { scope: root, dependencies: [reduced], revertOnUpdate: true },
   );
   return (
-    <section id="introducing" data-sc-act="introducing" ref={root} className="relative py-[clamp(140px,24vh,280px)]" aria-labelledby="intro-title">
+    <section id="introducing" data-sc-act="introducing" data-tone="dark" data-curtain ref={root} className="s-section overflow-clip" aria-labelledby="intro-title">
+      <div className="s-wrap text-center">
+        <p className="s-eyebrow">Introducing Jarvis</p>
+        <h2 id="intro-title" className="s-display s-h2 mx-auto mt-4 max-w-[14ch]" data-reveal="words">Everything comes together.</h2>
+        <p className="s-lede mx-auto mt-7">One private record of your trading: every account, every trade, every note, and the figures worked out from them.</p>
+      </div>
+      <div className="intro-stage relative mx-auto mt-[clamp(64px,10vh,120px)] aspect-[16/11] w-[min(1120px,92vw)] [perspective:2200px]" aria-hidden>
+        {LAYERS.map((l) => (
+          <div key={l.key} className={`absolute ${l.cls} will-change-transform`}>
+            <div className="s-frame">
+              <Image src={SCREENS[l.key].src} width={SCREENS[l.key].w} height={SCREENS[l.key].h} alt="" unoptimized draggable={false} sizes="(min-width: 1024px) 700px, 64vw" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="s-wrap s-caption text-center">{SAMPLE_NOTE} The journal, the reports and the calendar.</p>
       <div className="s-wrap">
-        <div className="intro-statement text-right">
-          <h2 id="intro-title" className="s-display s-h2 ml-auto max-w-[18ch]" data-reveal="words">Jarvis gathers it into one record, and reads it for you.</h2>
-        </div>
-        <div className="intro-flow relative mt-24">
-          <svg className="absolute top-[22px] left-0 hidden h-[2px] w-full lg:block" viewBox="0 0 100 2" preserveAspectRatio="none" aria-hidden>
-            <line x1="0" y1="1" x2="100" y2="1" stroke="var(--s-line-strong)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-            <line className="intro-line" x1="0" y1="1" x2="100" y2="1" stroke="var(--s-accent-strong)" strokeWidth="2" vectorEffect="non-scaling-stroke" pathLength={1} strokeDasharray="1" strokeDashoffset="0" />
-          </svg>
-          <ol className="grid gap-10 lg:grid-cols-5 lg:gap-6">
+        <div className="intro-flow relative mt-[clamp(80px,12vh,140px)]">
+          <div aria-hidden className="absolute inset-x-0 top-0 hidden h-px bg-[var(--s-line-strong)] lg:block">
+            <div className="intro-line h-full origin-left bg-[var(--s-accent-strong)]" />
+          </div>
+          <ol className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5 lg:gap-8">
             {PIPELINE.map(([name, line], i) => (
-              <li key={name} className="intro-node relative flex gap-5 lg:block">
-                <span className="s-neu relative z-10 grid size-11 shrink-0 place-items-center rounded-full s-data text-[13px] text-[var(--s-ink)]">{i + 1}</span>
-                <div className="lg:mt-6">
-                  <h3 className="text-[18px] font-semibold tracking-[-0.01em] text-[var(--s-ink)]">{name}</h3>
-                  <p className="s-body mt-1.5 text-[15px]">{line}</p>
-                </div>
+              <li key={name} className="intro-node lg:pt-8">
+                <span className="s-data text-[13px] text-[var(--s-accent)]">{String(i + 1).padStart(2, "0")}</span>
+                <h3 className="mt-3 text-[19px] font-semibold tracking-[-0.02em] text-[var(--s-ink)]">{name}</h3>
+                <p className="s-body mt-1.5 text-[15px]">{line}</p>
               </li>
             ))}
           </ol>
@@ -137,11 +184,12 @@ export function Mt5() {
     { scope: root, dependencies: [reduced], revertOnUpdate: true },
   );
   return (
-    <section id="mt5" data-sc-act="mt5" ref={root} className="s-section" aria-labelledby="mt5-title">
+    <section id="mt5" data-sc-act="mt5" data-tone="dark" data-curtain ref={root} className="s-section" aria-labelledby="mt5-title">
       <div className="s-wrap grid items-center gap-14 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
         <div>
-          <h2 id="mt5-title" className="s-display s-h2" data-reveal="words">Your MT5 account, read-only.</h2>
-          <p className="s-lede mt-6">Connect with your account&apos;s investor password. It can read your history and positions. It cannot trade, and Jarvis never asks for your trading password.</p>
+          <p className="s-eyebrow">MT5 monitoring, read-only</p>
+          <h2 id="mt5-title" className="s-display s-h2 mt-4" data-reveal="words">Your trading activity. One clear view.</h2>
+          <p className="s-lede mt-7">Connect with your account&apos;s investor password. It can read your history and positions. It cannot trade, and Jarvis never asks for your trading password.</p>
           <div className="mt-10 grid gap-8 sm:grid-cols-2">
             <div>
               <h3 className="s-label mb-3">Jarvis reads</h3>
@@ -168,7 +216,7 @@ export function Mt5() {
           </div>
         </div>
         <figure className="m-0">
-          <div className="mt5-diagram s-glass rounded-[var(--s-radius-lg)] p-6 sm:p-10" role="img" aria-label="Diagram: your broker's MT5 server sends trades, positions and balances one way to Jarvis on your computer, through the read-only investor password.">
+          <div className="mt5-diagram s-card p-6 sm:p-10" role="img" aria-label="Diagram: your broker's MT5 server sends trades, positions and balances one way to Jarvis on your computer, through the read-only investor password.">
             <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-6">
               <div className="s-neu-in rounded-[var(--s-radius)] p-4">
                 <p className="s-label">Your broker</p>
@@ -186,7 +234,7 @@ export function Mt5() {
                   read-only
                 </span>
               </div>
-              <div className="s-neu rounded-[var(--s-radius)] p-4 ring-1 ring-[var(--s-accent)]/40">
+              <div className="s-neu rounded-[var(--s-radius)] p-4 ring-1 ring-[var(--s-accent-strong)]/50">
                 <p className="s-label">Your computer</p>
                 <p className="mt-1 text-[16px] font-semibold">Jarvis</p>
                 <p className="s-data mt-3 text-[12px] text-[var(--s-muted)]">synced on the interval you set</p>
@@ -250,16 +298,18 @@ export function Analytics() {
     };
   }, [reduced, play]);
   return (
-    <section id="analytics" data-sc-act="analytics" ref={root} className="relative" aria-labelledby="analytics-title">
+    <section id="analytics" data-sc-act="analytics" data-tone="light" ref={root} className="relative" aria-labelledby="analytics-title">
       <div className="rail-pin flex min-h-[100svh] flex-col justify-center overflow-hidden py-[88px]">
         <div className="s-wrap">
-          <h2 id="analytics-title" className="s-display s-h2 max-w-[18ch]" data-reveal="words">Every figure, from your own closed trades.</h2>
+          <p className="s-eyebrow">Analytics</p>
+          <h2 id="analytics-title" className="s-display s-h2 mt-4 max-w-[16ch]" data-reveal="words">Look beyond the numbers.</h2>
+          <p className="s-lede mt-7">Win rate, profit factor, drawdown, R-multiples, strategies and timing. Every figure is worked out from your own closed trades.</p>
         </div>
         <div className="mt-10 overflow-x-auto [scrollbar-width:none] max-lg:snap-x max-lg:snap-mandatory lg:overflow-visible" tabIndex={0} aria-label="Report illustrations, scroll sideways">
           <ol className="rail-track flex w-max gap-6 px-[var(--s-gutter)] will-change-transform">
             {CHARTS.map(({ key, title, note, Chart }) => (
               <li key={key} className="ch-panel w-[min(86vw,520px)] shrink-0 snap-start lg:w-[520px]">
-                <div className="s-frame p-5">
+                <div className="s-card p-6">
                   <Chart />
                 </div>
                 <h3 className="mt-4 text-[17px] font-semibold text-[var(--s-ink)]">{title}</h3>
@@ -297,26 +347,29 @@ export function Psychology() {
     },
     { scope: root, dependencies: [reduced], revertOnUpdate: true },
   );
-  const title = "Jarvis doesn't read your mind. It reads your record.";
+  const title = "Better awareness. Better discipline.";
   return (
-    <section id="psychology" data-sc-act="psychology" ref={root} className="s-section" aria-labelledby="psy-title">
+    <section id="psychology" data-sc-act="psychology" data-tone="mist" ref={root} className="s-section" aria-labelledby="psy-title">
       <div className="s-wrap">
-        <h2 id="psy-title" className="psy-title s-display s-h2 ml-auto max-w-[18ch] text-right">
+        <p className="s-eyebrow">Trading psychology</p>
+        <h2 id="psy-title" className="psy-title s-display s-h2 mt-4 max-w-[14ch]">
           {title.split(" ").map((w, i) => (
             <span key={i} className="psy-word">{w} </span>
           ))}
         </h2>
-        <p className="s-lede mt-6 ml-auto text-right">You tag emotions, mistakes and whether you followed your plan. Jarvis checks your results against them with plain rules you can read.</p>
-        <ol className="mt-16 grid gap-6 lg:grid-cols-2 lg:gap-8">
+        <p className="s-lede mt-7">Jarvis doesn&apos;t read your mind. It reads your record: you tag emotions, mistakes and whether you followed your plan, and it checks your results against them with plain rules you can read.</p>
+        <ol className="mt-20 grid gap-7 lg:grid-cols-2 lg:gap-9">
           {RULES.map(([topic, name, rule]) => (
-            <li key={name} className="psy-rule s-neu rounded-[var(--s-radius-lg)] p-6 sm:p-8">
-              <p className="s-label">{topic}</p>
-              <h3 className="mt-2 text-[19px] font-semibold tracking-[-0.01em] text-[var(--s-ink)]">{name}</h3>
-              <p className="s-body mt-2 text-[15px]">{rule}</p>
+            <li key={name} className="psy-rule">
+              <div className="s-card h-full p-7 sm:p-9">
+                <p className="text-[14px] font-medium text-[var(--s-accent)]">{topic}</p>
+                <h3 className="mt-2 font-[family-name:var(--s-font-display)] text-[clamp(1.05rem,1.5vw,1.3rem)] font-medium tracking-[-0.025em] text-[var(--s-ink)]">{name}</h3>
+                <p className="s-body mt-2 text-[15.5px]">{rule}</p>
+              </div>
             </li>
           ))}
-          <li className="psy-rule s-neu-in rounded-[var(--s-radius-lg)] p-6 sm:p-8">
-            <p className="s-body text-[15px]">These are checks over your own trades, shown only when there are enough of them. They describe what happened. They don&apos;t diagnose anyone, and they aren&apos;t advice.</p>
+          <li className="psy-rule s-neu-in rounded-[var(--s-radius-lg)] p-7 sm:p-9">
+            <p className="s-body text-[15px] text-[var(--s-muted)]">These are checks over your own trades, shown only when there are enough of them. They describe what happened. They don&apos;t diagnose anyone, and they aren&apos;t advice.</p>
           </li>
         </ol>
       </div>
@@ -364,30 +417,19 @@ export function Next() {
     },
     { scope: root, dependencies: [reduced], revertOnUpdate: true },
   );
-  // The deck leans toward a fine pointer, each card at its own depth.
-  const tilt = (e: React.PointerEvent<HTMLElement>) => {
-    if (reduced || e.pointerType !== "mouse") return;
-    const el = e.currentTarget;
-    const r = el.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width - 0.5;
-    const y = (e.clientY - r.top) / r.height - 0.5;
-    el.style.transform = `perspective(900px) rotateX(${(-y * 7).toFixed(2)}deg) rotateY(${(x * 9).toFixed(2)}deg) translateZ(6px)`;
-    el.style.setProperty("--mx", `${e.clientX - r.left}px`);
-    el.style.setProperty("--my", `${e.clientY - r.top}px`);
-  };
-  const reset = (e: React.PointerEvent<HTMLElement>) => (e.currentTarget.style.transform = "");
   return (
-    <section id="next" data-sc-act="next" ref={root} className="s-section" aria-labelledby="next-title">
+    <section id="next" data-sc-act="next" data-tone="dark" data-curtain ref={root} className="s-section" aria-labelledby="next-title">
       <div className="s-wrap grid gap-12 lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)]">
         <div className="lg:sticky lg:top-[20vh] lg:self-start">
-          <h2 id="next-title" className="s-display s-h2" data-reveal="words">Practice, review, and what is still being built.</h2>
-          <p className="s-lede mt-6">Everything here is marked: in Jarvis today, or in development.</p>
-          <Link href="/features" className="s-btn s-btn-ghost mt-8">See every feature</Link>
+          <p className="s-eyebrow">Advanced intelligence</p>
+          <h2 id="next-title" className="s-display s-h2 mt-4" data-reveal="words">More than a journal.</h2>
+          <p className="s-lede mt-7">Practice, replay, review and ask. Each one is marked: in Jarvis today, or still in development.</p>
+          <Link href="/features" className="s-more mt-8">See every feature <Arrow /></Link>
         </div>
         <ul className="next-deck grid gap-4 sm:grid-cols-2">
           {NEXT.map((n) => (
             <li key={n.title} className="next-card">
-              <article onPointerMove={tilt} onPointerLeave={reset} className="s-frame h-full p-6 transition-transform duration-300 ease-[var(--s-ease-out)] will-change-transform" data-kind={n.kind}>
+              <article className="s-card h-full p-7" data-kind={n.kind}>
                 <div className="flex items-start justify-between gap-3">
                   <Motif m={n.motif} />
                   <Status kind={n.kind} />

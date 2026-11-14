@@ -90,8 +90,7 @@ export function Peak() {
         if (wide) tl.set(cal, { x: () => hero().x, y: () => hero().y, scale: () => hero().scale }, 0);
         tl.set(".peak-tile", { opacity: 0, y: 40, scale: 0.94 }, 0)
           .set(".peak-real", { opacity: 0 }, 0)
-          .set(".peak-cell", { opacity: 0 }, 0)
-          .from(".peak-heading", { y: 30, opacity: 0, duration: 0.06 }, 0);
+          .set(".peak-cell", { opacity: 0 }, 0);
         // Candles fall from above the frame, tumbling, in a ragged order, and land on their days.
         root.current!.querySelectorAll<HTMLElement>(".peak-candle").forEach((el, i) => {
           const at = 0.04 + (i % 7) * 0.012 + Math.floor(i / 7) * 0.035;
@@ -119,16 +118,16 @@ export function Peak() {
   );
 
   return (
-    <section id="journal" data-sc-act="journal" ref={root} className="relative" aria-labelledby="journal-title">
+    <section id="journal" data-sc-act="journal" data-tone="light" ref={root} className="relative" aria-labelledby="journal-title">
       <div className="peak-pin relative flex min-h-[100svh] flex-col overflow-hidden pt-[88px] pb-8">
         <div className="peak-heading s-wrap relative z-10 flex flex-wrap items-end justify-between gap-x-10 gap-y-3">
-          <h2 id="journal-title" className="s-display s-h2 max-w-[14ch]">The trading journal</h2>
-          <p className="s-lede max-w-[40ch] lg:text-right">Every closed trade lands on its day. Every figure on the dashboard is worked out from them.</p>
+          <h2 id="journal-title" className="s-display s-h2 max-w-[13ch]">Know every trade. Understand every decision.</h2>
+          <p className="s-lede max-w-[40ch]">Every closed trade lands on its day. Every figure on the dashboard is worked out from them.</p>
         </div>
         <div className="peak-stage s-wrap relative mt-6 min-h-0 flex-1">
           <div className="mx-auto grid h-full max-w-[1240px] gap-3 [grid-template-areas:'kpi''cal''score''cum''daily''trades'] lg:grid-cols-3 lg:[grid-template-areas:'kpi_kpi_kpi''score_cum_daily''trades_cal_cal']">
             {TILES.map((t) => (
-              <div key={t.key} className={cx("peak-tile min-w-0", t.key === "kpis" ? "" : "hidden lg:block")} style={{ gridArea: t.area }}>
+              <div key={t.key} className={cx("peak-tile min-w-0 motion-reduce:opacity-100!", t.key === "kpis" ? "" : "hidden lg:block")} style={{ gridArea: t.area }}>
                 <Tile k={t.key} />
               </div>
             ))}
@@ -138,7 +137,7 @@ export function Peak() {
                 <div className="absolute inset-0 bg-[var(--s-surface)]" />
                 <div className="peak-month absolute top-[3.2%] left-[9%] font-[family-name:var(--s-font-text)] text-[clamp(10px,1.5vw,18px)] font-semibold text-[var(--s-ink)]">October 2026</div>
                 {DAYS.map((d) => (
-                  <div key={d.day} className="peak-cell absolute rounded-[5px]" style={{ left: pct(COLS[d.col], IMG.w), top: pct(ROWS[d.row], IMG.h), width: pct(CELL.w, IMG.w), height: pct(CELL.h, IMG.h), background: `var(${FILL[d.kind]})` }}>
+                  <div key={d.day} className="peak-cell absolute rounded-[5px] motion-reduce:opacity-100!" style={{ left: pct(COLS[d.col], IMG.w), top: pct(ROWS[d.row], IMG.h), width: pct(CELL.w, IMG.w), height: pct(CELL.h, IMG.h), background: `var(${FILL[d.kind]})` }}>
                     <span className="absolute top-[6%] right-[8%] text-[clamp(7px,0.8vw,11px)] text-[var(--s-ink-soft)]">{d.day}</span>
                   </div>
                 ))}
@@ -149,7 +148,7 @@ export function Peak() {
                     </div>
                   </div>
                 ))}
-                <Image src={SCREENS.calendar.src} width={IMG.w} height={IMG.h} alt={SCREENS.calendar.alt} unoptimized className="peak-real absolute inset-0 h-full w-full" sizes="(min-width: 1024px) 60vw, 92vw" />
+                <Image src={SCREENS.calendar.src} width={IMG.w} height={IMG.h} alt={SCREENS.calendar.alt} unoptimized className="peak-real absolute inset-0 h-full w-full motion-reduce:opacity-100!" sizes="(min-width: 1024px) 60vw, 92vw" />
               </div>
             </div>
           </div>

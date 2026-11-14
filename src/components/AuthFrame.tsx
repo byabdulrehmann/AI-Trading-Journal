@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useState } from "react";
 import { Button, Notice } from "@/components/ui";
 import { Logo } from "@/components/Shell";
-import { ThemeScript } from "@/components/site/theme";
 
 const display = Bricolage_Grotesque({ subsets: ["latin"], weight: ["500"] });
 
@@ -13,7 +12,6 @@ const display = Bricolage_Grotesque({ subsets: ["latin"], weight: ["500"] });
 export function AuthFrame({ title, intro, children, footer }: { title: string; intro: React.ReactNode; children: React.ReactNode; footer?: React.ReactNode }) {
   return (
     <main className="auth-book flex min-h-dvh items-center justify-center px-gutter py-10">
-      <ThemeScript />
       <div className="auth-pane w-full max-w-[420px]">
         <Link href="/welcome" aria-label="Jarvis website" className="inline-flex no-underline">
           <Logo />

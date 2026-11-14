@@ -24,19 +24,14 @@ const LINKS = [
   { href: "/contact", label: "Contact" },
 ];
 
-/** The Jarvis mark: the app's rising-line glyph on a graphite glass tile. */
+/** The Jarvis mark: the app's rising-line glyph and its end point, in light on a red tile. */
 export function Mark({ size = 28 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 26 26" aria-hidden fill="none">
-      <rect x="0.5" y="0.5" width="25" height="25" rx="7" fill="url(#mark-fill)" style={{ stroke: "var(--s-glass-rim)" }} />
+      {/* Flat fills, no gradient: an SVG gradient id is shared page-wide and would carry one section's tone into another. */}
+      <rect width="26" height="26" rx="7" style={{ fill: "var(--s-cta)" }} />
       <path d="M6 16.5l4.5-5 3.5 3 6-7" style={{ stroke: "var(--s-cta-ink)" }} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="20" cy="7.5" r="1.7" style={{ fill: "var(--s-cta-ink)" }} />
-      <defs>
-        <linearGradient id="mark-fill" x1="0" y1="0" x2="26" y2="26" gradientUnits="userSpaceOnUse">
-          <stop style={{ stopColor: "var(--s-cta-hover)" }} />
-          <stop offset="1" style={{ stopColor: "var(--s-cta)" }} />
-        </linearGradient>
-      </defs>
+      <circle cx="20" cy="7.5" r="1.9" style={{ fill: "var(--s-cta-ink)" }} />
     </svg>
   );
 }
@@ -45,7 +40,7 @@ export function Wordmark() {
   return (
     <Link href="/welcome" className="flex items-center gap-2.5 text-[var(--s-ink)] no-underline" aria-label="Jarvis home">
       <Mark />
-      <span className="font-[family-name:var(--s-font-display)] text-[19px] font-semibold tracking-[-0.02em]">Jarvis</span>
+      <span className="font-[family-name:var(--s-font-display)] text-[17px] font-semibold tracking-[-0.02em]">Jarvis</span>
     </Link>
   );
 }
@@ -59,12 +54,12 @@ function SpeakerIcon({ on }: { on: boolean }) {
   );
 }
 
-/** Sound on/off plus a volume slider. Off until the visitor turns it on. */
+/** Sound on/off. Off until the visitor turns it on; once on, the volume slider slides out on hover or focus. */
 export function SoundControl({ compact }: { compact?: boolean }) {
   const { enabled, setEnabled, volume, setVolume, play } = useSound();
   const id = useId();
   return (
-    <div className="flex items-center gap-2" data-testid="sound-control">
+    <div className="group/sound flex items-center" data-testid="sound-control">
       <button
         type="button"
         aria-pressed={enabled}
@@ -78,9 +73,9 @@ export function SoundControl({ compact }: { compact?: boolean }) {
         <SpeakerIcon on={enabled} />
       </button>
       {enabled && (
-        <span className={cx("items-center gap-2", compact ? "flex" : "hidden xl:flex")}>
+        <span className={cx("flex items-center overflow-hidden transition-[width,opacity,margin] duration-300 ease-[var(--s-ease-out)]", compact ? "ml-3 w-24 opacity-100" : "ml-0 w-0 opacity-0 group-focus-within/sound:ml-3 group-focus-within/sound:w-24 group-focus-within/sound:opacity-100 group-hover/sound:ml-3 group-hover/sound:w-24 group-hover/sound:opacity-100")}>
           <label htmlFor={id} className="sr-only">Volume</label>
-          <input id={id} type="range" min={0} max={1} step={0.05} value={volume} onChange={(e) => setVolume(Number(e.target.value))} className="h-1 w-20 accent-[var(--s-accent)]" aria-valuetext={`${Math.round(volume * 100)}%`} data-testid="volume" />
+          <input id={id} type="range" min={0} max={1} step={0.05} value={volume} onChange={(e) => setVolume(Number(e.target.value))} className="h-1 w-20 accent-[var(--s-accent-strong)]" aria-valuetext={`${Math.round(volume * 100)}%`} data-testid="volume" />
         </span>
       )}
     </div>
@@ -90,7 +85,7 @@ export function SoundControl({ compact }: { compact?: boolean }) {
 /** A soft pill that slides between nav items as the pointer moves across them. */
 function HoverPill() {
   const reduced = useReducedMotion();
-  return <motion.span layoutId="nav-hover" aria-hidden className="absolute inset-y-1 inset-x-0 -z-10 rounded-full bg-[var(--s-glass-strong)] shadow-[inset_0_1px_0_var(--s-glass-rim)]" transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 42 }} />;
+  return <motion.span layoutId="nav-hover" aria-hidden className="absolute inset-y-1.5 inset-x-0 -z-10 rounded-full bg-[color-mix(in_oklab,var(--s-ink)_7%,transparent)]" transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 42 }} />;
 }
 
 function PlatformMenu({ active, hovered, onHover }: { active: boolean; hovered: boolean; onHover: () => void }) {
@@ -145,6 +140,9 @@ export function SiteNav({ chapters }: { chapters?: { id: string; label: string }
   const [hover, setHover] = useState<string | null>(null);
   const last = useRef(0);
   const bar = useRef<HTMLDivElement>(null);
+  const head = useRef<HTMLElement>(null);
+  // The bar takes the tone of the section under it. The homepage opens on the dark stage, inner pages on porcelain.
+  const [tone, setTone] = useState(pathname === "/welcome" ? "dark" : "light");
 
   useEffect(() => {
     const onScroll = () => {
@@ -152,6 +150,8 @@ export function SiteNav({ chapters }: { chapters?: { id: string; label: string }
       // How far through the page: a hairline under the bar.
       bar.current?.style.setProperty("transform", `scaleX(${Math.min(1, y / Math.max(1, document.documentElement.scrollHeight - innerHeight))})`);
       setScrolled(y > 24);
+      const under = document.elementsFromPoint(innerWidth / 2, 30).find((el) => !head.current?.contains(el));
+      setTone(under?.closest<HTMLElement>("[data-tone]")?.dataset.tone ?? "light");
       // Steps aside while the visitor reads downward, returns the moment they scroll up.
       setHidden(y > 640 && y > last.current + 4 && !menu);
       if (y < last.current - 4 || y < 640) setHidden(false);
@@ -160,7 +160,7 @@ export function SiteNav({ chapters }: { chapters?: { id: string; label: string }
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [menu]);
+  }, [menu, pathname]);
 
   useEffect(() => {
     if (!menu) return;
@@ -176,14 +176,17 @@ export function SiteNav({ chapters }: { chapters?: { id: string; label: string }
   const isActive = (href: string) => pathname === href;
   return (
     <header
+      ref={head}
+      data-tone={tone}
       className={cx(
-        "fixed inset-x-0 top-0 z-50 px-3 pt-3 transition-transform duration-300",
+        "fixed inset-x-0 top-0 z-50 transition-transform duration-500 ease-[var(--s-ease-out)]",
         hidden && !reduced ? "-translate-y-[120%]" : "translate-y-0",
       )}
       data-testid="site-nav"
     >
       <a href="#site-main" className="skip-link">Skip to content</a>
-      <nav aria-label="Main" className={cx("s-glass mx-auto flex h-[62px] max-w-[1320px] items-center gap-4 rounded-full pr-2.5 pl-5 transition-shadow duration-300", scrolled && "shadow-[var(--s-shadow-2)]")}>
+      <nav aria-label="Main" className={cx("s-bar", !scrolled && "border-transparent! bg-transparent! backdrop-blur-none!")}>
+        <div className="s-wrap flex h-[60px] items-center gap-4">
         <Wordmark />
         <LayoutGroup>
           <ul className="ml-6 hidden items-center lg:flex" onMouseLeave={() => setHover(null)}>
@@ -200,21 +203,22 @@ export function SiteNav({ chapters }: { chapters?: { id: string; label: string }
           </ul>
         </LayoutGroup>
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
-          <span className="hidden items-center gap-2 sm:flex"><ThemeToggle /><SoundControl /></span>
+          <span className="hidden items-center gap-2 sm:flex"><SoundControl /><ThemeToggle /></span>
           <Link href="/login" className="hidden h-10 items-center px-3 text-[14.5px] text-[var(--s-ink-soft)] no-underline transition-colors hover:text-[var(--s-ink)] md:flex">Sign in</Link>
           <Link href="/signup" className="hidden h-10 items-center px-3 text-[14.5px] text-[var(--s-ink-soft)] no-underline transition-colors hover:text-[var(--s-ink)] xl:flex">Sign up</Link>
-          <Link href={CTA_HREF} className="s-btn s-btn-primary hidden h-10! px-5! text-[14px]! sm:inline-flex">{CTA_LABEL}</Link>
+          <Link href={CTA_HREF} className="s-btn s-btn-primary hidden h-9! px-4! text-[14px]! sm:inline-flex">{CTA_LABEL}</Link>
           <button type="button" className="grid size-10 place-items-center rounded-full border border-[var(--s-line-strong)] text-[var(--s-ink)] lg:hidden" aria-expanded={menu} aria-controls="site-menu" aria-label={menu ? "Close menu" : "Open menu"} onClick={() => setMenu((m) => !m)}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>{menu ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 8h16M4 16h16" />}</svg>
           </button>
         </div>
+        </div>
       </nav>
-      <div id="site-menu" hidden={!menu} className="fixed inset-x-0 top-[84px] bottom-0 overflow-y-auto bg-[var(--s-canvas)] lg:hidden" data-testid="site-menu">
+      <div id="site-menu" hidden={!menu} className="fixed inset-x-0 top-[60px] bottom-0 overflow-y-auto bg-[var(--s-canvas)] lg:hidden" data-testid="site-menu">
         <div className="s-wrap flex flex-col gap-8 py-8">
           <ul className="flex flex-col">
             {[...PLATFORM.slice(0, 1).map((l) => ({ ...l, label: "Platform" })), ...LINKS, { href: "/login", label: "Sign in" }, { href: "/signup", label: "Sign up" }].map((l) => (
               <li key={l.href}>
-                <Link href={l.href} onClick={() => setMenu(false)} className="flex h-14 items-center border-b border-[var(--s-line)] font-[family-name:var(--s-font-display)] text-[26px] font-semibold tracking-[-0.02em] text-[var(--s-ink)] no-underline">{l.label}</Link>
+                <Link href={l.href} onClick={() => setMenu(false)} className="flex h-14 items-center border-b border-[var(--s-line)] font-[family-name:var(--s-font-display)] text-[22px] font-semibold tracking-[-0.02em] text-[var(--s-ink)] no-underline">{l.label}</Link>
               </li>
             ))}
           </ul>
@@ -240,7 +244,7 @@ export function SiteNav({ chapters }: { chapters?: { id: string; label: string }
           </div>
         </div>
       </div>
-      <div ref={bar} aria-hidden className="pointer-events-none absolute inset-x-12 bottom-[-3px] h-[2px] origin-left scale-x-0 rounded-full bg-[linear-gradient(90deg,transparent,var(--s-accent))]" />
+      <div ref={bar} aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-px origin-left scale-x-0 bg-[var(--s-accent-strong)]" />
     </header>
   );
 }

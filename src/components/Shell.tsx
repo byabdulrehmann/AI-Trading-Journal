@@ -64,9 +64,9 @@ export function Logo({ compact }: { compact?: boolean }) {
   return (
     <span className="flex items-center gap-2.5">
       <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden fill="none">
-        <rect width="26" height="26" rx="8" fill="var(--ink)" />
-        <path d="M6 16.5l4.5-5 3.5 3 6-7" stroke="var(--canvas)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx="20" cy="7.5" r="1.6" fill="var(--accent)" />
+        <rect width="26" height="26" rx="8" fill="var(--accent)" />
+        <path d="M6 16.5l4.5-5 3.5 3 6-7" stroke="var(--accent-ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="20" cy="7.5" r="1.6" fill="var(--accent-ink)" />
       </svg>
       {!compact && <span className="text-[17px] font-semibold tracking-tight">Jarvis</span>}
     </span>

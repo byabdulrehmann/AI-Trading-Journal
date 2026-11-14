@@ -1,5 +1,5 @@
-/* Jarvis tokens: the glass studio. Pearl by day, obsidian at night, the same world as the website.
-   Cards are frosted glass over a soft room light, controls are soft and pressable, one steel-blue accent.
+/* Jarvis tokens: the glass studio. Bone by day, black at night, the same world as the website.
+   Cards are frosted glass over a soft room light, controls are soft and pressable, one deep red accent.
    Every colour and face in the app comes from here. */
 :root {
   color-scheme: light;
@@ -12,23 +12,23 @@
   --z-raised: 10; --z-sticky: 200; --z-modal: 400; --z-toast: 500;
   --container: 1760px;
 
-  /* Pearl, the default. */
-  --canvas: #e6e9ee;
-  --surface: #f3f5f8;
-  --raised: #eaedf2;
-  --sunken: #dde1e8;
+  /* Bone, the default. */
+  --canvas: #ece6e5;
+  --surface: #f6f2f1;
+  --raised: #efe9e8;
+  --sunken: #e3dbda;
   --glass: rgb(255 255 255 / 0.6);
-  --line: rgb(22 28 45 / 0.08);
-  --line-strong: rgb(22 28 45 / 0.16);
-  --ink: #10131a;
-  --ink-soft: #3c4350;
-  --muted: #5c6475;
-  --accent: #3d5bd1;
+  --line: rgb(45 15 18 / 0.08);
+  --line-strong: rgb(45 15 18 / 0.16);
+  --ink: #160c0d;
+  --ink-soft: #45383a;
+  --muted: #66575a;
+  --accent: #a3121e;
   --accent-ink: #ffffff;
-  --accent-soft: rgb(61 91 209 / 0.1);
-  --focus: #3d5bd1;
-  --info: #3d5bd1;
-  --info-soft: rgb(61 91 209 / 0.08);
+  --accent-soft: rgb(163 18 30 / 0.1);
+  --focus: #a3121e;
+  --info: #a3121e;
+  --info-soft: rgb(163 18 30 / 0.08);
   --profit: #2f7d5f;
   --profit-soft: #d3e8de;
   --profit-strong: #b1d6c4;
@@ -37,21 +37,21 @@
   --loss-strong: #e4b3bf;
   --warn: #8a6100;
   --warn-soft: rgb(230 168 23 / 0.14);
-  --scrim: rgb(20 24 38 / 0.32);
-  --card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.85), 0 1px 2px rgb(30 40 70 / 0.05), 0 16px 36px -22px rgb(30 40 70 / 0.3);
+  --scrim: rgb(30 10 12 / 0.32);
+  --card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.85), 0 1px 2px rgb(70 20 25 / 0.05), 0 16px 36px -22px rgb(70 20 25 / 0.3);
   /* Soft, pressed-from-the-surface controls. */
   --neu-hi: rgb(255 255 255 / 0.9);
-  --neu-lo: rgb(150 160 185 / 0.45);
+  --neu-lo: rgb(170 140 142 / 0.45);
   /* The room light the glass sits in. */
-  --room: radial-gradient(120% 70% at 10% -10%, rgb(255 255 255 / 0.85), transparent 55%), radial-gradient(90% 60% at 100% 100%, rgb(186 198 226 / 0.4), transparent 60%);
+  --room: radial-gradient(120% 70% at 10% -10%, rgb(255 255 255 / 0.85), transparent 55%), radial-gradient(90% 60% at 100% 100%, rgb(220 160 166 / 0.35), transparent 60%);
 
   /* The sidebar is a pane of glass. */
   --nav-bg: rgb(255 255 255 / 0.5);
   --nav-bg-end: rgb(255 255 255 / 0.32);
-  --nav-ink: #1e2330;
-  --nav-muted: #5c6475;
+  --nav-ink: #22161a;
+  --nav-muted: #66575a;
   --nav-active: rgb(255 255 255 / 0.85);
-  --nav-line: rgb(22 28 45 / 0.07);
+  --nav-line: rgb(45 15 18 / 0.07);
 
   /* The score's low, middle, high scale. */
   --scale-low: #c04f66;
@@ -71,22 +71,22 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --canvas: #0b0d12;
-  --surface: #151922;
-  --raised: #1c212c;
-  --sunken: #08090d;
+  --canvas: #0c0809;
+  --surface: #160f11;
+  --raised: #1e1517;
+  --sunken: #070405;
   --glass: rgb(255 255 255 / 0.035);
-  --line: rgb(214 224 255 / 0.08);
-  --line-strong: rgb(214 224 255 / 0.16);
-  --ink: #eef1f7;
-  --ink-soft: #b9c0ce;
-  --muted: #8b94a5;
-  --accent: #8ea6ff;
-  --accent-ink: #0b0d12;
-  --accent-soft: rgb(142 166 255 / 0.14);
-  --focus: #8ea6ff;
-  --info: #8ea6ff;
-  --info-soft: rgb(142 166 255 / 0.12);
+  --line: rgb(255 215 218 / 0.08);
+  --line-strong: rgb(255 215 218 / 0.16);
+  --ink: #f5eded;
+  --ink-soft: #c5b6b8;
+  --muted: #96858a;
+  --accent: #ff5c66;
+  --accent-ink: #120607;
+  --accent-soft: rgb(255 92 102 / 0.14);
+  --focus: #ff5c66;
+  --info: #ff5c66;
+  --info-soft: rgb(255 92 102 / 0.12);
   --profit: #6cc9a2;
   --profit-soft: rgb(108 201 162 / 0.13);
   --profit-strong: rgb(108 201 162 / 0.27);
@@ -99,11 +99,11 @@
   --card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 18px 40px -24px rgb(0 0 0 / 0.9);
   --neu-hi: rgb(255 255 255 / 0.05);
   --neu-lo: rgb(0 0 0 / 0.65);
-  --room: radial-gradient(110% 70% at 10% -10%, rgb(120 140 200 / 0.14), transparent 55%), radial-gradient(80% 60% at 100% 100%, rgb(90 70 160 / 0.1), transparent 60%);
+  --room: radial-gradient(110% 70% at 10% -10%, rgb(200 30 45 / 0.16), transparent 55%), radial-gradient(80% 60% at 100% 100%, rgb(120 10 20 / 0.14), transparent 60%);
   --nav-bg: rgb(255 255 255 / 0.03);
   --nav-bg-end: rgb(255 255 255 / 0.015);
-  --nav-ink: #dfe4ee;
-  --nav-muted: #8b94a5;
+  --nav-ink: #eadfe0;
+  --nav-muted: #96858a;
   --nav-active: rgb(255 255 255 / 0.08);
   --nav-line: rgb(255 255 255 / 0.06);
   --scale-low: #ee8fa3;
@@ -114,22 +114,22 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     color-scheme: dark;
-    --canvas: #0b0d12;
-    --surface: #151922;
-    --raised: #1c212c;
-    --sunken: #08090d;
+    --canvas: #0c0809;
+    --surface: #160f11;
+    --raised: #1e1517;
+    --sunken: #070405;
     --glass: rgb(255 255 255 / 0.035);
-    --line: rgb(214 224 255 / 0.08);
-    --line-strong: rgb(214 224 255 / 0.16);
-    --ink: #eef1f7;
-    --ink-soft: #b9c0ce;
-    --muted: #8b94a5;
-    --accent: #8ea6ff;
-    --accent-ink: #0b0d12;
-    --accent-soft: rgb(142 166 255 / 0.14);
-    --focus: #8ea6ff;
-    --info: #8ea6ff;
-    --info-soft: rgb(142 166 255 / 0.12);
+    --line: rgb(255 215 218 / 0.08);
+    --line-strong: rgb(255 215 218 / 0.16);
+    --ink: #f5eded;
+    --ink-soft: #c5b6b8;
+    --muted: #96858a;
+    --accent: #ff5c66;
+    --accent-ink: #120607;
+    --accent-soft: rgb(255 92 102 / 0.14);
+    --focus: #ff5c66;
+    --info: #ff5c66;
+    --info-soft: rgb(255 92 102 / 0.12);
     --profit: #6cc9a2;
     --profit-soft: rgb(108 201 162 / 0.13);
     --profit-strong: rgb(108 201 162 / 0.27);
@@ -142,11 +142,11 @@
     --card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 18px 40px -24px rgb(0 0 0 / 0.9);
     --neu-hi: rgb(255 255 255 / 0.05);
     --neu-lo: rgb(0 0 0 / 0.65);
-    --room: radial-gradient(110% 70% at 10% -10%, rgb(120 140 200 / 0.14), transparent 55%), radial-gradient(80% 60% at 100% 100%, rgb(90 70 160 / 0.1), transparent 60%);
+    --room: radial-gradient(110% 70% at 10% -10%, rgb(200 30 45 / 0.16), transparent 55%), radial-gradient(80% 60% at 100% 100%, rgb(120 10 20 / 0.14), transparent 60%);
     --nav-bg: rgb(255 255 255 / 0.03);
     --nav-bg-end: rgb(255 255 255 / 0.015);
-    --nav-ink: #dfe4ee;
-    --nav-muted: #8b94a5;
+    --nav-ink: #eadfe0;
+    --nav-muted: #96858a;
     --nav-active: rgb(255 255 255 / 0.08);
     --nav-line: rgb(255 255 255 / 0.06);
     --scale-low: #ee8fa3;
@@ -179,51 +179,51 @@
    dark on the site (html[data-site-theme]). Only these screens use it. */
 .auth-book {
   color-scheme: light;
-  --canvas: #e6e9ee;
-  --surface: #eef1f5;
-  --raised: #f4f6f9;
-  --sunken: #e1e5ec;
-  --line: rgb(22 28 45 / 0.08);
-  --line-strong: rgb(22 28 45 / 0.16);
-  --ink: #10131a;
-  --ink-soft: #434a58;
-  --muted: #5f6777;
-  --accent: #151821;
-  --accent-ink: #f6f7fa;
-  --accent-soft: rgb(61 91 209 / 0.1);
-  --focus: #3d5bd1;
-  --info: #3d5bd1;
-  --info-soft: rgb(61 91 209 / 0.08);
+  --canvas: #ece6e5;
+  --surface: #f3eeed;
+  --raised: #f8f5f4;
+  --sunken: #e6dfde;
+  --line: rgb(45 15 18 / 0.08);
+  --line-strong: rgb(45 15 18 / 0.16);
+  --ink: #160c0d;
+  --ink-soft: #45383a;
+  --muted: #66575a;
+  --accent: #8f0f1b;
+  --accent-ink: #fff6f6;
+  --accent-soft: rgb(163 18 30 / 0.1);
+  --focus: #a3121e;
+  --info: #a3121e;
+  --info-soft: rgb(163 18 30 / 0.08);
   --loss: #c04f66;
   --loss-soft: rgb(192 79 102 / 0.1);
   --warn: #8a6100;
   --warn-soft: rgb(230 168 23 / 0.14);
   --radius-card: 24px;
   color: var(--ink);
-  background: radial-gradient(120% 80% at 12% -10%, rgb(255 255 255 / 0.9), transparent 55%), radial-gradient(90% 70% at 100% 100%, rgb(186 198 226 / 0.45), transparent 60%), var(--canvas);
+  background: radial-gradient(120% 80% at 12% -10%, rgb(255 255 255 / 0.9), transparent 55%), radial-gradient(90% 70% at 100% 100%, rgb(220 160 166 / 0.4), transparent 60%), var(--canvas);
 }
 html[data-site-theme="dark"] .auth-book {
   color-scheme: dark;
-  --canvas: #0b0d12;
-  --surface: #141821;
-  --raised: #1a1f2a;
-  --sunken: #10131a;
-  --line: rgb(214 224 255 / 0.08);
-  --line-strong: rgb(214 224 255 / 0.16);
-  --ink: #eef1f7;
-  --ink-soft: #aab2c2;
-  --muted: #8b94a5;
-  --accent: #eef1f7;
-  --accent-ink: #0b0d12;
-  --accent-soft: rgb(142 166 255 / 0.12);
-  --focus: #8ea6ff;
-  --info: #8ea6ff;
-  --info-soft: rgb(142 166 255 / 0.1);
+  --canvas: #0c0809;
+  --surface: #150e10;
+  --raised: #1c1315;
+  --sunken: #100a0b;
+  --line: rgb(255 215 218 / 0.08);
+  --line-strong: rgb(255 215 218 / 0.16);
+  --ink: #f5eded;
+  --ink-soft: #b9a9ab;
+  --muted: #96858a;
+  --accent: #b3121f;
+  --accent-ink: #fff5f5;
+  --accent-soft: rgb(255 92 102 / 0.12);
+  --focus: #ff5c66;
+  --info: #ff5c66;
+  --info-soft: rgb(255 92 102 / 0.1);
   --loss: #e2899b;
   --loss-soft: rgb(226 137 155 / 0.12);
   --warn: #e6b35a;
   --warn-soft: rgb(230 179 90 / 0.12);
-  background: radial-gradient(110% 80% at 15% -10%, rgb(120 140 200 / 0.16), transparent 55%), radial-gradient(90% 70% at 100% 100%, rgb(90 70 160 / 0.12), transparent 60%), var(--canvas);
+  background: radial-gradient(110% 80% at 15% -10%, rgb(200 30 45 / 0.18), transparent 55%), radial-gradient(90% 70% at 100% 100%, rgb(120 10 20 / 0.14), transparent 60%), var(--canvas);
 }
 /* The form sits on a pane of frosted glass. */
 .auth-pane {
@@ -232,8 +232,8 @@ html[data-site-theme="dark"] .auth-book {
   background: rgb(255 255 255 / 0.5);
   -webkit-backdrop-filter: blur(24px) saturate(1.6);
   backdrop-filter: blur(24px) saturate(1.6);
-  border: 1px solid rgb(22 28 45 / 0.07);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 40px 80px -36px rgb(30 40 70 / 0.45);
+  border: 1px solid rgb(45 15 18 / 0.07);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 40px 80px -36px rgb(70 20 25 / 0.45);
 }
 html[data-site-theme="dark"] .auth-pane {
   background: rgb(255 255 255 / 0.05);
