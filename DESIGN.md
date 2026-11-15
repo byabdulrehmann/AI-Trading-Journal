@@ -117,8 +117,8 @@ The public site (`src/app/(site)`, `src/components/site`) has its own tokens in 
 - **One accent.** Jarvis red: `#ff5c66` for text on dark, `#a3121e` on light, `#e01e37` / `#c8102e` for marks; primary buttons are a deep red block (`#b3121f` / `#8f0f1b`) with white text. Green and red-pink stay for money only. No amber, no blue, no purple.
 - **The mark** is the rising line and its end point in white on a red tile (site nav, favicon and the app's logo).
 - **Material.** Cards, buttons, chips and wells are neumorphic (`.s-card`, `.s-neu`, `.s-neu-btn` raised; `.s-neu-in` pressed), with a red pointer light on cards. Product screens are real app screenshots (taken from a throwaway demo database with the app's sample data, in dark mode) in a dark display bezel (`.s-frame`).
-- **Type does the work.** Geist 600 for display, tracked tight; Geist for text; Geist Mono for figures and the gate's labels.
-- **The entry gate** (`EnterGate.tsx`) shows once per browser session before the site: a red hairline that fills with real load progress, then "Enter with sound" or "Enter without sound" as hard mono buttons with clipped corners. The choice is the gesture sound needs; the hero's entrance waits for it.
+- **Type does the work.** Unbounded 500 for display (`--font-site-display`), tracked tight and kept modest in size; Manrope 400 to 700 for text (`--font-site-text`); JetBrains Mono for figures, eyebrows (uppercase, wide tracking), the gate's labels and its buttons (`--font-site-mono`). All three load through `next/font` in `src/app/(site)/layout.tsx`, so they are bundled locally.
+- **The entry gate** (`EnterGate.tsx`) shows once per browser session before the site: a row of candles that print left to right with real load progress, then "Enter with sound" or "Enter without sound" as hard mono buttons with clipped corners. The choice is the gesture sound needs; the hero's entrance waits for it.
 - **Candlestick chart** (`MarketChart.tsx`): a canvas chart with rising candles in ink and falling candles in red, a glowing average, a live price tag and a crosshair readout. It streams behind the gate and the hero and draws itself on scroll in the "Every candle, every fill" section. The prices are a seeded random walk and every chart is captioned as an illustration, never market data.
 - **Motion**: GSAP, ScrollTrigger and Lenis; letter-by-letter 3D headline reveals, clip-path curtains, card tilt, a two-way instrument marquee, floating hero chips; a difference-blend cursor on fine pointers; sound off until chosen. Everything has a still state under reduced motion.
 
@@ -140,7 +140,7 @@ The public site (`src/app/(site)`, `src/components/site`) has its own tokens in 
 
 ## Typography
 
-Geist at 400, 500 and 600 for everything people read and every figure (tabular, `.num`). Bricolage Grotesque 500 only for the page title in the top bar and page headings (`h1`), tightly tracked, the same display face as the website.
+Geist at 400, 500 and 600 for everything people read and every figure (tabular, `.num`). Bricolage Grotesque 500 only for the page title in the top bar and page headings (`h1`), tightly tracked. The website has its own faces (see the marketing site section).
 
 ### Hierarchy
 - Page title 21px/500 Bricolage in the top bar; page heading 30px/500 Bricolage.
