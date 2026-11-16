@@ -4,9 +4,9 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { MarketChart } from "./MarketChart";
 import { Mark } from "./SiteNav";
 import { useSound } from "./sound";
-import { ENTERED_KEY as KEY } from "./boot-scripts";
+import { ENTERED_EVENT, ENTERED_KEY as KEY, hasEntered } from "./boot-scripts";
 
-export const ENTERED_EVENT = "jarvis-entered";
+export { ENTERED_EVENT, hasEntered };
 // The shortest the loading line takes to fill, so it reads as candles printing rather than a flash.
 const LOAD_MS = 3200;
 
@@ -29,8 +29,6 @@ const LOAD_BARS = (() => {
   return bars;
 })();
 
-/** True once the visitor is past the gate; the hero waits for this before playing its entrance. */
-export const hasEntered = () => document.documentElement.dataset.entered !== undefined;
 const onEnter = (cb: () => void) => {
   window.addEventListener(ENTERED_EVENT, cb);
   return () => window.removeEventListener(ENTERED_EVENT, cb);

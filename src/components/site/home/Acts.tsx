@@ -34,7 +34,7 @@ function Row({ reverse, big }: { reverse?: boolean; big?: boolean }) {
 
 export function Ribbon() {
   return (
-    <section data-tone="mist" className="s-ribbon relative overflow-hidden py-[clamp(48px,8vh,96px)]" aria-label="Instruments">
+    <section id="instruments" data-tone="mist" className="s-ribbon relative overflow-hidden py-[clamp(48px,8vh,96px)]" aria-label="Instruments">
       <div aria-hidden className="flex flex-col gap-4">
         <Row big />
         <Row reverse />

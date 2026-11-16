@@ -9,6 +9,9 @@ export const metadata: Metadata = {
 };
 
 type Kind = "built" | "soon" | "needs-ai";
+// A section's link: "Getting trades in" -> #getting-trades-in.
+const slug = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
 const GROUPS: { title: string; lede: string; shot?: ScreenKey; items: [string, string, Kind][] }[] = [
   {
     title: "Getting trades in",
@@ -83,7 +86,7 @@ export default function FeaturesPage() {
     <>
       <PageHead title="Everything in Jarvis, marked plainly." lede="Each feature says whether it is in Jarvis today or still in development. Nothing here is a promise about results." />
       {GROUPS.map((g, gi) => (
-        <section key={g.title} className={`s-section ${gi === 0 ? "pt-0" : "border-t border-[var(--s-line)]"}`} aria-labelledby={`g${gi}`}>
+        <section key={g.title} id={slug(g.title)} className={`s-section ${gi === 0 ? "pt-0" : "border-t border-[var(--s-line)]"}`} aria-labelledby={`g${gi}`}>
           <div className="s-wrap grid gap-10 lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)]">
             <div>
               <h2 id={`g${gi}`} className="s-display s-h3">{g.title}</h2>

@@ -465,6 +465,8 @@ textarea.s-input { height: auto; min-height: 120px; padding-block: 14px; resize:
   color: var(--s-ink);
 }
 html[data-entered] .s-gate:not([data-leaving]) { display: none; }
+/* Section links (#mt5) land just under the fixed nav, for the browser and for Lenis, which reads this padding too. */
+html:has(.site) { scroll-padding-top: 72px; }
 html:not([data-entered]):has(.s-gate) { overflow: hidden; }
 /* A red heartbeat behind the mark while the page loads; it opens up once the site is ready. */
 .s-gate-glow {

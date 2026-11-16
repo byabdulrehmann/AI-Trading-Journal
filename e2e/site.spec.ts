@@ -172,3 +172,31 @@ guarded("a new visitor waits for loading, chooses sound, and the gate shows once
   await expect(quiet.getByTestId("sound-control").first().getByRole("button")).toHaveAttribute("aria-pressed", "false");
   await fresh.close();
 });
+
+guarded("every section on every page has its own link, and the address bar follows the scroll", async ({ page }) => {
+  for (const path of PAGES) {
+    await page.goto(path);
+    const missing = await page.locator("#site-main section:not([id])").count();
+    expect(missing, `${path} has sections without an id`).toBe(0);
+  }
+  // A link to a section lands on it, under the nav.
+  await page.goto("/platform#private");
+  await expect.poll(async () => page.locator("#private").evaluate((s) => Math.round(s.getBoundingClientRect().top)), { timeout: 15_000 }).toBeLessThan(160);
+  await expect(page).toHaveURL(/\/platform#private$/);
+  await page.goto("/about");
+  // Scrolling names the section being read, and the very top drops the hash.
+  await page.locator("#never").evaluate((s) => window.scrollTo(0, s.getBoundingClientRect().top + scrollY - 72));
+  await expect(page).toHaveURL(/\/about#never$/);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(page).toHaveURL(/\/about$/);
+});
+
+guarded("a section link opened by a new visitor lands on the section after the gate", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL });
+  const page = await context.newPage();
+  await page.goto("/welcome#mt5");
+  await page.getByTestId("enter-silent").click({ timeout: 30_000 });
+  await expect.poll(async () => page.locator("#mt5").evaluate((s) => Math.round(s.getBoundingClientRect().top)), { timeout: 15_000 }).toBeLessThan(160);
+  await expect(page).toHaveURL(/\/welcome#mt5$/);
+  await context.close();
+});

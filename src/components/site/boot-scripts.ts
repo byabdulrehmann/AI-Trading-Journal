@@ -9,3 +9,7 @@ export const SITE_THEME_SCRIPT = `try{var t=localStorage.getItem("${SITE_THEME_K
 
 /** A visitor who already came in this browser session skips the entry gate without a flash. */
 export const GATE_SCRIPT = `try{if(sessionStorage.getItem("${ENTERED_KEY}"))document.documentElement.dataset.entered=""}catch(e){document.documentElement.dataset.entered=""}`;
+
+export const ENTERED_EVENT = "jarvis-entered";
+/** True once the visitor is past the gate; the hero and section links wait for this. Client only. */
+export const hasEntered = () => document.documentElement.dataset.entered !== undefined;

@@ -21,7 +21,7 @@ export function PageHead({ title, lede, children }: { title: string; lede: strin
 /** The close of an inner page: the one action, and sign-in for the owner. */
 export function CtaBand({ title = "See your own trading clearly." }: { title?: string }) {
   return (
-    <section data-tone="dark" className="s-section" aria-labelledby="cta-band">
+    <section id="get-started" data-tone="dark" className="s-section" aria-labelledby="cta-band">
       <div className="s-wrap flex flex-col items-start gap-10 lg:flex-row lg:items-end lg:justify-between">
         <h2 id="cta-band" className="s-display s-h2 max-w-[14ch]" data-reveal="words">{title}</h2>
         <div className="flex flex-wrap gap-3">

@@ -19,7 +19,7 @@ export default function ContactPage({ searchParams }: { searchParams: Promise<Re
   return (
     <>
       <PageHead title="Experience Jarvis." lede="Jarvis is in early access. Leave your details and what you trade, and the owner of this installation will see your request." />
-      <section id="early-access" className="s-section scroll-mt-20 pt-0" aria-labelledby="ea-title">
+      <section id="early-access" className="s-section pt-0" aria-labelledby="ea-title">
         <div className="s-wrap grid gap-14 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
           <div>
             <h2 id="ea-title" className="s-display s-h3">Request early access</h2>

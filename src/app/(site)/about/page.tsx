@@ -25,9 +25,9 @@ export default function AboutPage() {
   return (
     <>
       <PageHead title="Built for traders who want the truth about their trading." lede="Jarvis is a trading journal and performance platform for forex and gold traders: day traders, intraday traders and traders working toward or holding funded accounts." />
-      <section className="s-section pt-0" aria-labelledby="principles">
+      <section id="principles" className="s-section pt-0" aria-labelledby="principles-h">
         <div className="s-wrap">
-          <h2 id="principles" className="s-display s-h2 max-w-[14ch]" data-reveal="words">What it is built on.</h2>
+          <h2 id="principles-h" className="s-display s-h2 max-w-[14ch]" data-reveal="words">What it is built on.</h2>
           <dl className="s-rise mt-14 grid gap-x-16 gap-y-12 md:grid-cols-2">
             {PRINCIPLES.map(([k, v]) => (
               <div key={k} className="border-t border-[var(--s-line)] pt-6">
@@ -38,9 +38,9 @@ export default function AboutPage() {
           </dl>
         </div>
       </section>
-      <section className="s-section border-t border-[var(--s-line)]" aria-labelledby="never">
+      <section id="never" className="s-section border-t border-[var(--s-line)]" aria-labelledby="never-h">
         <div className="s-wrap grid gap-10 lg:grid-cols-2">
-          <h2 id="never" className="s-display s-h2 max-w-[14ch]" data-reveal="words">What Jarvis will never do.</h2>
+          <h2 id="never-h" className="s-display s-h2 max-w-[14ch]" data-reveal="words">What Jarvis will never do.</h2>
           <ul className="s-rise flex flex-col">
             {NEVER.map((n) => (
               <li key={n} className="flex items-start gap-4 border-t border-[var(--s-line)] py-5 text-[18px] text-[var(--s-ink)]">
@@ -51,9 +51,9 @@ export default function AboutPage() {
           </ul>
         </div>
       </section>
-      <section className="s-section border-t border-[var(--s-line)]" aria-labelledby="risk">
+      <section id="risk" className="s-section border-t border-[var(--s-line)]" aria-labelledby="risk-h">
         <div className="s-wrap max-w-[860px]">
-          <h2 id="risk" className="s-display s-h3">A note on risk</h2>
+          <h2 id="risk-h" className="s-display s-h3">A note on risk</h2>
           <p className="s-body mt-4 text-[16px]">Trading foreign exchange, metals and other leveraged products carries a high risk of loss and is not suitable for everyone. Jarvis helps you review what you did; it does not give investment advice, and nothing on this site is a recommendation.</p>
         </div>
       </section>
