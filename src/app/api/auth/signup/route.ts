@@ -1,4 +1,4 @@
-import { authenticateLimitKey } from "@/lib/server/client-key";
+import { clientKey } from "@/lib/server/client-key";
 import { createUser, Credentials, issueRecoveryCode, rateLimited, signupOpen, startSession, userCount } from "@/lib/server/auth";
 import { body, fail, json } from "@/lib/server/http";
 import { ensureDefaultAccount } from "@/lib/server/repo/journal";
@@ -7,7 +7,7 @@ import { connection } from "next/server";
 /** Open to anyone who can reach this computer unless the owner closed it: each account gets its own private journal. */
 export async function POST(req: Request) {
   await connection();
-  if (rateLimited(`signup:${authenticateLimitKey()}`)) return fail("Too many attempts. Try again in 15 minutes.", 429);
+  if (rateLimited(`signup:${await clientKey()}`)) return fail("Too many attempts. Try again in 15 minutes.", 429);
   const data = await body(req, Credentials);
   if (data instanceof Response) return data;
   const firstAccount = userCount() === 0;

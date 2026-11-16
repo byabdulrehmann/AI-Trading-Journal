@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import { dialog, expect, open, row, signUp, test } from "./helpers";
 
@@ -121,4 +122,42 @@ test("the owner backs up the database; names outside the backups and other users
   await signUp(page, "Second");
   expect((await page.request.get("/api/backups")).status()).toBe(403);
   expect((await page.request.get(href!)).status()).toBe(403);
+});
+
+test("a backup password encrypts every backup; only it opens one, and changing it needs the current one", async ({ page, guard }) => {
+  guard.allow(/status of 401/);
+  const first = "backup words 123";
+  const second = "new backup words 4567";
+  expect((await page.request.post("/api/backups")).status()).toBe(201);
+  await open(page, "/settings#backups");
+  const box = page.getByTestId("backup-password");
+  await expect(box).toContainText("aren't encrypted yet");
+  await box.getByLabel("New backup password").fill(first);
+  await box.getByLabel("Repeat it").fill(first);
+  await box.getByRole("button", { name: "Encrypt backups" }).click();
+  await expect(page.getByText("Backups are now encrypted.")).toBeVisible();
+
+  // The ones already made are encrypted too, and the file reads as nothing but the format's name.
+  const { backups } = (await (await page.request.get("/api/backups")).json()) as { backups: { name: string; encrypted: boolean }[] };
+  expect(backups.length).toBeGreaterThan(0);
+  expect(backups.filter((b) => !b.encrypted)).toEqual([]);
+  const raw = await (await page.request.get(`/api/backups/${backups[0].name}`)).body();
+  expect(raw.subarray(0, 15).toString()).toBe("JARVIS-BACKUP-1");
+  expect(raw.includes(Buffer.from("SQLite format 3"))).toBe(false);
+  expect((await page.request.post(`/api/backups/${backups[0].name}/decrypt`, { data: { password: "the wrong words" } })).status()).toBe(401);
+
+  // In the page: give the password and the plain database downloads.
+  const form = page.getByTestId("decrypt-backup");
+  await form.getByLabel("Backup password").fill(first);
+  const [download] = await Promise.all([page.waitForEvent("download"), form.getByRole("button", { name: "Download" }).click()]);
+  expect(download.suggestedFilename()).toMatch(/\.db$/);
+  expect(readFileSync((await download.path())!).subarray(0, 15).toString()).toBe("SQLite format 3");
+
+  // New backups are encrypted as they're made; a new password needs the current one, and opens them all.
+  const made = (await (await page.request.post("/api/backups")).json()).backup as { name: string; encrypted: boolean };
+  expect(made.encrypted).toBe(true);
+  expect((await page.request.put("/api/backups/password", { data: { next: second, current: "not the password" } })).status()).toBe(401);
+  expect((await page.request.put("/api/backups/password", { data: { next: second, current: first } })).status()).toBe(200);
+  const plain = await page.request.post(`/api/backups/${made.name}/decrypt`, { data: { password: second } });
+  expect((await plain.body()).subarray(0, 15).toString()).toBe("SQLite format 3");
 });

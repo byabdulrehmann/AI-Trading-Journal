@@ -217,3 +217,18 @@ test("with new accounts turned off, sign-up is refused and says why; only the ow
     await visitor.dispose();
   }
 });
+
+test("pages carry a strict script policy with a fresh nonce, and every script on them carries it", async ({ page }) => {
+  const [a, b] = [await page.request.get("/home"), await page.request.get("/home")];
+  const scriptSrc = a.headers()["content-security-policy"].split(";").find((d) => d.trim().startsWith("script-src"))!;
+  expect(scriptSrc).not.toContain("unsafe-inline");
+  const nonce = /'nonce-([^']+)'/.exec(scriptSrc)![1];
+  expect(b.headers()["content-security-policy"]).not.toContain(nonce);
+  // Data blocks (JSON-LD) never run, so they need none; every script that runs has this request's nonce.
+  const tags = [...(await a.text()).matchAll(/<script\b[^>]*>/g)].map((m) => m[0]).filter((t) => !t.includes("application/ld+json"));
+  expect(tags.length).toBeGreaterThan(0);
+  expect(tags.filter((t) => !t.includes(`nonce="${nonce}"`))).toEqual([]);
+  // The app's pages too, signed in.
+  const app = await page.request.get("/settings");
+  expect(app.headers()["content-security-policy"]).toMatch(/script-src 'self' 'nonce-/);
+});

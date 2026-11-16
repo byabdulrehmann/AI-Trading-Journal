@@ -1,6 +1,7 @@
 import "server-only";
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync, unlinkSync } from "node:fs";
+import { sealFile } from "./backup-seal";
 import path from "node:path";
 import { migrateToJournalModel, JOURNAL_MODEL_SQL } from "./migrations/journal-model";
 import { zoneParts } from "../domain/zone";
@@ -382,6 +383,16 @@ export const MIGRATIONS: { version: number; name: string; sql: string; run?: (db
     // A SHA-256 of the current code; the code itself is shown once and never stored.
     sql: `ALTER TABLE users ADD COLUMN recovery_hash TEXT;`,
   },
+  {
+    version: 14,
+    name: "rate limit counters that survive a restart",
+    sql: `CREATE TABLE rate_limits (
+      key TEXT PRIMARY KEY,
+      count INTEGER NOT NULL,
+      reset_at INTEGER NOT NULL
+    );
+    CREATE INDEX rate_limits_reset ON rate_limits(reset_at);`,
+  },
 ];
 
 const globalForDb = globalThis as unknown as { __kestrelDb?: DatabaseSync };
@@ -451,6 +462,8 @@ function backupBeforeMigrating(db: DatabaseSync, version: number) {
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const file = path.join(/*turbopackIgnore: true*/ dataPath("backups"), `kestrel-before-migration-${version}-${stamp}.db`);
   db.exec(`VACUUM INTO '${file.replace(/'/g, "''")}'`);
+  // Before the first migration there is no settings table, so no backup password either.
+  if (db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'settings'").get()) sealFile(db, file);
 }
 
 /** One connection per server process; reused across hot reloads in dev. */

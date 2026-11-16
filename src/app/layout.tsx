@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Bricolage_Grotesque, Geist } from "next/font/google";
 import "./globals.css";
 import { AppStateProvider } from "@/lib/client/app-state";
@@ -23,13 +24,18 @@ export const viewport: Viewport = {
 // Applies the saved theme before first paint. Light unless the user chose otherwise; "kestrel-theme" is the old key.
 const themeScript = `try{var s=localStorage,t=s.getItem("jarvis-theme")||s.getItem("kestrel-theme")||"light";if(t!=="system")document.documentElement.dataset.theme=t;if(s.getItem("jarvis-nav")==="collapsed")document.documentElement.dataset.nav="collapsed"}catch(e){document.documentElement.dataset.theme="light"}`;
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+// Every page renders on request: each needs this request's nonce, which a page built ahead of time can't carry.
+export const instant = false;
+
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // The proxy's nonce for this request: without it the strict script policy blocks these inline scripts.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="en" className={`${sans.variable} ${heading.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeScript }} />
         {/* The website's and sign-in screens' mode, and whether this session is already past the site's entry gate. */}
-        <script dangerouslySetInnerHTML={{ __html: SITE_THEME_SCRIPT + ";" + GATE_SCRIPT }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: SITE_THEME_SCRIPT + ";" + GATE_SCRIPT }} />
         {/* Without scripts nobody could press the gate's buttons, so it never shows. */}
         <noscript><style>{".s-gate{display:none}"}</style></noscript>
       </head>

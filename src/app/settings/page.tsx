@@ -566,6 +566,7 @@ interface BackupFile {
   size: number;
   createdAt: string;
   kind: "manual" | "auto" | "migration";
+  encrypted: boolean;
 }
 const BACKUP_KIND = { manual: "Made by you", auto: "Automatic", migration: "Before an update" } as const;
 
@@ -680,10 +681,117 @@ function EarlyAccess() {
   );
 }
 
+/** The password that encrypts every backup. Jarvis keeps no copy of it: without it, nobody can open them, the owner included. */
+function BackupPassword({ locked, onDone }: { locked: boolean; onDone: () => void }) {
+  const { toast } = useApp();
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [repeat, setRepeat] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(!locked);
+
+  const save = async (reset = false) => {
+    if (next !== repeat) return setError("These passwords don't match.");
+    if (reset && !confirm("Start over with a new backup password? Backups encrypted with the old one stay locked to it, and only the old password opens them.")) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api("/api/backups/password", { method: "PUT", json: { next, current: locked && !reset ? current : undefined, reset } });
+      setCurrent("");
+      setNext("");
+      setRepeat("");
+      setOpen(false);
+      toast({ message: locked ? "Backup password changed." : "Backups are now encrypted.", tone: "success" });
+      onDone();
+    } catch (err) {
+      setError(fieldErrors(err).next ?? (err instanceof Error ? err.message : "Couldn't save it."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="max-w-2xl" data-testid="backup-password">
+      {locked ? (
+        <p className="text-[13.5px] text-ink-soft">Backups are encrypted with your backup password. Jarvis keeps no copy of it: without it, nobody can open them, you included.</p>
+      ) : (
+        <p className="text-[13.5px] text-warn">Backups aren&apos;t encrypted yet: anyone with a copy of one can read every journal in it. Set a backup password to encrypt them, the ones already made included.</p>
+      )}
+      {locked && !open && <Button size="sm" variant="ghost" className="mt-2" onClick={() => setOpen(true)}>Change backup password</Button>}
+      {open && (
+        <form onSubmit={(e) => (e.preventDefault(), void save())} className="mt-3 grid gap-3 sm:grid-cols-[repeat(3,minmax(0,13rem))] sm:items-end">
+          {locked && (
+            <Field label="Current backup password">
+              {(p) => <input {...p} type="password" autoComplete="off" className={inputClass} value={current} onChange={(e) => setCurrent(e.target.value)} />}
+            </Field>
+          )}
+          <Field label="New backup password" hint="At least 10 characters.">
+            {(p) => <input {...p} type="password" autoComplete="new-password" minLength={10} className={inputClass} value={next} onChange={(e) => setNext(e.target.value)} required />}
+          </Field>
+          <Field label="Repeat it">
+            {(p) => <input {...p} type="password" autoComplete="new-password" className={inputClass} value={repeat} onChange={(e) => setRepeat(e.target.value)} required />}
+          </Field>
+          <div className="flex flex-wrap gap-2 sm:col-span-3">
+            <Button type="submit" disabled={busy}>{locked ? "Change it" : "Encrypt backups"}</Button>
+            {locked && <Button type="button" variant="ghost" disabled={busy} onClick={() => void save(true)}>Forgot it? Start over</Button>}
+          </div>
+        </form>
+      )}
+      {error && <p role="alert" className="mt-2 text-[13px] text-loss">{error}</p>}
+    </div>
+  );
+}
+
+/** An encrypted backup as a plain database file, for restoring on this computer. */
+function DecryptBackup({ backups }: { backups: BackupFile[] }) {
+  const [name, setName] = useState(backups[0].name);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const download = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/backups/${encodeURIComponent(name)}/decrypt`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password }) });
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Couldn't decrypt it.");
+      const url = URL.createObjectURL(await res.blob());
+      const a = Object.assign(document.createElement("a"), { href: url, download: name.replace(/\.sealed$/, "") });
+      a.click();
+      URL.revokeObjectURL(url);
+      setPassword("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't decrypt it.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form onSubmit={download} className="grid max-w-2xl gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,13rem)_auto] sm:items-end" data-testid="decrypt-backup">
+      <Field label="Download a backup decrypted">
+        {(p) => (
+          <select {...p} className={inputClass} value={name} onChange={(e) => setName(e.target.value)}>
+            {backups.map((b) => <option key={b.name} value={b.name}>{dateTime(b.createdAt)}, {BACKUP_KIND[b.kind].toLowerCase()}</option>)}
+          </select>
+        )}
+      </Field>
+      <Field label="Backup password">
+        {(p) => <input {...p} type="password" autoComplete="off" className={inputClass} value={password} onChange={(e) => setPassword(e.target.value)} required />}
+      </Field>
+      <Button type="submit" disabled={busy}>{busy ? "Decrypting" : "Download"}</Button>
+      {error && <p role="alert" className="text-[13px] text-loss sm:col-span-3">{error}</p>}
+    </form>
+  );
+}
+
 function Backups() {
   const { toast } = useApp();
-  const { data, error, reload } = useFetch<{ backups: BackupFile[]; folder: string }>("/api/backups");
+  const { data, error, reload } = useFetch<{ backups: BackupFile[]; folder: string; locked: boolean }>("/api/backups");
   const [busy, setBusy] = useState(false);
+  const encrypted = data?.backups.filter((b) => b.encrypted) ?? [];
 
   const make = async () => {
     setBusy(true);
@@ -710,6 +818,7 @@ function Backups() {
   return (
     <Section id="backups" title="Backups" description="Full copies of the database: every user's journal on this computer. Jarvis makes one a day while it runs and keeps the last seven. Stored MT5 passwords stay encrypted in them, and the key isn't in the file.">
       <div className="space-y-4">
+        {data && <BackupPassword locked={data.locked} onDone={reload} />}
         <Button variant="primary" disabled={busy} onClick={() => void make()}>{busy ? "Backing up…" : "Back up now"}</Button>
         {error && !data && <p className="text-[13.5px] text-loss">{error}</p>}
         {data && (data.backups.length ? (
@@ -720,7 +829,7 @@ function Backups() {
                 {data.backups.map((b) => (
                   <tr key={b.name} className="border-b border-line">
                     <td className="num py-1.5 whitespace-nowrap">{dateTime(b.createdAt)}</td>
-                    <td className="py-1.5 pl-3 text-ink-soft">{BACKUP_KIND[b.kind]}</td>
+                    <td className="py-1.5 pl-3 text-ink-soft">{BACKUP_KIND[b.kind]}{b.encrypted ? <Badge className="ml-2">Encrypted</Badge> : <Badge tone="warn" className="ml-2">Not encrypted</Badge>}</td>
                     <td className="num py-1.5 pl-3 text-right">{fileSize(b.size)}</td>
                     <td className="py-1.5 pl-3 text-right whitespace-nowrap">
                       <a href={`/api/backups/${encodeURIComponent(b.name)}`} download className="mr-1 inline-flex h-8 items-center px-3 text-[13px] text-ink-soft hover:bg-raised hover:text-ink">Download</a>
@@ -732,10 +841,11 @@ function Backups() {
             </table>
           </div>
         ) : <p className="text-[13.5px] text-muted">No backups yet.</p>)}
+        {encrypted.length > 0 && <DecryptBackup backups={encrypted} />}
         {data && (
           <div className="max-w-2xl text-[13px] text-muted">
             <p className="font-medium text-ink-soft">To restore one</p>
-            <p className="mt-1">Stop Jarvis, then copy the backup over <span className="num">kestrel.db</span> in the data folder, one level above <span className="num break-all">{data.folder}</span>. Delete <span className="num">kestrel.db-wal</span> and <span className="num">kestrel.db-shm</span> beside it if they are there, then start Jarvis. Jarvis never restores by itself, so no click can replace your journal.</p>
+            <p className="mt-1">An encrypted backup first has to be turned back into a database file: download it decrypted above, or on another computer run <span className="num">node scripts/decrypt-backup.mjs</span> with the file. Then stop Jarvis and copy the backup over <span className="num">kestrel.db</span> in the data folder, one level above <span className="num break-all">{data.folder}</span>. Delete <span className="num">kestrel.db-wal</span> and <span className="num">kestrel.db-shm</span> beside it if they are there, then start Jarvis. Jarvis never restores by itself, so no click can replace your journal.</p>
           </div>
         )}
       </div>

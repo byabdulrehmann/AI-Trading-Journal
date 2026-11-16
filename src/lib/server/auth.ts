@@ -220,26 +220,29 @@ export async function requireOwner(): Promise<User | Response> {
   return Response.json({ error: "Only the owner of this installation can do that." }, { status: 403 });
 }
 
-// shortcut: per-process memory, fine for one local server; shared storage needed if this ever runs as several.
-const attempts = new Map<string, { count: number; resetAt: number }>();
 const WINDOW_MS = 15 * 60000;
 const MAX_ATTEMPTS = 8;
 
-/** True once `key` has been used more than `max` times in the window; each call counts as one use. */
+/**
+ * True once `key` has been used more than `max` times in the window; each call counts as one use. Counts live in the
+ * database, so a restart doesn't reset them and every server process sees the same ones.
+ */
 export function rateLimited(key: string, max = MAX_ATTEMPTS, windowMs = WINDOW_MS): boolean {
   const t = Date.now();
-  // Keys hold whatever email was typed, so old ones must not pile up.
-  if (attempts.size > 5000) for (const [k, v] of attempts) if (v.resetAt < t) attempts.delete(k);
-  const entry = attempts.get(key);
-  if (!entry || entry.resetAt < t) {
-    attempts.set(key, { count: 1, resetAt: t + windowMs });
-    return false;
-  }
-  entry.count++;
-  return entry.count > max;
+  const conn = db();
+  // Keys hold whatever email was typed, so finished windows go before they can pile up.
+  conn.prepare("DELETE FROM rate_limits WHERE reset_at < ?").run(t);
+  const { count } = conn
+    .prepare("INSERT INTO rate_limits (key, count, reset_at) VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET count = count + 1 RETURNING count")
+    .get(key, t + windowMs) as { count: number };
+  return count > max;
 }
 
-export const clearRateLimit = (key: string) => attempts.delete(key);
+/** How many times `key` was used in its current window, without counting this look. */
+export const rateCount = (key: string) =>
+  (db().prepare("SELECT count FROM rate_limits WHERE key = ? AND reset_at >= ?").get(key, Date.now()) as { count: number } | undefined)?.count ?? 0;
+
+export const clearRateLimit = (key: string) => db().prepare("DELETE FROM rate_limits WHERE key = ?").run(key);
 
 /* ---------- recovery codes: Jarvis has no email, so a forgotten password is reset with a code the user kept ---------- */
 

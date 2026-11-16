@@ -1,5 +1,5 @@
 import { connection } from "next/server";
-import { authenticateLimitKey } from "@/lib/server/client-key";
+import { clientKey } from "@/lib/server/client-key";
 import { rateLimited, requireOwner } from "@/lib/server/auth";
 import { EarlyAccessInput, listEarlyAccess, saveEarlyAccess } from "@/lib/server/early-access";
 import { body, fail, json } from "@/lib/server/http";
@@ -32,7 +32,7 @@ export async function POST(incoming: Request) {
   // A plain form post (JavaScript off) gets a redirect back to the page with the outcome, never a JSON page.
   const plain = req.headers.get("content-type")?.startsWith("application/x-www-form-urlencoded");
   const back = (outcome: "sent" | "error") => Response.redirect(new URL(`/contact/early-access?${outcome}=1`, req.url), 303);
-  if (rateLimited(`early-access:${authenticateLimitKey()}`)) return plain ? back("error") : fail("Too many requests. Try again in 15 minutes.", 429);
+  if (rateLimited(`early-access:${await clientKey()}`)) return plain ? back("error") : fail("Too many requests. Try again in 15 minutes.", 429);
   if (plain) {
     const parsed = EarlyAccessInput.safeParse(Object.fromEntries((await req.formData()).entries()));
     if (!parsed.success || parsed.data.website) return back("error");

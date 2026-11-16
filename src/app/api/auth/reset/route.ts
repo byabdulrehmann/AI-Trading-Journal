@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 import { z } from "zod";
 import { Credentials, rateLimited, resetWithRecoveryCode, startSession } from "@/lib/server/auth";
-import { authenticateLimitKey } from "@/lib/server/client-key";
+import { clientKey } from "@/lib/server/client-key";
 import { body, fail, json } from "@/lib/server/http";
 
 const Body = z.object({
@@ -13,7 +13,7 @@ const Body = z.object({
 /** Forgotten password: email, recovery code and a new password. Signed out, so it's limited per client and per email. */
 export async function POST(req: Request) {
   await connection();
-  if (rateLimited(`reset:${authenticateLimitKey()}`)) return fail("Too many attempts. Try again in 15 minutes.", 429);
+  if (rateLimited(`reset:${await clientKey()}`)) return fail("Too many attempts. Try again in 15 minutes.", 429);
   const data = await body(req, Body);
   if (data instanceof Response) return data;
   if (rateLimited(`reset-email:${data.email}`)) return fail("Too many attempts. Try again in 15 minutes.", 429);
