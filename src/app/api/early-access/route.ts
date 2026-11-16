@@ -31,7 +31,7 @@ export async function POST(incoming: Request) {
   const req = new Request(incoming.url, { method: "POST", headers: incoming.headers, body: new Uint8Array(bytes) });
   // A plain form post (JavaScript off) gets a redirect back to the page with the outcome, never a JSON page.
   const plain = req.headers.get("content-type")?.startsWith("application/x-www-form-urlencoded");
-  const back = (outcome: "sent" | "error") => Response.redirect(new URL(`/contact?${outcome}=1#early-access`, req.url), 303);
+  const back = (outcome: "sent" | "error") => Response.redirect(new URL(`/contact/early-access?${outcome}=1`, req.url), 303);
   if (rateLimited(`early-access:${authenticateLimitKey()}`)) return plain ? back("error") : fail("Too many requests. Try again in 15 minutes.", 429);
   if (plain) {
     const parsed = EarlyAccessInput.safeParse(Object.fromEntries((await req.formData()).entries()));

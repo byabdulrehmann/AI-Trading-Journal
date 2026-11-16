@@ -13,7 +13,7 @@ export function AuthFrame({ title, intro, children, footer }: { title: string; i
   return (
     <main className="auth-book flex min-h-dvh items-center justify-center px-gutter py-10">
       <div className="auth-pane w-full max-w-[420px]">
-        <Link href="/welcome" aria-label="Jarvis website" className="inline-flex no-underline">
+        <Link href="/home" aria-label="Jarvis website" className="inline-flex no-underline">
           <Logo />
         </Link>
         <h1 className={`${display.className} mt-6 border-t border-line pt-6 text-[34px] leading-[1.02] font-medium tracking-[-0.035em]`}>{title}</h1>

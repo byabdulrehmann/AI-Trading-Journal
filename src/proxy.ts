@@ -1,10 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isSitePath, sectionPath } from "@/lib/site-paths";
 
 // shortcut: loopback hosts only, add an allowed-hosts list and HTTPS before serving Jarvis on a network.
 const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
 const COOKIE = "jarvis_session"; // Must match auth.ts, which can't be imported here (it opens the database).
 // The marketing site and sign-in. Keep in step with PUBLIC_PAGES in src/lib/client/app-state.tsx.
-const PUBLIC_PAGES = new Set(["/login", "/signup", "/forgot-password", "/welcome", "/platform", "/features", "/about", "/contact"]);
+const PUBLIC_PAGES = new Set(["/login", "/signup", "/forgot-password", "/home", "/platform", "/features", "/about", "/contact"]);
 /** Files crawlers and link previews fetch without a session. */
 const PUBLIC_FILES = new Set(["/robots.txt", "/sitemap.xml"]);
 /** Next adds a content hash to the preview image's path, for example /opengraph-image-p6oktx. */
@@ -39,7 +40,10 @@ export function proxy(req: NextRequest) {
   }
 
   const { pathname } = req.nextUrl;
-  if (req.cookies.has(COOKIE) || PUBLIC_PAGES.has(pathname) || PUBLIC_FILES.has(pathname) || isPreviewImage(pathname) || publicApi(req)) return NextResponse.next();
+  // A site section's own path (/home/mt5) is the page's HTML; the page scrolls to the section.
+  const section = sectionPath(pathname);
+  if (section) return NextResponse.rewrite(new URL(section.page + req.nextUrl.search, req.url));
+  if (req.cookies.has(COOKIE) || PUBLIC_PAGES.has(pathname) || isSitePath(pathname) || PUBLIC_FILES.has(pathname) || isPreviewImage(pathname) || publicApi(req)) return NextResponse.next();
   if (pathname.startsWith("/api/")) return NextResponse.json({ error: "Please sign in." }, { status: 401 });
   return NextResponse.redirect(new URL("/login", req.url));
 }

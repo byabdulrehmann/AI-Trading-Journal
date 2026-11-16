@@ -6,17 +6,18 @@ import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { cx } from "@/components/ui";
 import { useSound } from "./sound";
-import { useReducedMotion } from "./scroll";
+import { useReducedMotion, useScroller } from "./scroll";
 import { ThemeToggle } from "./theme";
+import { pagePath } from "@/lib/site-paths";
 
 export const CTA_LABEL = "Experience Jarvis";
-export const CTA_HREF = "/contact#early-access";
+export const CTA_HREF = "/contact/early-access";
 
 const PLATFORM = [
   { href: "/platform", label: "Overview", note: "How Jarvis fits a trader's day" },
-  { href: "/platform#mt5", label: "MT5, read-only", note: "What the investor password can and can't do" },
-  { href: "/platform#private", label: "Private and local", note: "Where your trading data lives" },
-  { href: "/platform#technology", label: "Technology", note: "What it is built with" },
+  { href: "/platform/mt5", label: "MT5, read-only", note: "What the investor password can and can't do" },
+  { href: "/platform/private", label: "Private and local", note: "Where your trading data lives" },
+  { href: "/platform/technology", label: "Technology", note: "What it is built with" },
 ];
 const LINKS = [
   { href: "/features", label: "Features" },
@@ -38,7 +39,7 @@ export function Mark({ size = 28 }: { size?: number }) {
 
 export function Wordmark() {
   return (
-    <Link href="/welcome" className="flex items-center gap-2.5 text-[var(--s-ink)] no-underline" aria-label="Jarvis home">
+    <Link href="/home" className="flex items-center gap-2.5 text-[var(--s-ink)] no-underline" aria-label="Jarvis home">
       <Mark />
       <span className="font-[family-name:var(--s-font-display)] text-[17px] font-semibold tracking-[-0.02em]">Jarvis</span>
     </Link>
@@ -132,7 +133,8 @@ function PlatformMenu({ active, hovered, onHover }: { active: boolean; hovered: 
 }
 
 export function SiteNav({ chapters }: { chapters?: { id: string; label: string }[] }) {
-  const pathname = usePathname();
+  const pathname = pagePath(usePathname());
+  const { scrollTo } = useScroller();
   const reduced = useReducedMotion();
   const [scrolled, setScrolled] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -142,7 +144,7 @@ export function SiteNav({ chapters }: { chapters?: { id: string; label: string }
   const bar = useRef<HTMLDivElement>(null);
   const head = useRef<HTMLElement>(null);
   // The bar takes the tone of the section under it. The homepage opens on the dark stage, inner pages on porcelain.
-  const [tone, setTone] = useState(pathname === "/welcome" ? "dark" : "light");
+  const [tone, setTone] = useState(pathname === "/home" ? "dark" : "light");
 
   useEffect(() => {
     const onScroll = () => {
@@ -228,7 +230,7 @@ export function SiteNav({ chapters }: { chapters?: { id: string; label: string }
               <ol className="grid grid-cols-1 gap-1 sm:grid-cols-2">
                 {chapters.map((c, i) => (
                   <li key={c.id}>
-                    <a href={`#${c.id}`} onClick={() => setMenu(false)} className="flex min-h-11 items-center gap-3 text-[15px] text-[var(--s-ink-soft)] no-underline hover:text-[var(--s-ink)]">
+                    <a href={`/home/${c.id}`} onClick={(e) => (e.preventDefault(), setMenu(false), scrollTo(c.id))} className="flex min-h-11 items-center gap-3 text-[15px] text-[var(--s-ink-soft)] no-underline hover:text-[var(--s-ink)]">
                       <span className="s-data text-[12px] text-[var(--s-muted)]">{String(i + 1).padStart(2, "0")}</span>
                       {c.label}
                     </a>

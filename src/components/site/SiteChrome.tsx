@@ -7,6 +7,7 @@ import { SiteFooter } from "./parts";
 import { SiteNav } from "./SiteNav";
 import { SmoothScroll } from "./scroll";
 import { SoundProvider } from "./sound";
+import { pagePath } from "@/lib/site-paths";
 
 export const HOME_CHAPTERS = [
   { id: "enter", label: "Enter Jarvis" },
@@ -22,7 +23,7 @@ export const HOME_CHAPTERS = [
 ];
 
 export function SiteChrome({ children }: { children: React.ReactNode }) {
-  const home = usePathname() === "/welcome";
+  const home = pagePath(usePathname()) === "/home";
   return (
     <SoundProvider>
       <EnterGate />

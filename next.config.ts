@@ -32,6 +32,13 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  // The site's home page moved from /welcome; old links and bookmarks still land on it.
+  async redirects() {
+    return [
+      { source: "/welcome", destination: "/home", permanent: true },
+      { source: "/welcome/:section", destination: "/home/:section", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {

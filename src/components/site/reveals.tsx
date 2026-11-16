@@ -7,6 +7,7 @@ import { useGSAP } from "@gsap/react";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { useReducedMotion } from "./scroll";
+import { pagePath } from "@/lib/site-paths";
 
 gsap.registerPlugin(ScrollTrigger, SplitText, useGSAP);
 
@@ -18,7 +19,7 @@ gsap.registerPlugin(ScrollTrigger, SplitText, useGSAP);
  * The words are in the HTML already, so without scripts or with reduced motion everything simply shows.
  */
 export function WordReveals() {
-  const path = usePathname();
+  const path = pagePath(usePathname());
   const reduced = useReducedMotion();
   useGSAP(
     () => {

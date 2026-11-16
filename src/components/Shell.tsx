@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useStored } from "@/lib/client/use-stored";
 import { PUBLIC_PAGES, useApp } from "@/lib/client/app-state";
+import { pagePath } from "@/lib/site-paths";
 import { useFetch } from "@/lib/client/use-fetch";
 import type { Notification } from "@/app/api/notifications/route";
 import { CommandPalette } from "./CommandPalette";
@@ -186,7 +187,7 @@ function ThemeSwitch() {
 }
 
 export function Shell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+  const pathname = pagePath(usePathname());
   const { jarvisOpen, setJarvisOpen, settings, editTrade, user, signOut } = useApp();
   const [navOpen, setNavOpen] = useState(false);
   const [collapsed, toggle] = useCollapsed();

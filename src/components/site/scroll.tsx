@@ -7,6 +7,7 @@ import Lenis from "lenis";
 import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { ENTERED_EVENT, hasEntered } from "./boot-scripts";
+import { pagePath, sectionPath } from "@/lib/site-paths";
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
 
@@ -64,11 +65,15 @@ export function SmoothScroll({ children }: { children: React.ReactNode }) {
     else if (typeof target === "number") window.scrollTo(0, target);
   }, []);
   const pathname = usePathname();
+  // The path this component last wrote while the visitor scrolled: arriving there is not a request to move.
+  const written = useRef<string | null>(null);
 
-  // Every section with an id is a link (/welcome#mt5, /about#risk). Opening one lands on that section once the visitor
-  // is past the gate and the page has its final heights (pinned sections and late images change them).
+  // Every section has its own path (/home/mt5, /about/risk). Opening one lands on that section once the visitor is
+  // past the gate and the page has its final heights (pinned sections and late images change them). An older link
+  // with a hash (/home#mt5) lands the same way.
   useEffect(() => {
-    const id = decodeURIComponent(location.hash.slice(1));
+    if (pathname === written.current) return;
+    const id = sectionPath(pathname)?.section ?? decodeURIComponent(location.hash.slice(1));
     if (!id || !document.getElementById(id)) return;
     let cancelled = false;
     const land = async () => {
@@ -88,8 +93,8 @@ export function SmoothScroll({ children }: { children: React.ReactNode }) {
     };
   }, [pathname]);
 
-  // The address bar follows the reading: it names the section under the top third of the screen, and drops the
-  // hash at the very top. replaceState, so scrolling doesn't fill the back button with entries.
+  // The address bar follows the reading: it names the section under the top third of the screen (/home/mt5), and
+  // shows the page alone at the very top. replaceState, so scrolling doesn't fill the back button with entries.
   useEffect(() => {
     let raf = 0;
     const sync = () => {
@@ -99,8 +104,11 @@ export function SmoothScroll({ children }: { children: React.ReactNode }) {
       let current: HTMLElement | null = null;
       for (const s of document.querySelectorAll<HTMLElement>("#site-main section[id]")) if (s.getBoundingClientRect().top <= line) current = s;
       const atTop = !current || current.getBoundingClientRect().top + scrollY < 8;
-      const hash = atTop ? "" : `#${current!.id}`;
-      if (hash !== location.hash) history.replaceState(null, "", location.pathname + location.search + hash);
+      const page = pagePath(location.pathname);
+      const path = atTop ? page : `${page}/${current!.id}`;
+      if (path === location.pathname && !location.hash) return;
+      written.current = path;
+      history.replaceState(null, "", path + location.search);
     };
     const onScroll = () => (raf ||= requestAnimationFrame(sync));
     addEventListener("scroll", onScroll, { passive: true });

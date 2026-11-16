@@ -6,6 +6,7 @@ import type { Account, Settings } from "@/lib/domain/types";
 import { api, goToLogin } from "./api";
 import { setDisplayZone } from "./format";
 import { forgetFilters } from "./filters";
+import { pagePath } from "@/lib/site-paths";
 import type { SettingsPatch } from "@/lib/server/repo/settings";
 
 export interface Toast {
@@ -58,7 +59,7 @@ interface AppState {
 }
 
 /** Pages that work signed out: sign-in and the marketing site. Keep in step with src/proxy.ts. */
-export const PUBLIC_PAGES = new Set(["/login", "/signup", "/forgot-password", "/welcome", "/platform", "/features", "/about", "/contact"]);
+export const PUBLIC_PAGES = new Set(["/login", "/signup", "/forgot-password", "/home", "/platform", "/features", "/about", "/contact"]);
 
 const Ctx = createContext<AppState | null>(null);
 
@@ -109,8 +110,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     setDataVersion((v) => v + 1);
   }, [apply, onLoadError]);
 
-  // /login and /welcome work signed out, so check rather than assume. Signing in reloads the page, so once is enough.
-  const startedOnPublicPage = PUBLIC_PAGES.has(pathname);
+  // /login and /home work signed out, so check rather than assume. Signing in reloads the page, so once is enough.
+  const startedOnPublicPage = PUBLIC_PAGES.has(pagePath(pathname));
   useEffect(() => {
     api<{ user: User | null }>("/api/auth/me").then((me) => {
       setUser(me.user);

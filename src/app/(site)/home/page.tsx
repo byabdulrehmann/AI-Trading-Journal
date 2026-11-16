@@ -3,7 +3,7 @@ import { Home } from "@/components/site/home/Home";
 
 export const metadata: Metadata = {
   title: { absolute: "Jarvis: trading intelligence from your own record" },
-  alternates: { canonical: "/welcome" },
+  alternates: { canonical: "/home" },
 };
 
 const jsonLd = {

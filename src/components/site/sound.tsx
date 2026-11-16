@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useStored } from "@/lib/client/use-stored";
+import { pagePath } from "@/lib/site-paths";
 
 /**
  * The site's sound, synthesised in the browser with Web Audio: an original generative score and short cues. Nothing is
@@ -379,7 +380,7 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
   }, [enabled, gesture, play]);
 
   // Moving between pages gets a soft sweep; the first page load doesn't.
-  const path = usePathname();
+  const path = pagePath(usePathname());
   const lastPath = useRef(path);
   useEffect(() => {
     if (lastPath.current === path) return;

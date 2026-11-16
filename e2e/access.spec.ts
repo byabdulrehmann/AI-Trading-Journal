@@ -40,10 +40,17 @@ test("a made-up session cookie opens nothing", async ({ page, context, baseURL, 
   await expect(page).toHaveURL(/\/login$/);
 });
 
-test("/welcome loads without signing in", async ({ page }) => {
-  const response = await page.goto("/welcome");
+test("/home loads without signing in", async ({ page }) => {
+  const response = await page.goto("/home");
   expect(response!.status()).toBe(200);
-  await expect(page).toHaveURL(/\/welcome$/);
+  await expect(page).toHaveURL(/\/home$/);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.locator("aside")).toHaveCount(0);
+});
+
+test("the old /welcome address still lands on /home, signed out, sections included", async ({ page }) => {
+  await page.goto("/welcome");
+  await expect(page).toHaveURL(/\/home$/);
+  await page.goto("/welcome/mt5");
+  await expect(page).toHaveURL(/\/home\/mt5$/);
 });

@@ -118,7 +118,7 @@ export function SessionRail({ chapters }: { chapters: { id: string; label: strin
         {chapters.map((c, i) => (
           <li key={c.id}>
             <a
-              href={`#${c.id}`}
+              href={`/home/${c.id}`}
               onClick={(e) => {
                 e.preventDefault();
                 scrollTo(c.id);
@@ -150,7 +150,7 @@ export function SiteFooter() {
         {[
           ["Product", [["/platform", "Platform"], ["/features", "Features"], ["/platform#mt5", "MT5, read-only"], ["/platform#technology", "Technology"]]],
           ["Company", [["/about", "About"], ["/contact", "Contact"], [CTA_HREF, "Early access"]]],
-          ["Jarvis", [["/login", "Sign in"], ["/signup", "Create an account"], ["/forgot-password", "Forgot password"], ["/welcome", "Home"]]],
+          ["Jarvis", [["/login", "Sign in"], ["/signup", "Create an account"], ["/forgot-password", "Forgot password"], ["/home", "Home"]]],
         ].map(([title, links]) => (
           <div key={title as string}>
             <p className="s-label mb-3">{title as string}</p>

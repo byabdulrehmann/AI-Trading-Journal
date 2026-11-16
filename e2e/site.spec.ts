@@ -1,7 +1,7 @@
 import { expect, guarded, open, test, uniqueEmail } from "./helpers";
 
 // The public website: presentation only. Signed out it shows pages and takes early-access requests, and nothing else.
-const PAGES = ["/welcome", "/platform", "/features", "/about", "/contact"];
+const PAGES = ["/home", "/platform", "/features", "/about", "/contact"];
 
 // Every test here starts past the entry gate, as a visitor who already came in this session; the gate has its own test.
 guarded.beforeEach(async ({ page }) => {
@@ -27,7 +27,7 @@ guarded("the main nav reaches every site page", async ({ page }) => {
     await expect(page).toHaveURL(new RegExp(`${path}$`));
   }
   await nav.getByRole("link", { name: "Jarvis home" }).click();
-  await expect(page).toHaveURL(/\/welcome$/);
+  await expect(page).toHaveURL(/\/home$/);
 });
 
 guarded("sound is off until the visitor turns it on, and the volume follows", async ({ page }) => {
@@ -51,7 +51,7 @@ guarded("signed out, the site opens nothing private", async ({ page, request }) 
     await page.goto(path);
     await expect(page).toHaveURL(/\/login$/);
   }
-  await page.goto("/welcome");
+  await page.goto("/home");
   // Sample screens are pictures; no live account figure or trade list is fetched for a visitor.
   const calls: string[] = [];
   page.on("request", (r) => r.url().includes("/api/") && calls.push(r.url()));
@@ -78,7 +78,7 @@ guarded("the early-access API rejects bad input and the hidden trap field", asyn
   // Without JavaScript the form posts plainly and lands back on the page.
   const plain = await request.post("/api/early-access", { form: { name: "No script", email: uniqueEmail("plain") }, maxRedirects: 0 });
   expect(plain.status()).toBe(303);
-  expect(plain.headers().location).toContain("/contact?sent=1");
+  expect(plain.headers().location).toContain("/contact/early-access?sent=1");
 });
 
 test("the owner reads and deletes early-access requests in Settings", async ({ page }) => {
@@ -121,7 +121,7 @@ guarded("the cursor follower grows over links, never takes clicks, and stays off
 });
 
 guarded("the homepage alternates light and dark sections, and the nav takes the tone beneath it", async ({ page }) => {
-  await page.goto("/welcome");
+  await page.goto("/home");
   const tones = await page.locator("main section[data-tone]").evaluateAll((els) => els.map((e) => e.getAttribute("data-tone")));
   expect(tones).toContain("light");
   expect(tones).toContain("dark");
@@ -154,7 +154,7 @@ guarded("the site opens dark, the mode switch moves to light, and the choice is 
 guarded("a new visitor waits for loading, chooses sound, and the gate shows once per session", async ({ browser, baseURL }) => {
   const context = await browser.newContext({ baseURL });
   const page = await context.newPage();
-  await page.goto("/welcome");
+  await page.goto("/home");
   const gate = page.getByTestId("enter-gate");
   await expect(gate).toBeVisible();
   await expect(gate.getByRole("status")).toContainText("Loading");
@@ -183,13 +183,17 @@ guarded("every section on every page has its own link, and the address bar follo
     expect(missing, `${path} has sections without an id`).toBe(0);
   }
   // A link to a section lands on it, under the nav.
-  await page.goto("/platform#private");
+  await page.goto("/platform/private");
   await expect.poll(async () => page.locator("#private").evaluate((s) => Math.round(s.getBoundingClientRect().top)), { timeout: 15_000 }).toBeLessThan(160);
-  await expect(page).toHaveURL(/\/platform#private$/);
+  await expect(page).toHaveURL(/\/platform\/private$/);
+  // An older link with a hash lands the same way, and the address becomes the section's path.
+  await page.goto("/about#never");
+  await expect.poll(async () => page.locator("#never").evaluate((s) => Math.round(s.getBoundingClientRect().top)), { timeout: 15_000 }).toBeLessThan(160);
   await page.goto("/about");
-  // Scrolling names the section being read, and the very top drops the hash.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  // Scrolling names the section being read, and the very top shows the page alone.
   await page.locator("#never").evaluate((s) => window.scrollTo(0, s.getBoundingClientRect().top + scrollY - 72));
-  await expect(page).toHaveURL(/\/about#never$/);
+  await expect(page).toHaveURL(/\/about\/never$/);
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect(page).toHaveURL(/\/about$/);
 });
@@ -197,9 +201,20 @@ guarded("every section on every page has its own link, and the address bar follo
 guarded("a section link opened by a new visitor lands on the section after the gate", async ({ browser, baseURL }) => {
   const context = await browser.newContext({ baseURL });
   const page = await context.newPage();
-  await page.goto("/welcome#mt5");
+  await page.goto("/home/mt5");
   await page.getByTestId("enter-silent").click({ timeout: 30_000 });
   await expect.poll(async () => page.locator("#mt5").evaluate((s) => Math.round(s.getBoundingClientRect().top)), { timeout: 15_000 }).toBeLessThan(160);
-  await expect(page).toHaveURL(/\/welcome#mt5$/);
+  await expect(page).toHaveURL(/\/home\/mt5$/);
   await context.close();
+});
+
+guarded("every section path opens its page, and a section that doesn't exist is not found", async ({ page, guard }) => {
+  guard.allow(/status of 404/);
+  const { SITE_SECTIONS } = await import("../src/lib/site-paths");
+  for (const [p, sections] of Object.entries(SITE_SECTIONS)) {
+    await page.goto(`/${p}`);
+    expect(await page.locator("#site-main section[id]").evaluateAll((all) => all.map((s) => s.id)), `/${p} sections`).toEqual(sections);
+    for (const s of sections) expect((await page.request.get(`/${p}/${s}`)).status(), `/${p}/${s}`).toBe(200);
+  }
+  expect((await page.request.get("/home/no-such-section")).status()).toBe(404);
 });
