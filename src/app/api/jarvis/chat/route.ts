@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { body, fail } from "@/lib/server/http";
-import { requireUser } from "@/lib/server/auth";
+import { rateLimited, requireUser } from "@/lib/server/auth";
 import { buildContext } from "@/lib/server/ai/context";
 import { systemPrompt } from "@/lib/server/ai/prompt";
 import { findModels, getProvider, PROVIDERS, resolveActive, validateChoice } from "@/lib/server/ai/registry";
@@ -17,6 +17,10 @@ const Body = z.object({
 });
 
 const HISTORY_LIMIT = 20;
+// Every account spends the owner's API key: a ceiling per minute and per day, and one reply at a time per person.
+const PER_MINUTE = 30;
+const PER_DAY = 500;
+const answering = new Set<number>();
 const OVERALL_TIMEOUT_MS = 120_000;
 
 type Send = (event: string, data: unknown) => void;
@@ -37,10 +41,20 @@ export async function POST(req: Request) {
   const settings = getSettings(user.id);
   if (!settings.jarvis.enabled) return fail("The AI Coach is turned off in Settings.", 403);
   if (data.conversationId && !conversationExists(user.id, data.conversationId)) return fail("Conversation not found.", 404);
+  if (answering.has(user.id)) return fail("Jarvis is still answering your last message.", 429);
+  if (rateLimited(`ai-minute:${user.id}`, PER_MINUTE, 60_000)) return fail("That's a lot of messages in a minute. Wait a moment and try again.", 429);
+  if (rateLimited(`ai-day:${user.id}`, PER_DAY, 86_400_000)) return fail(`You've reached today's limit of ${PER_DAY} messages.`, 429);
 
-  const conversationId = data.conversationId ?? createConversation(user.id, data.message);
-  addMessage(conversationId, "user", data.message);
-  recordActivity(user.id, "jarvis.chat", { length: data.message.length });
+  answering.add(user.id);
+  let conversationId: number;
+  try {
+    conversationId = data.conversationId ?? createConversation(user.id, data.message);
+    addMessage(conversationId, "user", data.message);
+    recordActivity(user.id, "jarvis.chat", { length: data.message.length });
+  } catch (err) {
+    answering.delete(user.id);
+    throw err;
+  }
 
   const signal = AbortSignal.any([req.signal, AbortSignal.timeout(OVERALL_TIMEOUT_MS)]);
   const encoder = new TextEncoder();
@@ -65,6 +79,7 @@ export async function POST(req: Request) {
         }
         await reply(user.id, conversationId, data.focusTradeId, signal, req.signal, send);
       } finally {
+        answering.delete(user.id);
         try {
           controller.close();
         } catch {}

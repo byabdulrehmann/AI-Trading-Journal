@@ -71,6 +71,9 @@ guarded("the early-access form saves a request and says what happens to it", asy
 guarded("the early-access API rejects bad input and the hidden trap field", async ({ request, guard }) => {
   guard.allow(/status of 422/);
   expect((await request.post("/api/early-access", { data: { name: "", email: "not-an-email" } })).status()).toBe(422);
+  guard.allow(/status of 413/);
+  // Bigger than the 8 KB limit: refused by what actually arrives, not by the size the request claims.
+  expect((await request.post("/api/early-access", { data: { name: "x".repeat(9_000), email: uniqueEmail("big") } })).status()).toBe(413);
   expect((await request.post("/api/early-access", { data: { name: "Bot", email: uniqueEmail("bot"), website: "http://spam.test" } })).status()).toBe(422);
   // Without JavaScript the form posts plainly and lands back on the page.
   const plain = await request.post("/api/early-access", { form: { name: "No script", email: uniqueEmail("plain") }, maxRedirects: 0 });

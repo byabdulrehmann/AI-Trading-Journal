@@ -24,8 +24,28 @@ export const Credentials = z.object({
   name: z.string().trim().max(60).default(""),
 });
 
+/** Runs at most `max` jobs at once; the rest wait in order. A finished job hands its slot straight to the next. */
+export function slots(max: number) {
+  let active = 0;
+  const waiting: (() => void)[] = [];
+  return async <T>(job: () => Promise<T>): Promise<T> => {
+    if (active < max) active++;
+    else await new Promise<void>((resolve) => waiting.push(resolve));
+    try {
+      return await job();
+    } finally {
+      const next = waiting.shift();
+      if (next) next();
+      else active--;
+    }
+  };
+}
+
+// Each hash holds about 128 MB, so a burst of sign-ins queues instead of piling up memory.
+const hashing = slots(2);
+
 function derive(password: string, salt: Buffer, N: number): Promise<Buffer> {
-  return new Promise((resolve, reject) => scrypt(password, salt, 32, scryptOptions(N), (err, key) => (err ? reject(err) : resolve(key))));
+  return hashing(() => new Promise((resolve, reject) => scrypt(password, salt, 32, scryptOptions(N), (err, key) => (err ? reject(err) : resolve(key)))));
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -147,17 +167,18 @@ const attempts = new Map<string, { count: number; resetAt: number }>();
 const WINDOW_MS = 15 * 60000;
 const MAX_ATTEMPTS = 8;
 
-export function rateLimited(key: string): boolean {
+/** True once `key` has been used more than `max` times in the window; each call counts as one use. */
+export function rateLimited(key: string, max = MAX_ATTEMPTS, windowMs = WINDOW_MS): boolean {
   const t = Date.now();
   // Keys hold whatever email was typed, so old ones must not pile up.
   if (attempts.size > 5000) for (const [k, v] of attempts) if (v.resetAt < t) attempts.delete(k);
   const entry = attempts.get(key);
   if (!entry || entry.resetAt < t) {
-    attempts.set(key, { count: 1, resetAt: t + WINDOW_MS });
+    attempts.set(key, { count: 1, resetAt: t + windowMs });
     return false;
   }
   entry.count++;
-  return entry.count > MAX_ATTEMPTS;
+  return entry.count > max;
 }
 
 export const clearRateLimit = (key: string) => attempts.delete(key);
