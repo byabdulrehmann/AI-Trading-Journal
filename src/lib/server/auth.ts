@@ -14,7 +14,12 @@ export interface User {
 }
 
 export const COOKIE = "jarvis_session";
+/** A session ends 14 days after sign-in, or after 3 days without use, whichever comes first. */
 const SESSION_DAYS = 14;
+const IDLE_DAYS = 3;
+const DAY = 86400000;
+/** The idle deadline moves forward at most once an hour, so reads don't each turn into a write. */
+const SLIDE_MS = 3600000;
 const COST = 2 ** 17;
 const scryptOptions = (N: number) => ({ N, r: 8, p: 1, maxmem: 256 * 1024 * 1024 });
 
@@ -103,10 +108,11 @@ export async function authenticate(email: string, password: string): Promise<Use
 
 export async function startSession(userId: number) {
   const token = randomBytes(32).toString("base64url");
-  const expires = new Date(Date.now() + SESSION_DAYS * 86400000);
+  // The cookie lives as long as the session can; the server enforces the shorter idle deadline.
+  const expires = new Date(Date.now() + SESSION_DAYS * DAY);
   const conn = db();
   conn.prepare("DELETE FROM sessions WHERE expires_at < ?").run(now());
-  conn.prepare("INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)").run(hashToken(token), userId, now(), expires.toISOString());
+  conn.prepare("INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)").run(hashToken(token), userId, now(), new Date(Date.now() + IDLE_DAYS * DAY).toISOString());
   (await cookies()).set(COOKIE, token, {
     httpOnly: true,
     sameSite: "strict",
@@ -144,11 +150,63 @@ export async function currentUser(): Promise<User | null> {
   await connection();
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
+  const hash = hashToken(token);
   const row = db()
-    .prepare("SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ?")
-    .get(hashToken(token), now()) as Row | undefined;
-  return row ? toUser(row) : null;
+    .prepare("SELECT u.*, s.created_at AS session_created, s.expires_at AS session_expires FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ?")
+    .get(hash, now()) as Row | undefined;
+  if (!row) return null;
+  const deadline = nextDeadline(row.session_created as string, row.session_expires as string, Date.now());
+  if (deadline) db().prepare("UPDATE sessions SET expires_at = ? WHERE token_hash = ?").run(deadline, hash);
+  return toUser(row);
 }
+
+/** Where a used session's deadline should move, or null to leave it: idle time from now, never past the 14-day cap. */
+export function nextDeadline(createdAt: string, expiresAt: string, at: number): string | null {
+  const target = Math.min(Date.parse(createdAt) + SESSION_DAYS * DAY, at + IDLE_DAYS * DAY);
+  const current = Date.parse(expiresAt);
+  // Sessions from before the idle limit carry a 14-day deadline: pull those in too.
+  return current > target || target - current > SLIDE_MS ? new Date(target).toISOString() : null;
+}
+
+export interface SessionInfo {
+  id: number;
+  createdAt: string;
+  expiresAt: string;
+  current: boolean;
+}
+
+/** The user's signed-in browsers. The id is the row number, never anything derived from the token. */
+export async function listSessions(userId: number): Promise<SessionInfo[]> {
+  const token = (await cookies()).get(COOKIE)?.value;
+  const mine = token ? hashToken(token) : "";
+  const rows = db().prepare("SELECT rowid AS id, token_hash, created_at, expires_at FROM sessions WHERE user_id = ? AND expires_at > ? ORDER BY created_at DESC").all(userId, now()) as Row[];
+  return rows.map((r) => ({ id: r.id as number, createdAt: r.created_at as string, expiresAt: r.expires_at as string, current: r.token_hash === mine }));
+}
+
+/** Signs out one browser (by id) or every browser but this one (no id). Returns how many were signed out. */
+export async function endOtherSessions(userId: number, id?: number): Promise<number> {
+  const token = (await cookies()).get(COOKIE)?.value;
+  const keep = token ? hashToken(token) : "";
+  const res = id
+    ? db().prepare("DELETE FROM sessions WHERE user_id = ? AND rowid = ? AND token_hash != ?").run(userId, id, keep)
+    : db().prepare("DELETE FROM sessions WHERE user_id = ? AND token_hash != ?").run(userId, keep);
+  const n = Number(res.changes);
+  if (n) audit(userId, "sessions.ended", "user", userId, { count: n });
+  return n;
+}
+
+/* ---------- who may create an account: anyone (the default) or nobody new, as the owner sets it ---------- */
+
+const SIGNUP_KEY = "install:signup";
+/** True unless the owner turned new accounts off. The very first account is always allowed by the caller. */
+export const signupOpen = () => (db().prepare("SELECT value FROM settings WHERE key = ?").get(SIGNUP_KEY) as { value: string } | undefined)?.value !== "closed";
+export function setSignupOpen(userId: number, open: boolean) {
+  db().prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(SIGNUP_KEY, open ? "open" : "closed");
+  audit(userId, open ? "signup.opened" : "signup.closed");
+}
+
+/** A short one-way tag for an email: failed sign-ins to one address can be grouped without storing what was typed. */
+export const emailTag = (email: string) => hashToken(`email:${email}`).slice(0, 12);
 
 /** Every API route starts with this. Returns the signed-in user or the 401 to send back. */
 export async function requireUser(): Promise<User | Response> {

@@ -32,7 +32,12 @@ export interface EarlyAccessRequest {
   createdAt: string;
 }
 
+/** Requests are deleted after this many days: they're personal details, kept only as long as they're useful. */
+export const KEEP_DAYS = 90;
+const dropExpired = () => db().prepare("DELETE FROM early_access WHERE created_at < ?").run(new Date(Date.now() - KEEP_DAYS * 86400000).toISOString());
+
 export function saveEarlyAccess(input: EarlyAccessInput): { ok: true } | { ok: false; reason: string } {
+  dropExpired();
   const conn = db();
   const { n } = conn.prepare("SELECT COUNT(*) AS n FROM early_access").get() as { n: number };
   if (n >= MAX_REQUESTS) return { ok: false, reason: "The request list is full for now. Please try again later." };
@@ -44,6 +49,7 @@ export function saveEarlyAccess(input: EarlyAccessInput): { ok: true } | { ok: f
 }
 
 export function listEarlyAccess(): EarlyAccessRequest[] {
+  dropExpired();
   return (db().prepare("SELECT id, name, email, trades, message, created_at FROM early_access ORDER BY created_at DESC, id DESC").all() as Record<string, unknown>[]).map((r) => ({
     id: r.id as number,
     name: r.name as string,

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { connection } from "next/server";
 import { authenticateLimitKey } from "@/lib/server/client-key";
-import { authenticate, clearRateLimit, rateLimited, startSession } from "@/lib/server/auth";
+import { authenticate, clearRateLimit, emailTag, rateLimited, startSession } from "@/lib/server/auth";
 import { audit } from "@/lib/server/repo/audit";
 import { body, fail, json } from "@/lib/server/http";
 
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   if (rateLimited(key)) return fail("Too many attempts. Try again in 15 minutes.", 429);
   const user = await authenticate(data.email, data.password);
   if (!user) {
-    audit(null, "login.failed");
+    audit(null, "login.failed", undefined, undefined, { email: emailTag(data.email) });
     return fail("Wrong email or password.", 401);
   }
   clearRateLimit(key);

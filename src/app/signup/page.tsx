@@ -19,10 +19,11 @@ export default function SignupPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [code, setCode] = useState<string | null>(null);
+  const [open, setOpen] = useState(true);
 
   useEffect(() => {
-    api<{ user: unknown; hasUsers: boolean }>("/api/auth/me").then(
-      (me) => (me.user ? openJournal() : setFirst(!me.hasUsers)),
+    api<{ user: unknown; hasUsers: boolean; signupOpen: boolean }>("/api/auth/me").then(
+      (me) => (me.user ? openJournal() : (setFirst(!me.hasUsers), setOpen(me.signupOpen))),
       () => setFormError("Jarvis couldn't reach its database. Check that the server is running, then reload."),
     );
   }, []);
@@ -62,7 +63,8 @@ export default function SignupPage() {
       intro={first ? "This is the first account on this computer. Any trades already in the journal will belong to it." : "Your own private journal, stored on this computer. Nobody else who signs in here can see it."}
       footer={<p>Already have an account? <Link href="/login" className={authLink}>Sign in</Link></p>}
     >
-      <form onSubmit={submit} noValidate className="space-y-3.5">
+      {!open && <Notice tone="warn">New accounts are turned off on this computer. Ask its owner to turn them on, or sign in.</Notice>}
+      <form onSubmit={submit} noValidate className="space-y-3.5" hidden={!open}>
         <Field label="Name (optional)" error={errors.name}>
           {(p) => <input {...p} className={inputClass} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />}
         </Field>

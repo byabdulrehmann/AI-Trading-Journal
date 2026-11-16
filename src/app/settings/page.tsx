@@ -127,7 +127,7 @@ export default function SettingsPage() {
     <>
       <PageHeader title="Settings" description="Preferences, privacy and your data. Everything is stored in a local database on this computer." />
       <nav aria-label="Settings sections" className="mb-5 flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
-        {[["profile", "Profile"], ["defaults", "Trading defaults"], ["password", "Password"], ["recovery", "Recovery code"], ["accounts", "Accounts"], ["autotags", "Auto-tags"], ["jarvis", "AI Coach"], ["privacy", "Privacy"], ["data", "Your data"], ...(user?.isOwner ? [["backups", "Backups"], ["early-access", "Early access"]] : [])].map(([id, l]) => (
+        {[["profile", "Profile"], ["defaults", "Trading defaults"], ["password", "Password"], ["recovery", "Recovery code"], ["sessions", "Signed-in browsers"], ["accounts", "Accounts"], ["autotags", "Auto-tags"], ["jarvis", "AI Coach"], ["privacy", "Privacy"], ["data", "Your data"], ...(user?.isOwner ? [["backups", "Backups"], ["signups", "New accounts"], ["early-access", "Early access"]] : [])].map(([id, l]) => (
           <a key={id} href={`#${id}`} className="py-1 text-ink-soft underline-offset-2 hover:text-ink hover:underline pointer-coarse:py-3">{l}</a>
         ))}
       </nav>
@@ -148,6 +148,7 @@ export default function SettingsPage() {
 
       <Password />
       <Recovery />
+      <Sessions />
 
       <Accounts />
 
@@ -171,6 +172,7 @@ export default function SettingsPage() {
       <Privacy />
       <DataControls />
       {user?.isOwner && <Backups />}
+      {user?.isOwner && <Signups />}
       {user?.isOwner && <EarlyAccess />}
     </>
   );
@@ -576,6 +578,71 @@ interface EarlyAccessRequest {
   createdAt: string;
 }
 
+interface SessionInfo {
+  id: number;
+  createdAt: string;
+  expiresAt: string;
+  current: boolean;
+}
+
+/** Every browser signed in to this account, and a way to sign the others out. */
+function Sessions() {
+  const { toast } = useApp();
+  const { data, error, reload } = useFetch<{ sessions: SessionInfo[] }>("/api/auth/sessions");
+  const end = async (id?: number) => {
+    try {
+      await api("/api/auth/sessions", { method: "DELETE", json: id ? { id } : {} });
+      reload();
+    } catch (err) {
+      toast({ message: err instanceof Error ? err.message : "Couldn't sign it out.", tone: "error" });
+    }
+  };
+  const others = data?.sessions.filter((s) => !s.current).length ?? 0;
+  return (
+    <Section id="sessions" title="Signed-in browsers" description="A browser stays signed in for up to 14 days, and is signed out after 3 days without use.">
+      {error && !data && <p className="text-[13.5px] text-loss">{error}</p>}
+      {data && (
+        <>
+          <ul className="divide-y divide-line border-y border-line" data-testid="sessions">
+            {data.sessions.map((s) => (
+              <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5">
+                <div className="min-w-0 text-[13.5px]">
+                  <p className="font-medium text-ink">
+                    Signed in <span className="num">{dateTime(s.createdAt)}</span>
+                    {s.current && <Badge className="ml-2">This browser</Badge>}
+                  </p>
+                  <p className="text-muted">Signs out by <span className="num">{dateTime(s.expiresAt)}</span> unless used</p>
+                </div>
+                {!s.current && <Button size="sm" variant="ghost" onClick={() => void end(s.id)}>Sign out</Button>}
+              </li>
+            ))}
+          </ul>
+          {others > 0 && <Button className="mt-3" onClick={() => void end()}>Sign out every other browser</Button>}
+        </>
+      )}
+    </Section>
+  );
+}
+
+/** Whether people who reach this computer can make their own account. Owner only. */
+function Signups() {
+  const { toast } = useApp();
+  const { data, reload } = useFetch<{ open: boolean }>("/api/signups");
+  const set = async (open: boolean) => {
+    try {
+      await api("/api/signups", { method: "PUT", json: { open } });
+      reload();
+    } catch (err) {
+      toast({ message: err instanceof Error ? err.message : "Couldn't change it.", tone: "error" });
+    }
+  };
+  return (
+    <Section id="signups" title="New accounts" description="Each account is a separate private journal, and every account uses this computer's AI key.">
+      {data && <Toggle label="Allow new accounts" checked={data.open} onChange={(v) => void set(v)} description="When off, the sign-up page tells visitors to ask you. Existing accounts keep working." />}
+    </Section>
+  );
+}
+
 /** Requests from the marketing site's form. Owner only, like backups: they belong to the installation, not a journal. */
 function EarlyAccess() {
   const { toast } = useApp();
@@ -590,7 +657,7 @@ function EarlyAccess() {
     }
   };
   return (
-    <Section id="early-access" title="Early access requests" description="Sent from the website's early-access form (/contact). They are stored here only: nothing is emailed, and no account is created.">
+    <Section id="early-access" title="Early access requests" description="Sent from the website's early-access form (/contact). They are stored here only: nothing is emailed, and no account is created. Each request is deleted after 90 days.">
       {error && !data && <p className="text-[13.5px] text-loss">{error}</p>}
       {data && (data.requests.length ? (
         <ul className="divide-y divide-line" data-testid="early-access-requests">

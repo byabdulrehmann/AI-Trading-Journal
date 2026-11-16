@@ -407,6 +407,7 @@ function open(): DatabaseSync {
   });
   migrate(db);
   purgeDeletedTrades(db);
+  db.prepare("DELETE FROM sessions WHERE expires_at < ?").run(new Date().toISOString());
   return db;
 }
 

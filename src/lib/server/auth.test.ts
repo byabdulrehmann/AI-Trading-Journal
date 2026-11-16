@@ -6,7 +6,7 @@ import { test } from "node:test";
 
 // auth.ts opens the database lazily; point it at a temp folder so nothing can reach data/.
 process.env.KESTREL_DB_PATH = path.join(mkdtempSync(path.join(tmpdir(), "jarvis-auth-")), "test.db");
-const { rateLimited, slots } = await import("./auth");
+const { nextDeadline, rateLimited, slots } = await import("./auth");
 
 test("slots never run more than their limit at once, and every job finishes in order of arrival", async () => {
   const run = slots(2);
@@ -41,4 +41,18 @@ test("rate limits take their own ceiling and window", async () => {
   assert.equal(rateLimited(short, 1, 20), true);
   await new Promise((r) => setTimeout(r, 30));
   assert.equal(rateLimited(short, 1, 20), false, "a new window starts once the old one ends");
+});
+
+test("a session's deadline slides with use, at most hourly, and never past 14 days from sign-in", () => {
+  const day = 86400000;
+  const signedIn = Date.parse("2026-11-01T00:00:00Z");
+  const iso = (t: number) => new Date(t).toISOString();
+  // Used 10 minutes after the deadline was last set: not worth a write.
+  assert.equal(nextDeadline(iso(signedIn), iso(signedIn + 3 * day), signedIn + 10 * 60000), null);
+  // Used two hours later: three days from now.
+  assert.equal(nextDeadline(iso(signedIn), iso(signedIn + 3 * day), signedIn + 2 * 3600000), iso(signedIn + 2 * 3600000 + 3 * day));
+  // Near the end: capped at 14 days after sign-in.
+  assert.equal(nextDeadline(iso(signedIn), iso(signedIn + 13 * day), signedIn + 12 * day), iso(signedIn + 14 * day));
+  // A session from before the idle limit (14-day deadline) is pulled in to three days from its next use.
+  assert.equal(nextDeadline(iso(signedIn), iso(signedIn + 14 * day), signedIn + day), iso(signedIn + 4 * day));
 });

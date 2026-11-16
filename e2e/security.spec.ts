@@ -1,5 +1,5 @@
 import type { APIRequestContext, APIResponse, Page } from "@playwright/test";
-import { expect, OWNER_EMAIL, PASSWORD, signUp, test } from "./helpers";
+import { expect, open, OWNER_EMAIL, PASSWORD, signUp, test, uniqueEmail } from "./helpers";
 
 /**
  * Abuse cases, run against the real server: no session, a forged session, and a second user aiming at the owner's
@@ -28,7 +28,9 @@ const ROUTES: [string, string][] = [
   ["GET", "routine"], ["POST", "routine"], ["GET", "settings"], ["PATCH", "settings"], ["DELETE", "tag-rules/ID"], ["GET", "tag-rules"], ["POST", "tag-rules"],
   ["POST", "trades/ID/attachments"], ["GET", "trades/ID/bars"], ["GET", "trades/ID"], ["PUT", "trades/ID"],
   ["POST", "trades/ID"], ["GET", "trades/ID/rules"], ["PUT", "trades/ID/rules"], ["POST", "trades/bulk"], ["POST", "trades/delete"], ["GET", "trades/export"],
-  ["GET", "trades"], ["POST", "trades"], ["GET", "early-access"], ["DELETE", "early-access/ID"],
+  ["GET", "trades"], ["POST", "trades"], ["GET", "early-access"], ["DELETE", "early-access/ID"], ["GET", "signups"], ["PUT", "signups"],
+  // Under /api/auth, which the proxy lets through signed out, so the route itself must refuse.
+  ["GET", "auth/sessions"], ["DELETE", "auth/sessions"],
 ];
 // Public by design: the website's early-access form. Covered in site.spec.ts.
 
@@ -177,4 +179,41 @@ test("guessing a password is cut off after eight tries, and the answer doesn't s
   const known = await (await ctx.post("/api/auth/login", { data: { email: OWNER_EMAIL, password: "wrong-password-1" } })).json();
   expect(unknown).toEqual(known);
   await ctx.dispose();
+});
+
+test("the owner sees each signed-in browser and can sign the others out", async ({ page, playwright, baseURL }) => {
+  const other = await playwright.request.newContext({ baseURL });
+  expect((await other.post("/api/auth/login", { data: { email: OWNER_EMAIL, password: PASSWORD } })).status()).toBe(200);
+  await open(page, "/settings#sessions");
+  const list = page.getByTestId("sessions");
+  await expect(list.getByText("This browser")).toHaveCount(1);
+  expect(await list.getByRole("listitem").count()).toBeGreaterThanOrEqual(2);
+  await page.getByRole("button", { name: "Sign out every other browser" }).click();
+  await expect(list.getByRole("listitem")).toHaveCount(1);
+  // The other browser's cookie no longer opens anything; this one still does.
+  expect((await other.get("/api/settings")).status()).toBe(401);
+  expect((await page.request.get("/api/settings")).status()).toBe(200);
+  await other.dispose();
+});
+
+test("with new accounts turned off, sign-up is refused and says why; only the owner can switch it", async ({ page, playwright, baseURL, guard }) => {
+  guard.allow(/status of 403/);
+  const visitor = await playwright.request.newContext({ baseURL });
+  try {
+    await open(page, "/settings#signups");
+    const toggle = page.getByRole("switch", { name: "Allow new accounts" });
+    await expect(toggle).toBeChecked();
+    await toggle.click();
+    await expect(toggle).not.toBeChecked();
+    expect((await visitor.post("/api/auth/signup", { data: { email: uniqueEmail("closed"), password: PASSWORD } })).status()).toBe(403);
+    expect((await (await visitor.get("/api/auth/me")).json()).signupOpen).toBe(false);
+    await page.request.post("/api/auth/logout");
+    await page.goto("/signup");
+    await expect(page.getByText("New accounts are turned off on this computer.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create account" })).toBeHidden();
+  } finally {
+    await page.request.post("/api/auth/login", { data: { email: OWNER_EMAIL, password: PASSWORD } });
+    expect((await page.request.put("/api/signups", { data: { open: true } })).status()).toBe(200);
+    await visitor.dispose();
+  }
 });

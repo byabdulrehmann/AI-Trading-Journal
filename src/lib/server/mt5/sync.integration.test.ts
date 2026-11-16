@@ -89,7 +89,7 @@ async function connected(login: number, result = session({}, login)) {
 
 async function signIn(id: number) {
   const token = randomBytes(16).toString("hex");
-  db().prepare("INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)").run(createHash("sha256").update(token).digest("hex"), id, "2026-01-01", "2999-01-01");
+  db().prepare("INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)").run(createHash("sha256").update(token).digest("hex"), id, new Date().toISOString(), "2999-01-01");
   fakes.__cookie = token;
 }
 
