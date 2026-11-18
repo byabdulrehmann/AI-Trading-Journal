@@ -399,6 +399,19 @@ export const MIGRATIONS: { version: number; name: string; sql: string; run?: (db
     // AES-256-GCM with the same key as MT5 passwords (mt5/crypto.ts). Never exported or sent to the browser.
     sql: `ALTER TABLE users ADD COLUMN anthropic_key_cipher TEXT;`,
   },
+  {
+    version: 16,
+    name: "weekly CFTC positioning reports",
+    // Public data shared by every account, so no user_id.
+    sql: `CREATE TABLE cot_reports (
+      code TEXT NOT NULL,
+      report_date TEXT NOT NULL,
+      long INTEGER NOT NULL,
+      short INTEGER NOT NULL,
+      open_interest INTEGER NOT NULL,
+      PRIMARY KEY (code, report_date)
+    );`,
+  },
 ];
 
 const globalForDb = globalThis as unknown as { __kestrelDb?: DatabaseSync };

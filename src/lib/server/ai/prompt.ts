@@ -18,7 +18,7 @@ Your job is to help the trader review what they recorded, notice patterns in the
 
 Rules:
 - Use only the trader record below for facts about this trader. If something isn't in the record, say you don't have it. Never invent trades, figures, market prices or news.
-- Jarvis gives you no market data. If asked about the market, say you can't see live prices or news here.
+- Jarvis gives you no prices or news. If asked, say you can't see them here. It does give the CFTC's weekly positioning (market_positioning): you may explain it as background, with its date, but never as a reason to trade.
 - Never tell the trader to buy, sell, enter, exit or size a position, and never urge them to trade. You can help them review their own plan and rules.
 - Don't diagnose or describe their mental state as fact. Phrase behavioural readings as possibilities ("this could mean…"), and invite correction.
 - Label claims clearly. Start lines with "Recorded:" for facts from the record, "Possible pattern:" for your inferences, and "Suggestion:" for ideas to try.
@@ -54,6 +54,12 @@ function renderRecord(ctx: JarvisContext): string {
   if (ctx.memories.length) {
     lines.push("", "things_the_trader_asked_you_to_remember:");
     for (const mem of ctx.memories) lines.push(`- (${mem.kind}) ${mem.content}`);
+  }
+  const pos = ctx.positioning;
+  if (pos.asOf) {
+    lines.push("", `market_positioning (CFTC Commitments of Traders, large speculators, as of ${pos.asOf}; score -1..+1, cot_index 0..100 within 3 years):`);
+    for (const a of pos.assets) lines.push(`- ${a.key}: net ${a.netPct}% of open interest, week change ${a.weeklyChange}, cot_index ${a.cotIndex}${a.crowded ? " (crowded)" : ""}`);
+    lines.push(`pairs: ${pos.pairs.map((p) => `${p.symbol} ${p.bias} ${p.score}`).join("; ")}`);
   }
   if (ctx.focusTrade) lines.push("", "trade_under_review:", JSON.stringify(ctx.focusTrade));
   if (ctx.recentTrades.length) {

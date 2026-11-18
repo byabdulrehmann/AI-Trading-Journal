@@ -4,6 +4,7 @@ import { detectPatterns, type PatternFinding } from "@/lib/domain/patterns";
 import type { Memory, Settings, Trade } from "@/lib/domain/types";
 import { getTrade, listAccounts, listTrades } from "../repo/journal";
 import { listMemories } from "../repo/jarvis";
+import { positioning, type Positioning } from "../market/cot";
 
 /**
  * Builds the minimum context Jarvis needs, limited by the user's sharing
@@ -43,6 +44,8 @@ export interface JarvisContext {
   memories: Pick<Memory, "id" | "kind" | "content">[];
   hasSampleData: boolean;
   totalTrades: number;
+  /** Public CFTC data, the same for everyone. */
+  positioning: Pick<Positioning, "asOf" | "assets" | "pairs">;
   disclosure: string[];
 }
 
@@ -87,6 +90,7 @@ export function buildContext(userId: number, settings: Settings, focusTradeId?: 
     ? detectPatterns(reported, settings.timeZone || undefined).filter((p) => !settings.dismissedPatterns.includes(p.id))
     : [];
   const memories = memoryEnabled ? listMemories(userId, true).map(({ id, kind, content }) => ({ id, kind, content })) : [];
+  const market = positioning();
   const focus = focusTradeId ? getTrade(userId, focusTradeId) : null;
 
   const disclosure = [
@@ -98,6 +102,7 @@ export function buildContext(userId: number, settings: Settings, focusTradeId?: 
     memoryEnabled ? `${memories.length} active memory item(s)` : "No memories (memory turned off)",
     focus ? `The trade you asked about (#${focus.id})` : null,
     "Your coaching style preference and display name",
+    "Public CFTC positioning scores (no personal data)",
   ].filter((x): x is string => x !== null);
 
   return {
@@ -112,6 +117,7 @@ export function buildContext(userId: number, settings: Settings, focusTradeId?: 
     memories,
     hasSampleData: trades.some((t) => t.source === "sample"),
     totalTrades: reported.length,
+    positioning: { asOf: market.asOf, assets: market.assets, pairs: market.pairs },
     disclosure,
   };
 }

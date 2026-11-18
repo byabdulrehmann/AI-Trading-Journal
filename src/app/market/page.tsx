@@ -6,6 +6,7 @@ import { api } from "@/lib/client/api";
 import { useApp } from "@/lib/client/app-state";
 import type { CalendarEvent, Instrument, InstrumentContext } from "@/lib/server/market/types";
 import { Sparkline } from "@/components/charts";
+import { Positioning } from "@/components/Positioning";
 import { Button, Card, CardHeader, DemoBanner, EmptyState, PageHeader, Spinner, cx } from "@/components/ui";
 
 interface MarketResponse {
@@ -44,7 +45,8 @@ export default function MarketPage() {
 
   return (
     <>
-      <PageHeader title="Market context" description="A bias for each instrument you follow, with the factors behind it, and the economic calendar." />
+      <PageHeader title="Market context" description="Where large speculators stand from the CFTC's weekly report, a bias for each instrument you follow, and the economic calendar." />
+      <Positioning />
       {kind !== "live" && (
         <DemoBanner>
           <span className="font-medium">{data.source.label}.</span> {data.source.disclosure} Connecting a licensed data provider is a configuration step documented in the README.
