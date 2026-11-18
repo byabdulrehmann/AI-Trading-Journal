@@ -8,7 +8,16 @@ const SET = [
 ];
 
 const settings = (page: Page, data: Record<string, unknown>) => page.request.patch("/api/settings", { data });
-const nav = (page: Page, name: string) => page.getByRole("navigation").getByRole("link", { name, exact: true }).click();
+/**
+ * Moves through the sidebar and waits until the new page is in place. The page left behind stays mounted, hidden, with
+ * its own filter bar: acting before the switch lands could pick up a control that is about to disappear.
+ */
+async function nav(page: Page, name: string) {
+  const link = page.getByRole("navigation").getByRole("link", { name, exact: true });
+  const path = new URL((await link.getAttribute("href"))!, "http://x").pathname;
+  await link.click();
+  await expect(page).toHaveURL((url) => url.pathname === path);
+}
 
 test("a filter set on one page follows you to the others, until cleared", async ({ page }) => {
   await importCsv(page, SET);
