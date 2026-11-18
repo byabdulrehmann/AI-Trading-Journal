@@ -19,7 +19,7 @@ const ROUTES: [string, string][] = [
   ["GET", "imports/ID/errors"], ["DELETE", "imports/ID"], ["GET", "imports"], ["POST", "imports"], ["GET", "instruments"], ["POST", "jarvis/chat"],
   ["GET", "jarvis/context"], ["GET", "jarvis/conversations/ID"], ["DELETE", "jarvis/conversations/ID"], ["GET", "jarvis/conversations"],
   ["DELETE", "jarvis/conversations"], ["PATCH", "jarvis/memories/ID"], ["DELETE", "jarvis/memories/ID"], ["GET", "jarvis/memories"], ["POST", "jarvis/memories"],
-  ["DELETE", "jarvis/memories"], ["GET", "jarvis/providers"], ["POST", "jarvis/providers"], ["GET", "market"], ["GET", "market/positioning"], ["DELETE", "missed/ID"], ["GET", "missed"],
+  ["DELETE", "jarvis/memories"], ["GET", "jarvis/providers"], ["POST", "jarvis/providers"], ["GET", "market"], ["GET", "market/positioning"], ["GET", "market/fred-key"], ["PUT", "market/fred-key"], ["DELETE", "market/fred-key"], ["DELETE", "missed/ID"], ["GET", "missed"],
   ["POST", "missed"], ["POST", "mt5/connect"], ["POST", "mt5/disconnect"], ["GET", "mt5/positions"], ["PATCH", "mt5/settings"], ["GET", "mt5/status"],
   ["POST", "mt5/sync"], ["GET", "notes/ID"], ["PATCH", "notes/ID"], ["POST", "notes/ID"], ["DELETE", "notes/ID"], ["PATCH", "notes/folders/ID"],
   ["DELETE", "notes/folders/ID"], ["POST", "notes/folders"], ["GET", "notes"], ["POST", "notes"], ["DELETE", "notes/templates/ID"], ["POST", "notes/templates"],

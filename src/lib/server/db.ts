@@ -411,6 +411,16 @@ export const MIGRATIONS: { version: number; name: string; sql: string; run?: (db
       open_interest INTEGER NOT NULL,
       PRIMARY KEY (code, report_date)
     );`,
+  },  {
+    version: 17,
+    name: "FRED macro readings",
+    // Public data shared by every account, so no user_id. The FRED key itself is in settings, encrypted.
+    sql: `CREATE TABLE fred_observations (
+      series_id TEXT NOT NULL,
+      date TEXT NOT NULL,
+      value REAL NOT NULL,
+      PRIMARY KEY (series_id, date)
+    );`,
   },
 ];
 

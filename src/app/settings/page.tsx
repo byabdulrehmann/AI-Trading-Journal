@@ -127,7 +127,7 @@ export default function SettingsPage() {
     <>
       <PageHeader title="Settings" description="Preferences, privacy and your data. Everything is stored in a local database on this computer." />
       <nav aria-label="Settings sections" className="mb-5 flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
-        {[["profile", "Profile"], ["defaults", "Trading defaults"], ["password", "Password"], ["recovery", "Recovery code"], ["sessions", "Signed-in browsers"], ["accounts", "Accounts"], ["autotags", "Auto-tags"], ["jarvis", "AI Coach"], ["ai-key", "AI key"], ["privacy", "Privacy"], ["data", "Your data"], ...(user?.isOwner ? [["backups", "Backups"], ["signups", "New accounts"], ["early-access", "Early access"]] : [])].map(([id, l]) => (
+        {[["profile", "Profile"], ["defaults", "Trading defaults"], ["password", "Password"], ["recovery", "Recovery code"], ["sessions", "Signed-in browsers"], ["accounts", "Accounts"], ["autotags", "Auto-tags"], ["jarvis", "AI Coach"], ["ai-key", "AI key"], ["privacy", "Privacy"], ["data", "Your data"], ...(user?.isOwner ? [["backups", "Backups"], ["signups", "New accounts"], ["market-data", "Market data"], ["early-access", "Early access"]] : [])].map(([id, l]) => (
           <a key={id} href={`#${id}`} className="py-1 text-ink-soft underline-offset-2 hover:text-ink hover:underline pointer-coarse:py-3">{l}</a>
         ))}
       </nav>
@@ -174,6 +174,7 @@ export default function SettingsPage() {
       <DataControls />
       {user?.isOwner && <Backups />}
       {user?.isOwner && <Signups />}
+      {user?.isOwner && <FredKey />}
       {user?.isOwner && <EarlyAccess />}
     </>
   );
@@ -578,6 +579,52 @@ interface EarlyAccessRequest {
   trades: string;
   message: string;
   createdAt: string;
+}
+
+/** Owner only: the install's FRED key, for the macro side of the Market page's scorecard. The key never comes back. */
+function FredKey() {
+  const { toast } = useApp();
+  const { data, reload } = useFetch<{ configured: boolean }>("/api/market/fred-key");
+  const [key, setKey] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const call = async (init: Parameters<typeof api>[1], done: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api("/api/market/fred-key", init);
+      setKey("");
+      toast({ message: done, tone: "success" });
+      reload();
+    } catch (err) {
+      setError(fieldErrors(err).key ?? (err instanceof Error ? err.message : "Couldn't save it."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Section
+      id="market-data"
+      title="Market data"
+      description={<>A free FRED key from the St. Louis Fed adds interest rates, growth and jobs to the Market page&rsquo;s scorecard, for every account. Get one at fred.stlouisfed.org under My Account, API Keys. It&rsquo;s stored encrypted on this computer and only ever sent to FRED.</>}
+    >
+      {data && (
+        <div className="space-y-4" data-testid="fred-key">
+          <p className="text-[13.5px] text-ink-soft">FRED key: <span className="font-medium text-ink">{data.configured ? "saved" : "not set"}</span></p>
+          <form onSubmit={(e) => (e.preventDefault(), void call({ method: "PUT", json: { key } }, "FRED key saved."))} className="grid gap-3 sm:grid-cols-[minmax(0,22rem)_auto] sm:items-end">
+            <Field label={data.configured ? "Replace the key" : "FRED API key"} hint="32 letters and digits. Jarvis checks it with FRED before saving.">
+              {(p) => <input {...p} type="password" autoComplete="off" spellCheck={false} className={inputClass} value={key} onChange={(e) => setKey(e.target.value)} required />}
+            </Field>
+            <Button type="submit" disabled={busy}>{busy ? "Checking" : "Save key"}</Button>
+          </form>
+          {error && <p role="alert" className="text-[13px] text-loss">{error}</p>}
+          {data.configured && <Button size="sm" variant="ghost" disabled={busy} onClick={() => void call({ method: "DELETE" }, "FRED key removed.")}>Remove the key</Button>}
+        </div>
+      )}
+    </Section>
+  );
 }
 
 /** This account's own Anthropic key, and for the owner whether accounts without one may use theirs. The key never comes back. */

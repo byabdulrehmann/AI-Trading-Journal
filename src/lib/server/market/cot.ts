@@ -1,6 +1,7 @@
 import "server-only";
 import { RANGE_WEEKS, scoreAsset, scorePair, type AssetPositioning, type CotWeek, type PairPositioning } from "@/lib/domain/positioning";
 import { db, transaction } from "../db";
+import { macro as readMacro, type Macro } from "./fred";
 
 /** The CFTC's public Legacy futures-only report (Socrata). Free, no key, and nothing about the user is sent. */
 const ENDPOINT = "https://publicreporting.cftc.gov/resource/6dca-aqww.json";
@@ -33,6 +34,7 @@ export interface Positioning {
   asOf: string | null;
   assets: AssetPositioning[];
   pairs: PairPositioning[];
+  macro: Macro;
   /** Set when the CFTC couldn't be reached; what's shown is the last report saved. */
   notice: string | null;
 }
@@ -97,16 +99,19 @@ export function positioning(): Positioning {
   for (const r of rows) byCode.set(r.code, [...(byCode.get(r.code) ?? []), { date: r.report_date, long: r.long, short: r.short, openInterest: r.open_interest }]);
   const assets = ASSETS.map((a) => scoreAsset(a.key, a.name, byCode.get(a.code) ?? [])).filter((a): a is AssetPositioning => a !== null);
   const find = (k: string) => assets.find((a) => a.key === k);
+  const macro = readMacro();
+  const macroOf = (k: string) => macro.currencies.find((c) => c.key === k)?.score ?? null;
   const pairs = PAIRS.flatMap((p) => {
     const base = find(p.slice(0, 3));
     const quote = find(p.slice(3));
-    return base && quote ? [scorePair(base, quote)] : [];
+    return base && quote ? [scorePair(base, quote, macroOf(base.key), macroOf(quote.key))] : [];
   });
   const asOf = assets.reduce<string | null>((d, a) => (d && d > a.date ? d : a.date), null);
   return {
     asOf,
     assets,
     pairs,
+    macro,
     notice: state.error ? `${state.error} ${asOf ? `Showing the report as of ${asOf}.` : "No report is saved yet."}` : null,
   };
 }

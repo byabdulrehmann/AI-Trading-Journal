@@ -45,7 +45,7 @@ export interface JarvisContext {
   hasSampleData: boolean;
   totalTrades: number;
   /** Public CFTC data, the same for everyone. */
-  positioning: Pick<Positioning, "asOf" | "assets" | "pairs">;
+  positioning: Pick<Positioning, "asOf" | "assets" | "pairs"> & { macro: Positioning["macro"]["currencies"] };
   disclosure: string[];
 }
 
@@ -102,7 +102,7 @@ export function buildContext(userId: number, settings: Settings, focusTradeId?: 
     memoryEnabled ? `${memories.length} active memory item(s)` : "No memories (memory turned off)",
     focus ? `The trade you asked about (#${focus.id})` : null,
     "Your coaching style preference and display name",
-    "Public CFTC positioning scores (no personal data)",
+    "Public CFTC positioning and FRED macro scores (no personal data)",
   ].filter((x): x is string => x !== null);
 
   return {
@@ -117,7 +117,7 @@ export function buildContext(userId: number, settings: Settings, focusTradeId?: 
     memories,
     hasSampleData: trades.some((t) => t.source === "sample"),
     totalTrades: reported.length,
-    positioning: { asOf: market.asOf, assets: market.assets, pairs: market.pairs },
+    positioning: { asOf: market.asOf, assets: market.assets, pairs: market.pairs, macro: market.macro.currencies },
     disclosure,
   };
 }
