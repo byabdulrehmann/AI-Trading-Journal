@@ -3,7 +3,7 @@ import { describe, test } from "node:test";
 import { scoreAsset, scorePair, type CotWeek } from "./positioning";
 
 const weeks = (nets: number[]): CotWeek[] =>
-  nets.map((n, i) => ({ date: `2026-01-${String(i + 1).padStart(2, "0")}`, long: 1000 + n, short: 1000, openInterest: 10000 }));
+  nets.map((n, i) => ({ date: new Date(Date.UTC(2026, 0, 6 + 7 * i)).toISOString().slice(0, 10), long: 1000 + n, short: 1000, openInterest: 10000 }));
 
 describe("positioning scorecard", () => {
   test("the COT index places this week's net within its range", () => {
@@ -14,6 +14,16 @@ describe("positioning scorecard", () => {
     assert.equal(a.weeklyChange, -100);
     assert.equal(a.netPct, 1);
     assert.equal(a.crowded, false);
+  });
+
+  test("a missing week leaves this week's change unknown rather than spanning two weeks", () => {
+    const w = [
+      { date: "2026-01-06", long: 1000, short: 1000, openInterest: 10000 },
+      { date: "2026-01-20", long: 1100, short: 1000, openInterest: 10000 },
+    ];
+    assert.equal(scoreAsset("X", "X", w)!.weeklyChange, null);
+    w[0].date = "2026-01-13";
+    assert.equal(scoreAsset("X", "X", w)!.weeklyChange, 100);
   });
 
   test("a record high is crowded, a flat history is neutral, no history is nothing", () => {

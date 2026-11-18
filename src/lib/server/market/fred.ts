@@ -1,6 +1,6 @@
 import "server-only";
 import { quarterOnQuarter, scoreMacro, type CurrencyMacro, type Observation } from "@/lib/domain/macro";
-import { db, transaction } from "../db";
+import { db, getSetting, putSetting, transaction } from "../db";
 import { decrypt, encrypt } from "../mt5/crypto";
 
 /**
@@ -34,12 +34,13 @@ const DAY = 86_400_000;
 const REFRESH_AFTER = DAY;
 const RETRY_AFTER = 3_600_000;
 
-const setting = (k: string) => (db().prepare("SELECT value FROM settings WHERE key = ?").get(k) as { value: string } | undefined)?.value ?? null;
-const putSetting = (k: string, v: string) => db().prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(k, v);
+const g = globalThis as unknown as { __jarvisFred?: { lastAttempt: number; running: Promise<void> | null; error: string | null } };
+g.__jarvisFred ??= { lastAttempt: 0, running: null, error: null };
+const state = g.__jarvisFred;
 
-export const hasFredKey = () => !!setting(KEY);
+export const hasFredKey = () => !!getSetting(KEY);
 function fredKey(): string | null {
-  const stored = setting(KEY);
+  const stored = getSetting(KEY);
   if (!stored) return null;
   try {
     return decrypt(stored);
@@ -47,16 +48,22 @@ function fredKey(): string | null {
     return null; // The master key changed: the owner enters it again.
   }
 }
+/** A new key is fetched with on the next load, without waiting out an earlier failure. */
 export function saveFredKey(key: string | null) {
   if (key) putSetting(KEY, encrypt(key));
-  else db().prepare("DELETE FROM settings WHERE key IN (?, ?)").run(KEY, FETCHED);
+  else db().prepare("DELETE FROM settings WHERE key = ?").run(KEY);
+  db().prepare("DELETE FROM settings WHERE key = ?").run(FETCHED);
+  state.lastAttempt = 0;
+  state.error = null;
 }
 
 export const FRED_KEY_SHAPE = /^[a-f0-9]{32}$/;
 
 class FredError extends Error {
-  constructor(message: string, readonly badKey = false) {
+  readonly badKey: boolean;
+  constructor(message: string, badKey = false) {
     super(message);
+    this.badKey = badKey;
   }
 }
 
@@ -88,15 +95,14 @@ export async function checkFredKey(key: string): Promise<"ok" | "rejected" | "un
   }
 }
 
-const g = globalThis as unknown as { __jarvisFred?: { lastAttempt: number; running: Promise<void> | null; error: string | null } };
-g.__jarvisFred ??= { lastAttempt: 0, running: null, error: null };
-const state = g.__jarvisFred;
-
-/** Fetches the last two years of every series, at most daily. Never throws: a failure keeps the saved readings. */
+/**
+ * Fetches the last two years of every series, at most daily, all at once (23 requests; FRED allows 120 a minute).
+ * Never throws. A series that fails keeps its saved readings and is named in the notice; the rest still update.
+ */
 export async function refreshFred(): Promise<void> {
   const key = fredKey();
   if (!key) return;
-  const fetched = Number(setting(FETCHED) ?? 0);
+  const fetched = Number(getSetting(FETCHED) ?? 0);
   if (Date.now() - fetched < REFRESH_AFTER) return;
   if (state.running) return state.running;
   if (Date.now() - state.lastAttempt < RETRY_AFTER) return;
@@ -104,17 +110,25 @@ export async function refreshFred(): Promise<void> {
   state.running = (async () => {
     try {
       const since = new Date(Date.now() - 2 * 365 * DAY).toISOString().slice(0, 10);
-      const results: [string, Observation[]][] = [];
-      for (const id of ALL) results.push([id, await observations(id, key, since)]); // one at a time: FRED allows 120 a minute
+      const results = await Promise.allSettled(ALL.map((id) => observations(id, key, since)));
+      const failed = results.flatMap((r, i) => (r.status === "rejected" ? [{ id: ALL[i], err: r.reason as unknown }] : []));
       const conn = db();
       const put = conn.prepare("INSERT INTO fred_observations (series_id, date, value) VALUES (?, ?, ?) ON CONFLICT (series_id, date) DO UPDATE SET value = excluded.value");
       transaction(conn, () => {
-        for (const [id, obs] of results) for (const o of obs) put.run(id, o.date, o.value);
-        putSetting(FETCHED, String(Date.now()));
+        results.forEach((r, i) => r.status === "fulfilled" && r.value.forEach((o) => put.run(ALL[i], o.date, o.value)));
+        // Some series in: done for today. None in: try again in an hour.
+        if (failed.length < ALL.length) putSetting(FETCHED, String(Date.now()));
       });
-      state.error = null;
-    } catch (err) {
-      state.error = err instanceof FredError ? err.message : err instanceof Error && err.name === "TimeoutError" ? "FRED didn't answer in time." : "Couldn't reach FRED.";
+      const badKey = failed.find((f) => f.err instanceof FredError && f.err.badKey);
+      state.error = badKey
+        ? (badKey.err as FredError).message
+        : failed.length === ALL.length
+          ? failed[0].err instanceof Error && failed[0].err.name === "TimeoutError" ? "FRED didn't answer in time." : "Couldn't reach FRED."
+          : failed.length
+            ? `FRED didn't send ${failed.map((f) => f.id).join(", ")}.`
+            : null;
+    } catch {
+      state.error = "Couldn't save the FRED readings.";
     } finally {
       state.running = null;
     }
@@ -132,7 +146,10 @@ export interface Macro {
 export function macro(): Macro {
   const rows = db().prepare("SELECT series_id, date, value FROM fred_observations ORDER BY date").all() as { series_id: string; date: string; value: number }[];
   const bySeries = new Map<string, Observation[]>();
-  for (const r of rows) bySeries.set(r.series_id, [...(bySeries.get(r.series_id) ?? []), { date: r.date, value: r.value }]);
+  for (const r of rows) {
+    if (!bySeries.has(r.series_id)) bySeries.set(r.series_id, []);
+    bySeries.get(r.series_id)!.push({ date: r.date, value: r.value });
+  }
   const get = (id: string | null) => (id ? (bySeries.get(id) ?? []) : []);
   const currencies = rows.length
     ? scoreMacro(MACRO_SERIES.map((s) => ({ key: s.key, rate: get(s.rate), growth: s.growthIsLevel ? quarterOnQuarter(get(s.growth)) : get(s.growth), unemployment: get(s.unemployment) })))

@@ -2,7 +2,7 @@ import "server-only";
 import { RANGE_WEEKS, scoreAsset, scorePair, type AssetPositioning, type CotWeek, type PairPositioning } from "@/lib/domain/positioning";
 import { db, transaction } from "../db";
 import { macro as readMacro, type Macro } from "./fred";
-import { scoreSurprises, SURPRISE_DAYS, type CurrencySurprise } from "@/lib/domain/surprise";
+import { scoreSurprises, surpriseSince, type CurrencySurprise } from "@/lib/domain/surprise";
 import { listEvents } from "../news";
 
 /** The CFTC's public Legacy futures-only report (Socrata). Free, no key, and nothing about the user is sent. */
@@ -102,12 +102,16 @@ export function positioning(userId: number): Positioning {
     code: string; report_date: string; long: number; short: number; open_interest: number;
   }[];
   const byCode = new Map<string, CotWeek[]>();
-  for (const r of rows) byCode.set(r.code, [...(byCode.get(r.code) ?? []), { date: r.report_date, long: r.long, short: r.short, openInterest: r.open_interest }]);
+  for (const r of rows) {
+    if (!byCode.has(r.code)) byCode.set(r.code, []);
+    byCode.get(r.code)!.push({ date: r.report_date, long: r.long, short: r.short, openInterest: r.open_interest });
+  }
   const assets = ASSETS.map((a) => scoreAsset(a.key, a.name, byCode.get(a.code) ?? [])).filter((a): a is AssetPositioning => a !== null);
   const find = (k: string) => assets.find((a) => a.key === k);
   const macro = readMacro();
   const macroOf = (k: string) => macro.currencies.find((c) => c.key === k)?.score ?? null;
-  const surprises = scoreSurprises(listEvents(userId, new Date(Date.now() - SURPRISE_DAYS * 86_400_000).toISOString(), new Date().toISOString()), CURRENCIES);
+  const now = Date.now();
+  const surprises = scoreSurprises(listEvents(userId, new Date(surpriseSince(now)).toISOString()), CURRENCIES, now);
   const surpriseOf = (k: string) => surprises.find((c) => c.key === k)?.score ?? null;
   const pairs = PAIRS.flatMap((p) => {
     const base = find(p.slice(0, 3));

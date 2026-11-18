@@ -78,14 +78,17 @@ export function Positioning() {
                   <tr key={a.key} className="border-b border-line">
                     <td className="py-1.5 pr-3">
                       <span className="font-medium">{a.key}</span> <span className="text-[12.5px] text-muted">{a.name}</span>
+                      {a.date !== data.asOf && <span className="block text-[12px] text-warn">Last report {a.date}</span>}
                     </td>
                     <td className="num py-1.5 pr-3 text-right">{signed(a.netPct, 1)}%</td>
-                    <td className={cx("num hidden py-1.5 pr-3 text-right sm:table-cell", a.weeklyChange > 0 ? "text-profit" : a.weeklyChange < 0 ? "text-loss" : "text-muted")}>{signed(a.weeklyChange)}</td>
+                    <td className={cx("num hidden py-1.5 pr-3 text-right sm:table-cell", a.weeklyChange === null ? "text-[12.5px] text-muted" : a.weeklyChange > 0 ? "text-profit" : a.weeklyChange < 0 ? "text-loss" : "text-muted")} title={a.weeklyChange === null ? "The report a week before is missing" : undefined}>
+                      {a.weeklyChange === null ? "not available" : signed(a.weeklyChange)}
+                    </td>
                     <td className="num py-1.5 pr-3 text-right">
                       {a.cotIndex}
                       {a.crowded && <span className="ml-1.5 text-[12px] text-warn">crowded</span>}
                     </td>
-                    <td className="hidden py-1.5 md:table-cell"><Sparkline values={a.history} up={a.weeklyChange >= 0} /></td>
+                    <td className="hidden py-1.5 md:table-cell"><Sparkline values={a.history} up={(a.weeklyChange ?? 0) >= 0} /></td>
                   </tr>
                 ))}
               </tbody>

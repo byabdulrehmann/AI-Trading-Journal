@@ -12,6 +12,10 @@ describe("economic surprises", () => {
     assert.equal(parseFigure("215K"), 215_000);
     assert.equal(parseFigure("1,234.5"), 1234.5);
     assert.equal(parseFigure("-3.2B"), -3.2e9);
+    assert.equal(parseFigure("$-3.2B"), -3.2e9);
+    assert.equal(parseFigure("-¥1.1T"), -1.1e12);
+    assert.equal(parseFigure("<0.1%"), 0.1);
+    assert.equal(parseFigure("£"), null);
     assert.equal(parseFigure(""), null);
     assert.equal(parseFigure("n/a"), null);
   });

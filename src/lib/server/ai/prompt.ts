@@ -58,7 +58,7 @@ function renderRecord(ctx: JarvisContext): string {
   const pos = ctx.positioning;
   if (pos.asOf) {
     lines.push("", `market_positioning (CFTC Commitments of Traders, large speculators, as of ${pos.asOf}; score -1..+1, cot_index 0..100 within 3 years):`);
-    for (const a of pos.assets) lines.push(`- ${a.key}: net ${a.netPct}% of open interest, week change ${a.weeklyChange}, cot_index ${a.cotIndex}${a.crowded ? " (crowded)" : ""}`);
+    for (const a of pos.assets) lines.push(`- ${a.key}: net ${a.netPct}% of open interest, week change ${a.weeklyChange ?? "n/a"}, cot_index ${a.cotIndex}${a.crowded ? " (crowded)" : ""}${a.date !== pos.asOf ? ` (last report ${a.date})` : ""}`);
     lines.push(`pairs (score averages positioning, macro and surprises, whichever exist): ${pos.pairs.map((p) => `${p.symbol} ${p.bias} ${p.score} (positioning ${p.cot}${p.macro === null ? "" : `, macro ${p.macro}`}${p.surprise === null ? "" : `, surprises ${p.surprise}`})`).join("; ")}`);
   }
   if (pos.macro.length) {

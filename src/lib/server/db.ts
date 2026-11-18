@@ -514,3 +514,8 @@ export function transaction<T>(conn: DatabaseSync, fn: () => T): T {
 }
 
 export const now = () => new Date().toISOString();
+
+/** An install-wide value from the settings table, or null. */
+export const getSetting = (key: string) => (db().prepare("SELECT value FROM settings WHERE key = ?").get(key) as { value: string } | undefined)?.value ?? null;
+export const putSetting = (key: string, value: string) =>
+  db().prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, value);

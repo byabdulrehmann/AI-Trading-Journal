@@ -20,7 +20,8 @@ export interface AssetPositioning {
   net: number;
   /** Net as a share of open interest, −100…100. */
   netPct: number;
-  weeklyChange: number;
+  /** Against the report a week before. Null when that week is missing. */
+  weeklyChange: number | null;
   /** 0–100: where this week's net sits between its 3-year low and high. */
   cotIndex: number;
   /** −1…+1, from the COT index. */
@@ -47,11 +48,13 @@ export interface PairPositioning {
 }
 
 export const RANGE_WEEKS = 156;
+const WEEK = 7 * 86_400_000;
 
 /** Weeks must be oldest first. Null when there's no report yet. */
 export function scoreAsset(key: string, name: string, weeks: CotWeek[]): AssetPositioning | null {
   const last = weeks.at(-1);
   if (!last) return null;
+  const prev = weeks.at(-2);
   const nets = weeks.slice(-RANGE_WEEKS).map((w) => w.long - w.short);
   const net = nets.at(-1)!;
   const lo = Math.min(...nets);
@@ -63,7 +66,7 @@ export function scoreAsset(key: string, name: string, weeks: CotWeek[]): AssetPo
     date: last.date,
     net,
     netPct: last.openInterest ? Math.round((net / last.openInterest) * 1000) / 10 : 0,
-    weeklyChange: nets.length > 1 ? net - nets.at(-2)! : 0,
+    weeklyChange: prev && Date.parse(last.date) - Date.parse(prev.date) === WEEK ? net - (prev.long - prev.short) : null,
     cotIndex,
     score: (cotIndex - 50) / 50,
     crowded: cotIndex >= 90 || cotIndex <= 10,

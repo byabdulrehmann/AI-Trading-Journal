@@ -3,7 +3,7 @@ import { createHash, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { connection } from "next/server";
 import { z } from "zod";
-import { db, now, transaction } from "./db";
+import { db, getSetting, now, putSetting, transaction } from "./db";
 import { audit } from "./repo/audit";
 
 export interface User {
@@ -199,9 +199,9 @@ export async function endOtherSessions(userId: number, id?: number): Promise<num
 
 const SIGNUP_KEY = "install:signup";
 /** True unless the owner turned new accounts off. The very first account is always allowed by the caller. */
-export const signupOpen = () => (db().prepare("SELECT value FROM settings WHERE key = ?").get(SIGNUP_KEY) as { value: string } | undefined)?.value !== "closed";
+export const signupOpen = () => getSetting(SIGNUP_KEY) !== "closed";
 export function setSignupOpen(userId: number, open: boolean) {
-  db().prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(SIGNUP_KEY, open ? "open" : "closed");
+  putSetting(SIGNUP_KEY, open ? "open" : "closed");
   audit(userId, open ? "signup.opened" : "signup.closed");
 }
 

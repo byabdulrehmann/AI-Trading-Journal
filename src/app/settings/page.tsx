@@ -581,19 +581,30 @@ interface EarlyAccessRequest {
   createdAt: string;
 }
 
-/** Owner only: the install's FRED key, for the macro side of the Market page's scorecard. The key never comes back. */
-function FredKey() {
+type KeyCall = (init: Parameters<typeof api>[1], done: string) => Promise<void>;
+
+/** Save, check and remove one secret key. The key never comes back from the server; `extra` adds controls that share the busy state. */
+function KeyForm({ endpoint, saved, label, hint, savedMessage, removeLabel, removedMessage, reload, extra }: {
+  endpoint: string;
+  saved: boolean;
+  label: [empty: string, replace: string];
+  hint: string;
+  savedMessage: string;
+  removeLabel: string;
+  removedMessage: string;
+  reload: () => void;
+  extra?: (call: KeyCall, busy: boolean) => React.ReactNode;
+}) {
   const { toast } = useApp();
-  const { data, reload } = useFetch<{ configured: boolean }>("/api/market/fred-key");
   const [key, setKey] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const call = async (init: Parameters<typeof api>[1], done: string) => {
+  const call: KeyCall = async (init, done) => {
     setBusy(true);
     setError(null);
     try {
-      await api("/api/market/fred-key", init);
+      await api(endpoint, init);
       setKey("");
       toast({ message: done, tone: "success" });
       reload();
@@ -604,6 +615,24 @@ function FredKey() {
     }
   };
 
+  return (
+    <>
+      <form onSubmit={(e) => (e.preventDefault(), void call({ method: "PUT", json: { key } }, savedMessage))} className="grid gap-3 sm:grid-cols-[minmax(0,22rem)_auto] sm:items-end">
+        <Field label={saved ? label[1] : label[0]} hint={hint}>
+          {(p) => <input {...p} type="password" autoComplete="off" spellCheck={false} className={inputClass} value={key} onChange={(e) => setKey(e.target.value)} required />}
+        </Field>
+        <Button type="submit" disabled={busy}>{busy ? "Checking" : "Save key"}</Button>
+      </form>
+      {error && <p role="alert" className="text-[13px] text-loss">{error}</p>}
+      {saved && <Button size="sm" variant="ghost" disabled={busy} onClick={() => void call({ method: "DELETE" }, removedMessage)}>{removeLabel}</Button>}
+      {extra?.(call, busy)}
+    </>
+  );
+}
+
+/** Owner only: the install's FRED key, for the macro side of the Market page's scorecard. */
+function FredKey() {
+  const { data, reload } = useFetch<{ configured: boolean }>("/api/market/fred-key");
   return (
     <Section
       id="market-data"
@@ -613,42 +642,16 @@ function FredKey() {
       {data && (
         <div className="space-y-4" data-testid="fred-key">
           <p className="text-[13.5px] text-ink-soft">FRED key: <span className="font-medium text-ink">{data.configured ? "saved" : "not set"}</span></p>
-          <form onSubmit={(e) => (e.preventDefault(), void call({ method: "PUT", json: { key } }, "FRED key saved."))} className="grid gap-3 sm:grid-cols-[minmax(0,22rem)_auto] sm:items-end">
-            <Field label={data.configured ? "Replace the key" : "FRED API key"} hint="32 letters and digits. Jarvis checks it with FRED before saving.">
-              {(p) => <input {...p} type="password" autoComplete="off" spellCheck={false} className={inputClass} value={key} onChange={(e) => setKey(e.target.value)} required />}
-            </Field>
-            <Button type="submit" disabled={busy}>{busy ? "Checking" : "Save key"}</Button>
-          </form>
-          {error && <p role="alert" className="text-[13px] text-loss">{error}</p>}
-          {data.configured && <Button size="sm" variant="ghost" disabled={busy} onClick={() => void call({ method: "DELETE" }, "FRED key removed.")}>Remove the key</Button>}
+          <KeyForm endpoint="/api/market/fred-key" saved={data.configured} label={["FRED API key", "Replace the key"]} hint="32 letters and digits. Jarvis checks it with FRED before saving." savedMessage="FRED key saved." removeLabel="Remove the key" removedMessage="FRED key removed." reload={reload} />
         </div>
       )}
     </Section>
   );
 }
 
-/** This account's own Anthropic key, and for the owner whether accounts without one may use theirs. The key never comes back. */
+/** This account's own Anthropic key, and for the owner whether accounts without one may use theirs. */
 function AiKey({ isOwner }: { isOwner: boolean }) {
-  const { toast } = useApp();
   const { data, reload } = useFetch<{ ownKey: boolean; using: "own" | "owner" | "none"; ownerSharing: boolean; ownerHasKey: boolean }>("/api/jarvis/key");
-  const [key, setKey] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const call = async (init: Parameters<typeof api>[1], done: string) => {
-    setBusy(true);
-    setError(null);
-    try {
-      await api("/api/jarvis/key", init);
-      setKey("");
-      toast({ message: done, tone: "success" });
-      reload();
-    } catch (err) {
-      setError(fieldErrors(err).key ?? (err instanceof Error ? err.message : "Couldn't save it."));
-    } finally {
-      setBusy(false);
-    }
-  };
   const using = { own: "Your own key: you pay Anthropic for what you use.", owner: "The owner's key, shared with this account.", none: "No key: the AI Coach runs in demo mode." } as const;
 
   return (
@@ -656,23 +659,27 @@ function AiKey({ isOwner }: { isOwner: boolean }) {
       {data && (
         <div className="space-y-4" data-testid="ai-key">
           <p className="text-[13.5px] text-ink-soft">Using now: <span className="font-medium text-ink">{using[data.using]}</span></p>
-          <form onSubmit={(e) => (e.preventDefault(), void call({ method: "PUT", json: { key } }, "Key saved."))} className="grid gap-3 sm:grid-cols-[minmax(0,22rem)_auto] sm:items-end">
-            <Field label={data.ownKey ? "Replace your key" : "Your Anthropic key"} hint="Starts with sk-ant-. Jarvis checks it with Anthropic before saving.">
-              {(p) => <input {...p} type="password" autoComplete="off" spellCheck={false} className={inputClass} value={key} onChange={(e) => setKey(e.target.value)} required />}
-            </Field>
-            <Button type="submit" disabled={busy}>{busy ? "Checking" : "Save key"}</Button>
-          </form>
-          {error && <p role="alert" className="text-[13px] text-loss">{error}</p>}
-          {data.ownKey && <Button size="sm" variant="ghost" disabled={busy} onClick={() => void call({ method: "DELETE" }, "Key removed.")}>Remove my key</Button>}
-          {isOwner && (
-            <Toggle
-              label="Share my key with accounts that have none"
-              checked={data.ownerSharing}
-              disabled={busy}
-              onChange={(share) => void call({ method: "PATCH", json: { share } }, share ? "Your key is shared." : "Your key is no longer shared.")}
-              description={data.ownerHasKey ? "Your key is ANTHROPIC_API_KEY on the server. Shared, it's capped at 30 messages a minute and 500 a day per account." : "ANTHROPIC_API_KEY isn't set on the server, so there's nothing to share yet."}
-            />
-          )}
+          <KeyForm
+            endpoint="/api/jarvis/key"
+            saved={data.ownKey}
+            label={["Your Anthropic key", "Replace your key"]}
+            hint="Starts with sk-ant-. Jarvis checks it with Anthropic before saving."
+            savedMessage="Key saved."
+            removeLabel="Remove my key"
+            removedMessage="Key removed."
+            reload={reload}
+            extra={(call, busy) =>
+              isOwner && (
+                <Toggle
+                  label="Share my key with accounts that have none"
+                  checked={data.ownerSharing}
+                  disabled={busy}
+                  onChange={(share) => void call({ method: "PATCH", json: { share } }, share ? "Your key is shared." : "Your key is no longer shared.")}
+                  description={data.ownerHasKey ? "Your key is ANTHROPIC_API_KEY on the server. Shared, it's capped at 30 messages a minute and 500 a day per account." : "ANTHROPIC_API_KEY isn't set on the server, so there's nothing to share yet."}
+                />
+              )
+            }
+          />
         </div>
       )}
     </Section>

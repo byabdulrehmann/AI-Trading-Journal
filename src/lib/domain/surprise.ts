@@ -31,15 +31,19 @@ export interface CurrencySurprise {
 
 const MULTIPLIER: Record<string, number> = { K: 1e3, M: 1e6, B: 1e9, T: 1e12 };
 
-/** "2.5%", "-0.1%", "215K", "1,234.5", "−3.2B" → a number; anything else → null. */
+/** The start of the window: the one definition the query and the scoring share. */
+export const surpriseSince = (now: number) => now - SURPRISE_DAYS * 86_400_000;
+
+/** "2.5%", "-0.1%", "215K", "1,234.5", "−3.2B", "$-3.2B", "-¥1.1T", "<0.1%" → a number; anything else → null. */
 export function parseFigure(raw: string): number | null {
-  const m = /^([+-]?)(\d+(?:\.\d+)?|\.\d+)\s*([KMBT%])?$/i.exec(raw.trim().replace(/[,\s]/g, "").replace(/−/g, "-"));
+  const plain = raw.replace(/[,\s$€£¥₹]/g, "").replace(/−/g, "-").replace(/^[<>~≈]/, "");
+  const m = /^([+-]?)(\d+(?:\.\d+)?|\.\d+)([KMBT%])?$/i.exec(plain);
   if (!m) return null;
   return (m[1] === "-" ? -1 : 1) * Number(m[2]) * (MULTIPLIER[(m[3] ?? "").toUpperCase()] ?? 1);
 }
 
 export function scoreSurprises(events: SurpriseEvent[], currencies: string[], now = Date.now()): CurrencySurprise[] {
-  const since = now - SURPRISE_DAYS * 86_400_000;
+  const since = surpriseSince(now);
   return currencies.map((key) => {
     const releases: CurrencySurprise["releases"] = [];
     let weighted = 0;
