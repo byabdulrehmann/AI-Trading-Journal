@@ -2,6 +2,8 @@ import "server-only";
 import { RANGE_WEEKS, scoreAsset, scorePair, type AssetPositioning, type CotWeek, type PairPositioning } from "@/lib/domain/positioning";
 import { db, transaction } from "../db";
 import { macro as readMacro, type Macro } from "./fred";
+import { scoreSurprises, SURPRISE_DAYS, type CurrencySurprise } from "@/lib/domain/surprise";
+import { listEvents } from "../news";
 
 /** The CFTC's public Legacy futures-only report (Socrata). Free, no key, and nothing about the user is sent. */
 const ENDPOINT = "https://publicreporting.cftc.gov/resource/6dca-aqww.json";
@@ -35,6 +37,8 @@ export interface Positioning {
   assets: AssetPositioning[];
   pairs: PairPositioning[];
   macro: Macro;
+  /** From this user's economic calendar. */
+  surprises: CurrencySurprise[];
   /** Set when the CFTC couldn't be reached; what's shown is the last report saved. */
   notice: string | null;
 }
@@ -90,8 +94,10 @@ export async function refreshCot(): Promise<void> {
   return state.running;
 }
 
-/** The scorecard from the saved reports. Reads only the database. */
-export function positioning(): Positioning {
+const CURRENCIES = ["USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD"];
+
+/** The scorecard from the saved reports and this user's calendar. Reads only the database. */
+export function positioning(userId: number): Positioning {
   const rows = db().prepare("SELECT code, report_date, long, short, open_interest FROM cot_reports ORDER BY report_date").all() as {
     code: string; report_date: string; long: number; short: number; open_interest: number;
   }[];
@@ -101,10 +107,12 @@ export function positioning(): Positioning {
   const find = (k: string) => assets.find((a) => a.key === k);
   const macro = readMacro();
   const macroOf = (k: string) => macro.currencies.find((c) => c.key === k)?.score ?? null;
+  const surprises = scoreSurprises(listEvents(userId, new Date(Date.now() - SURPRISE_DAYS * 86_400_000).toISOString(), new Date().toISOString()), CURRENCIES);
+  const surpriseOf = (k: string) => surprises.find((c) => c.key === k)?.score ?? null;
   const pairs = PAIRS.flatMap((p) => {
     const base = find(p.slice(0, 3));
     const quote = find(p.slice(3));
-    return base && quote ? [scorePair(base, quote, macroOf(base.key), macroOf(quote.key))] : [];
+    return base && quote ? [scorePair(base, quote, [macroOf(base.key), macroOf(quote.key)], [surpriseOf(base.key), surpriseOf(quote.key)])] : [];
   });
   const asOf = assets.reduce<string | null>((d, a) => (d && d > a.date ? d : a.date), null);
   return {
@@ -112,6 +120,7 @@ export function positioning(): Positioning {
     assets,
     pairs,
     macro,
+    surprises,
     notice: state.error ? `${state.error} ${asOf ? `Showing the report as of ${asOf}.` : "No report is saved yet."}` : null,
   };
 }

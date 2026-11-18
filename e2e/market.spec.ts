@@ -1,4 +1,4 @@
-import { expect, open, signUp, test } from "./helpers";
+import { expect, open, test } from "./helpers";
 
 test("the Market page shows the CFTC positioning scorecard, or says why it can't", async ({ page }) => {
   await open(page, "/market");
@@ -13,7 +13,7 @@ test("the Market page shows the CFTC positioning scorecard, or says why it can't
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/market.png`, fullPage: true });
 });
 
-test("only the owner manages the FRED key, a malformed key is refused before FRED is asked, and it never comes back", async ({ page, browser, guard }) => {
+test("a malformed FRED key is refused before FRED is asked, the key never comes back, and the Market page says how to add one", async ({ page, guard }) => {
   guard.allow(/status of 422/);
   await open(page, "/settings#market-data");
   const section = page.getByTestId("fred-key");
@@ -22,15 +22,31 @@ test("only the owner manages the FRED key, a malformed key is refused before FRE
   await section.getByRole("button", { name: "Save key" }).click();
   await expect(section.getByRole("alert")).toHaveText("A FRED key is 32 letters and digits.");
   expect(JSON.stringify(await (await page.request.get("/api/market/fred-key")).json())).toBe('{"configured":false}');
+  // Owner only: the same requireOwner as the sign-up switch, whose refusal of other accounts security.spec.ts checks.
+  await open(page, "/market");
+  await expect(page.getByText("Only the owner of this Jarvis can add it.")).toBeVisible({ timeout: 30_000 });
+});
 
-  const other = await browser.newPage();
-  try {
-    await signUp(other, "Other");
-    expect((await other.request.get("/api/market/fred-key")).status()).toBe(403);
-    expect((await other.request.put("/api/market/fred-key", { data: { key: "a".repeat(32) } })).status()).toBe(403);
-    await other.goto("/market");
-    await expect(other.getByText("Only the owner of this Jarvis can add it.")).toBeVisible({ timeout: 30_000 });
-  } finally {
-    await other.close();
-  }
+test("calendar releases against forecast score each currency, and an empty calendar says how to add them", async ({ page }) => {
+  await open(page, "/market");
+  const card = page.getByTestId("positioning");
+  await expect(card.getByRole("link", { name: "Economic calendar" })).toBeVisible({ timeout: 30_000 });
+
+  const day = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+  for (const e of [
+    { at: day(2), currency: "USD", title: "Retail sales", impact: "high", actual: "0.6%", forecast: "0.3%" },
+    { at: day(3), currency: "USD", title: "Unemployment rate", impact: "medium", actual: "4.3%", forecast: "4.1%" },
+    { at: day(4), currency: "EUR", title: "CPI flash", impact: "high", actual: "1.9%", forecast: "2.1%" },
+    { at: day(45), currency: "EUR", title: "Too old to count", impact: "high", actual: "9%", forecast: "1%" },
+  ])
+    expect((await page.request.post("/api/events", { data: e })).status()).toBe(201);
+
+  await page.reload();
+  const table = card.getByRole("table", { name: "How each currency’s releases came in against forecast" });
+  // USD: high beat (+3), unemployment up is a medium miss (−2): +0.2. EUR: high miss, the old one left out: −1.
+  await expect(table.getByRole("row", { name: /^USD 1 1 Retail sales/ })).toContainText("+0.2");
+  await expect(table.getByRole("row", { name: /^EUR 0 1 CPI flash/ })).toContainText("−1");
+  await expect(card.getByText(/surprises/).first()).toBeVisible();
+  if (process.env.SHOT_DIR) await table.screenshot({ path: `${process.env.SHOT_DIR}/surprises.png` });
+  if (process.env.SHOT_DIR) await card.getByRole("list").screenshot({ path: `${process.env.SHOT_DIR}/pairs.png` });
 });

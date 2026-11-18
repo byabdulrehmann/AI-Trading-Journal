@@ -45,7 +45,7 @@ export interface JarvisContext {
   hasSampleData: boolean;
   totalTrades: number;
   /** Public CFTC data, the same for everyone. */
-  positioning: Pick<Positioning, "asOf" | "assets" | "pairs"> & { macro: Positioning["macro"]["currencies"] };
+  positioning: Pick<Positioning, "asOf" | "assets" | "pairs" | "surprises"> & { macro: Positioning["macro"]["currencies"] };
   disclosure: string[];
 }
 
@@ -90,7 +90,7 @@ export function buildContext(userId: number, settings: Settings, focusTradeId?: 
     ? detectPatterns(reported, settings.timeZone || undefined).filter((p) => !settings.dismissedPatterns.includes(p.id))
     : [];
   const memories = memoryEnabled ? listMemories(userId, true).map(({ id, kind, content }) => ({ id, kind, content })) : [];
-  const market = positioning();
+  const market = positioning(userId);
   const focus = focusTradeId ? getTrade(userId, focusTradeId) : null;
 
   const disclosure = [
@@ -102,7 +102,7 @@ export function buildContext(userId: number, settings: Settings, focusTradeId?: 
     memoryEnabled ? `${memories.length} active memory item(s)` : "No memories (memory turned off)",
     focus ? `The trade you asked about (#${focus.id})` : null,
     "Your coaching style preference and display name",
-    "Public CFTC positioning and FRED macro scores (no personal data)",
+    "Public CFTC positioning and FRED macro scores, and surprise scores from your economic calendar",
   ].filter((x): x is string => x !== null);
 
   return {
@@ -117,7 +117,7 @@ export function buildContext(userId: number, settings: Settings, focusTradeId?: 
     memories,
     hasSampleData: trades.some((t) => t.source === "sample"),
     totalTrades: reported.length,
-    positioning: { asOf: market.asOf, assets: market.assets, pairs: market.pairs, macro: market.macro.currencies },
+    positioning: { asOf: market.asOf, assets: market.assets, pairs: market.pairs, macro: market.macro.currencies, surprises: market.surprises.filter((s) => s.score !== null) },
     disclosure,
   };
 }

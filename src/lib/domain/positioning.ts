@@ -1,7 +1,8 @@
 /**
  * Jarvis's positioning scorecard, built only from the CFTC's weekly Commitments of Traders report.
  * For each market: where large speculators' net position sits within its own 3-year range (the COT index),
- * and how it moved this week. A pair compares its two currencies, adding the macro score (macro.ts) when there is one.
+ * and how it moved this week. A pair compares its two currencies, adding the macro (macro.ts) and surprise
+ * (surprise.ts) scores when there are any.
  * Context for a review, not a trade signal.
  */
 
@@ -38,7 +39,9 @@ export interface PairPositioning {
   cot: number;
   /** From the FRED macro scores, when both currencies have one. */
   macro: number | null;
-  /** The two averaged, or positioning alone. */
+  /** From the user's economic calendar surprises, when both currencies have one. */
+  surprise: number | null;
+  /** Whichever of the three exist, averaged. */
   score: number;
   bias: "bullish" | "bearish" | "neutral";
 }
@@ -72,10 +75,15 @@ export const biasOf = (score: number): PairPositioning["bias"] => (score > 0.15 
 
 const round = (n: number) => Math.round(n * 100) / 100;
 
-/** A pair is bullish when speculators, and the macro backdrop if known, favour the base over the quote. */
-export function scorePair(base: AssetPositioning, quote: AssetPositioning, macroBase: number | null = null, macroQuote: number | null = null): PairPositioning {
+type Both = [base: number | null, quote: number | null];
+const spread = ([b, q]: Both) => (b === null || q === null ? null : round((b - q) / 2));
+
+/** A pair is bullish when speculators, and the macro backdrop and recent releases where known, favour the base over the quote. */
+export function scorePair(base: AssetPositioning, quote: AssetPositioning, macroScores: Both = [null, null], surpriseScores: Both = [null, null]): PairPositioning {
   const cot = round((base.score - quote.score) / 2);
-  const macro = macroBase === null || macroQuote === null ? null : round((macroBase - macroQuote) / 2);
-  const score = macro === null ? cot : round((cot + macro) / 2);
-  return { symbol: base.key + quote.key, base: base.key, quote: quote.key, cot, macro, score, bias: biasOf(score) };
+  const macro = spread(macroScores);
+  const surprise = spread(surpriseScores);
+  const parts = [cot, macro, surprise].filter((x): x is number => x !== null);
+  const score = round(parts.reduce((a, b) => a + b, 0) / parts.length);
+  return { symbol: base.key + quote.key, base: base.key, quote: quote.key, cot, macro, surprise, score, bias: biasOf(score) };
 }

@@ -8,5 +8,5 @@ export async function GET() {
   const user = await requireUser();
   if (user instanceof Response) return user;
   await Promise.all([refreshCot(), refreshFred()]);
-  return json(positioning());
+  return json(positioning(user.id));
 }

@@ -49,9 +49,11 @@ export function Positioning() {
                   <span className="font-medium">{p.symbol}</span>
                   <ScoreBar score={p.score} />
                   <span className="text-right text-ink-soft"><span className="capitalize">{p.bias}</span> <span className="num">{signed(p.score, 2)}</span></span>
-                  {p.macro !== null && (
+                  {(p.macro !== null || p.surprise !== null) && (
                     <span className="col-span-3 text-[12px] text-muted">
-                      Positioning <span className="num">{signed(p.cot, 2)}</span>, macro <span className="num">{signed(p.macro, 2)}</span>
+                      Positioning <span className="num">{signed(p.cot, 2)}</span>
+                      {p.macro !== null && <>, macro <span className="num">{signed(p.macro, 2)}</span></>}
+                      {p.surprise !== null && <>, surprises <span className="num">{signed(p.surprise, 2)}</span></>}
                     </span>
                   )}
                 </li>
@@ -93,6 +95,7 @@ export function Positioning() {
       )}
       {data?.macro.notice && <div className="mt-4"><Notice>{data.macro.notice}</Notice></div>}
       {data && data.macro.currencies.length > 0 && <MacroTable macro={data.macro} />}
+      {data && <SurpriseTable surprises={data.surprises} />}
       {data && !data.macro.configured && (
         <p className="mt-4 text-[13px] text-ink-soft">
           Add a free FRED key in <Link href="/settings#market-data" className="underline underline-offset-2">Settings, Market data</Link> to blend each economy&rsquo;s interest rate, growth and jobs into the pairs. Only the owner of this Jarvis can add it.
@@ -100,7 +103,7 @@ export function Positioning() {
       )}
       {data && (
         <p className="mt-4 text-[12.5px] text-muted">
-          Positioning is non-commercial (large speculator) futures positions. A pair scores its base against its quote: positive means speculators{data.macro.currencies.length > 0 ? ", and the macro backdrop," : ""} favour the base.{data.macro.currencies.length > 0 && " Macro compares the eight economies with each other: higher rates, hikes, growth and falling unemployment score higher. FRED has no current euro area unemployment rate, so the euro is scored without it."} Crowded means the top or bottom tenth of the 3-year range, where positioning has the least room left. Context for your review, not a signal to trade.
+          Positioning is non-commercial (large speculator) futures positions. A pair scores its base against its quote: positive means speculators, and whatever else is scored, favour the base.{data.surprises.some((x) => x.score !== null) && " Surprises weigh each release from the last 30 days on your calendar as a beat or a miss against its forecast, high impact three times low; for unemployment and jobless claims, lower is the beat."}{data.macro.currencies.length > 0 && " Macro compares the eight economies with each other: higher rates, hikes, growth and falling unemployment score higher. FRED has no current euro area unemployment rate, so the euro is scored without it."} Crowded means the top or bottom tenth of the 3-year range, where positioning has the least room left. Context for your review, not a signal to trade.
         </p>
       )}
     </Card>
@@ -138,6 +141,50 @@ function MacroTable({ macro }: { macro: Data["macro"] }) {
               <td className={cx("num py-1.5 text-right", c.score === null ? "text-muted" : c.score > 0 ? "text-profit" : c.score < 0 ? "text-loss" : undefined)}>{c.score === null ? "none" : signed(c.score, 2)}</td>
             </tr>
           ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+/** This user's calendar: beats and misses against forecast per currency, last 30 days. */
+function SurpriseTable({ surprises }: { surprises: Data["surprises"] }) {
+  const scored = surprises.filter((x) => x.score !== null);
+  if (!scored.length)
+    return (
+      <p className="mt-4 text-[13px] text-ink-soft">
+        Import or add events with actual and forecast figures on the <Link href="/news" className="underline underline-offset-2">Economic calendar</Link> to score how each currency&rsquo;s releases came in over the last 30 days.
+      </p>
+    );
+  return (
+    <section className="mt-6 min-w-0 overflow-x-auto">
+      <h3 className="mb-1 text-[13px] font-medium text-muted">Economic surprises, last 30 days, from your calendar</h3>
+      <table className="w-full text-[13.5px]">
+        <caption className="sr-only">How each currency&rsquo;s releases came in against forecast</caption>
+        <thead className="text-left text-[12.5px] text-muted">
+          <tr className="border-b border-line">
+            <th scope="col" className="py-1.5 pr-3 font-normal">Currency</th>
+            <th scope="col" className="py-1.5 pr-3 text-right font-normal">Beat</th>
+            <th scope="col" className="py-1.5 pr-3 text-right font-normal">Missed</th>
+            <th scope="col" className="hidden py-1.5 pr-3 font-normal md:table-cell md:w-1/2">Latest</th>
+            <th scope="col" className="py-1.5 text-right font-normal" title="−1 to +1: every release beat (+1) or missed (−1), weighted by impact">Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          {scored.map((c) => {
+            const r = c.releases[0];
+            return (
+              <tr key={c.key} className="border-b border-line">
+                <td className="py-1.5 pr-3 font-medium">{c.key}</td>
+                <td className="num py-1.5 pr-3 text-right">{c.beats}</td>
+                <td className="num py-1.5 pr-3 text-right">{c.misses}</td>
+                <td className="hidden max-w-0 truncate py-1.5 pr-3 text-ink-soft md:table-cell" title={`${r.title}: ${r.actual} against ${r.forecast} forecast`}>
+                  {r.title}: <span className="num">{r.actual}</span> vs <span className="num">{r.forecast}</span>, {r.result === "inline" ? "in line" : r.result === "beat" ? "beat" : "missed"}
+                </td>
+                <td className={cx("num py-1.5 text-right", c.score! > 0 ? "text-profit" : c.score! < 0 ? "text-loss" : undefined)}>{signed(c.score!, 2)}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </section>
