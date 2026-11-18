@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { body, json } from "@/lib/server/http";
 import { requireUser } from "@/lib/server/auth";
+import { withAiKey } from "@/lib/server/ai/key";
 import { PROVIDERS, resolveActive, validateChoice } from "@/lib/server/ai/registry";
 import { ProviderError, type ModelInfo } from "@/lib/server/ai/types";
 import { getSettings, updateSettings } from "@/lib/server/repo/settings";
@@ -10,7 +11,11 @@ import { recordActivity } from "@/lib/server/repo/activity";
 export async function GET() {
   const user = await requireUser();
   if (user instanceof Response) return user;
-  const settings = getSettings(user.id);
+  return withAiKey(user.id, () => list(user.id));
+}
+
+async function list(userId: number) {
+  const settings = getSettings(userId);
   const active = resolveActive(settings);
   const providers = await Promise.all(
     PROVIDERS.map(async (p) => {
@@ -40,7 +45,7 @@ export async function POST(req: Request) {
   if (user instanceof Response) return user;
   const data = await body(req, z.object({ provider: z.string().min(1), model: z.string().min(1).nullable().default(null) }));
   if (data instanceof Response) return data;
-  const result = await validateChoice(data.provider, data.model);
+  const result = await withAiKey(user.id, () => validateChoice(data.provider, data.model));
   if (!result.ok) return json(result, 422);
   updateSettings(user.id, { jarvis: { provider: result.provider, model: result.model } });
   recordActivity(user.id, "settings.changed", { settings: ["jarvis.provider", "jarvis.model"] });

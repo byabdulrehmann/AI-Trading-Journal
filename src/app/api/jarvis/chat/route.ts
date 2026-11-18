@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { body, fail } from "@/lib/server/http";
-import { rateLimited, requireUser } from "@/lib/server/auth";
+import { rateLimited, requireUser, type User } from "@/lib/server/auth";
+import { keyFor, withAiKey } from "@/lib/server/ai/key";
 import { buildContext } from "@/lib/server/ai/context";
 import { systemPrompt } from "@/lib/server/ai/prompt";
 import { findModels, getProvider, PROVIDERS, resolveActive, validateChoice } from "@/lib/server/ai/registry";
@@ -17,7 +18,8 @@ const Body = z.object({
 });
 
 const HISTORY_LIMIT = 20;
-// Every account spends the owner's API key: a ceiling per minute and per day, and one reply at a time per person.
+// One reply at a time per person. Accounts on the owner's shared key also get a ceiling per minute and per day;
+// with their own key, they pay for what they use.
 const PER_MINUTE = 30;
 const PER_DAY = 500;
 const answering = new Set<number>();
@@ -36,14 +38,21 @@ type Send = (event: string, data: unknown) => void;
 export async function POST(req: Request) {
   const user = await requireUser();
   if (user instanceof Response) return user;
+  // Everything below, the streamed reply included, uses this user's Anthropic key.
+  return withAiKey(user.id, () => answer(req, user));
+}
+
+async function answer(req: Request, user: User) {
   const data = await body(req, Body);
   if (data instanceof Response) return data;
   const settings = getSettings(user.id);
   if (!settings.jarvis.enabled) return fail("The AI Coach is turned off in Settings.", 403);
   if (data.conversationId && !conversationExists(user.id, data.conversationId)) return fail("Conversation not found.", 404);
   if (answering.has(user.id)) return fail("Jarvis is still answering your last message.", 429);
-  if (rateLimited(`ai-minute:${user.id}`, PER_MINUTE, 60_000)) return fail("That's a lot of messages in a minute. Wait a moment and try again.", 429);
-  if (rateLimited(`ai-day:${user.id}`, PER_DAY, 86_400_000)) return fail(`You've reached today's limit of ${PER_DAY} messages.`, 429);
+  if (keyFor(user.id)?.own !== true) {
+    if (rateLimited(`ai-minute:${user.id}`, PER_MINUTE, 60_000)) return fail("That's a lot of messages in a minute. Wait a moment and try again.", 429);
+    if (rateLimited(`ai-day:${user.id}`, PER_DAY, 86_400_000)) return fail(`You've reached today's limit of ${PER_DAY} messages.`, 429);
+  }
 
   answering.add(user.id);
   let conversationId: number;

@@ -127,7 +127,7 @@ export default function SettingsPage() {
     <>
       <PageHeader title="Settings" description="Preferences, privacy and your data. Everything is stored in a local database on this computer." />
       <nav aria-label="Settings sections" className="mb-5 flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
-        {[["profile", "Profile"], ["defaults", "Trading defaults"], ["password", "Password"], ["recovery", "Recovery code"], ["sessions", "Signed-in browsers"], ["accounts", "Accounts"], ["autotags", "Auto-tags"], ["jarvis", "AI Coach"], ["privacy", "Privacy"], ["data", "Your data"], ...(user?.isOwner ? [["backups", "Backups"], ["signups", "New accounts"], ["early-access", "Early access"]] : [])].map(([id, l]) => (
+        {[["profile", "Profile"], ["defaults", "Trading defaults"], ["password", "Password"], ["recovery", "Recovery code"], ["sessions", "Signed-in browsers"], ["accounts", "Accounts"], ["autotags", "Auto-tags"], ["jarvis", "AI Coach"], ["ai-key", "AI key"], ["privacy", "Privacy"], ["data", "Your data"], ...(user?.isOwner ? [["backups", "Backups"], ["signups", "New accounts"], ["early-access", "Early access"]] : [])].map(([id, l]) => (
           <a key={id} href={`#${id}`} className="py-1 text-ink-soft underline-offset-2 hover:text-ink hover:underline pointer-coarse:py-3">{l}</a>
         ))}
       </nav>
@@ -169,6 +169,7 @@ export default function SettingsPage() {
         </div>
       </Section>
 
+      <AiKey isOwner={!!user?.isOwner} />
       <Privacy />
       <DataControls />
       {user?.isOwner && <Backups />}
@@ -577,6 +578,58 @@ interface EarlyAccessRequest {
   trades: string;
   message: string;
   createdAt: string;
+}
+
+/** This account's own Anthropic key, and for the owner whether accounts without one may use theirs. The key never comes back. */
+function AiKey({ isOwner }: { isOwner: boolean }) {
+  const { toast } = useApp();
+  const { data, reload } = useFetch<{ ownKey: boolean; using: "own" | "owner" | "none"; ownerSharing: boolean; ownerHasKey: boolean }>("/api/jarvis/key");
+  const [key, setKey] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const call = async (init: Parameters<typeof api>[1], done: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api("/api/jarvis/key", init);
+      setKey("");
+      toast({ message: done, tone: "success" });
+      reload();
+    } catch (err) {
+      setError(fieldErrors(err).key ?? (err instanceof Error ? err.message : "Couldn't save it."));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const using = { own: "Your own key: you pay Anthropic for what you use.", owner: "The owner's key, shared with this account.", none: "No key: the AI Coach runs in demo mode." } as const;
+
+  return (
+    <Section id="ai-key" title="AI key" description="The Anthropic key the AI Coach uses for this account. A saved key is stored encrypted on this computer and never shown again, not even to you.">
+      {data && (
+        <div className="space-y-4" data-testid="ai-key">
+          <p className="text-[13.5px] text-ink-soft">Using now: <span className="font-medium text-ink">{using[data.using]}</span></p>
+          <form onSubmit={(e) => (e.preventDefault(), void call({ method: "PUT", json: { key } }, "Key saved."))} className="grid gap-3 sm:grid-cols-[minmax(0,22rem)_auto] sm:items-end">
+            <Field label={data.ownKey ? "Replace your key" : "Your Anthropic key"} hint="Starts with sk-ant-. Jarvis checks it with Anthropic before saving.">
+              {(p) => <input {...p} type="password" autoComplete="off" spellCheck={false} className={inputClass} value={key} onChange={(e) => setKey(e.target.value)} required />}
+            </Field>
+            <Button type="submit" disabled={busy}>{busy ? "Checking" : "Save key"}</Button>
+          </form>
+          {error && <p role="alert" className="text-[13px] text-loss">{error}</p>}
+          {data.ownKey && <Button size="sm" variant="ghost" disabled={busy} onClick={() => void call({ method: "DELETE" }, "Key removed.")}>Remove my key</Button>}
+          {isOwner && (
+            <Toggle
+              label="Share my key with accounts that have none"
+              checked={data.ownerSharing}
+              disabled={busy}
+              onChange={(share) => void call({ method: "PATCH", json: { share } }, share ? "Your key is shared." : "Your key is no longer shared.")}
+              description={data.ownerHasKey ? "Your key is ANTHROPIC_API_KEY on the server. Shared, it's capped at 30 messages a minute and 500 a day per account." : "ANTHROPIC_API_KEY isn't set on the server, so there's nothing to share yet."}
+            />
+          )}
+        </div>
+      )}
+    </Section>
+  );
 }
 
 interface SessionInfo {

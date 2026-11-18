@@ -393,6 +393,12 @@ export const MIGRATIONS: { version: number; name: string; sql: string; run?: (db
     );
     CREATE INDEX rate_limits_reset ON rate_limits(reset_at);`,
   },
+  {
+    version: 15,
+    name: "an account's own Anthropic key, encrypted",
+    // AES-256-GCM with the same key as MT5 passwords (mt5/crypto.ts). Never exported or sent to the browser.
+    sql: `ALTER TABLE users ADD COLUMN anthropic_key_cipher TEXT;`,
+  },
 ];
 
 const globalForDb = globalThis as unknown as { __kestrelDb?: DatabaseSync };

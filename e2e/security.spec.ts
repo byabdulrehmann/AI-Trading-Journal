@@ -28,7 +28,7 @@ const ROUTES: [string, string][] = [
   ["GET", "routine"], ["POST", "routine"], ["GET", "settings"], ["PATCH", "settings"], ["DELETE", "tag-rules/ID"], ["GET", "tag-rules"], ["POST", "tag-rules"],
   ["POST", "trades/ID/attachments"], ["GET", "trades/ID/bars"], ["GET", "trades/ID"], ["PUT", "trades/ID"],
   ["POST", "trades/ID"], ["GET", "trades/ID/rules"], ["PUT", "trades/ID/rules"], ["POST", "trades/bulk"], ["POST", "trades/delete"], ["GET", "trades/export"],
-  ["GET", "trades"], ["POST", "trades"], ["GET", "early-access"], ["DELETE", "early-access/ID"], ["GET", "signups"], ["PUT", "signups"],
+  ["GET", "trades"], ["POST", "trades"], ["GET", "early-access"], ["DELETE", "early-access/ID"], ["GET", "signups"], ["PUT", "signups"], ["GET", "jarvis/key"], ["PUT", "jarvis/key"], ["DELETE", "jarvis/key"], ["PATCH", "jarvis/key"],
   // Under /api/auth, which the proxy lets through signed out, so the route itself must refuse.
   ["GET", "auth/sessions"], ["DELETE", "auth/sessions"],
 ];
@@ -231,4 +231,27 @@ test("pages carry a strict script policy with a fresh nonce, and every script on
   // The app's pages too, signed in.
   const app = await page.request.get("/settings");
   expect(app.headers()["content-security-policy"]).toMatch(/script-src 'self' 'nonce-/);
+});
+
+test("an account's AI key: never shown back, checked before saving, and only the owner decides on sharing theirs", async ({ page, guard }) => {
+  guard.allow(/status of (403|422)/);
+  await open(page, "/settings#ai-key");
+  const box = page.getByTestId("ai-key");
+  await expect(box).toContainText("Using now:");
+  // Something that isn't a key is refused before anything is sent to Anthropic.
+  await box.getByLabel("Your Anthropic key").fill("not-a-real-key-at-all-123");
+  await box.getByRole("button", { name: "Save key" }).click();
+  await expect(box.getByText("That doesn't look like an Anthropic key.")).toBeVisible();
+  const status = await (await page.request.get("/api/jarvis/key")).json();
+  expect(Object.keys(status).sort()).toEqual(["ownKey", "ownerHasKey", "ownerSharing", "using"]);
+  // The owner's switch.
+  const share = box.getByRole("switch", { name: "Share my key with accounts that have none" });
+  await expect(share).toBeChecked();
+  await share.click();
+  await expect(share).not.toBeChecked();
+  expect((await (await page.request.get("/api/jarvis/key")).json()).ownerSharing).toBe(false);
+  expect((await page.request.patch("/api/jarvis/key", { data: { share: true } })).status()).toBe(200);
+  // Another account can't change it.
+  await signUp(page, "Second");
+  expect((await page.request.patch("/api/jarvis/key", { data: { share: false } })).status()).toBe(403);
 });

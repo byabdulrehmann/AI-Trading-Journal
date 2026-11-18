@@ -39,6 +39,7 @@ const { createHash } = await import("node:crypto");
 const J = await import("../repo/journal");
 const R = await import("../repo/mt5");
 const { connectAccount, syncAccount, disconnectAccount, errorText } = await import("./sync");
+const { clearRateLimit } = await import("../auth");
 const { nextDueMs } = await import("./scheduler");
 const routes = {
   connect: await import("@/app/api/mt5/connect/route"),
@@ -429,6 +430,7 @@ describe("routes", () => {
     await read(await routes.settings.PATCH(post({ accountId: id, intervalSeconds: 120, enabled: true }, "PATCH")));
     await read(await routes.positions.GET(new Request(`http://127.0.0.1/api/mt5/positions?accountId=${id}`)));
     fakes.__mt5Fake.next = { ok: false, category: "wrong_password", code: -6 };
+    clearRateLimit(`mt5-sync:${id}`); // one manual sync a minute: let the failing one through
     await read(await routes.sync.POST(post({ accountId: id })));
     await read(await routes.connect.POST(post({ login: "4002", server: "Test-Server", password: PASSWORD })));
     await read(await routes.connect.POST(post({ login: "not digits", server: "Test-Server", password: PASSWORD })));

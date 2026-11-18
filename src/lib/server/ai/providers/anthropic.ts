@@ -1,10 +1,11 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import { currentAiKey } from "../key";
 import { ProviderError, type JarvisProvider, type ModelInfo, type StreamRequest } from "../types";
 
 /**
- * Anthropic (Claude) provider. The key is read from ANTHROPIC_API_KEY on the
- * server only; it never reaches the browser or the logs.
+ * Anthropic (Claude) provider. The key is the one for the user being served (see ../key.ts: their own, or the owner's
+ * ANTHROPIC_API_KEY), read on the server only; it never reaches the browser or the logs.
  */
 const DEFAULT_MODEL = process.env.KESTREL_ANTHROPIC_MODEL || "claude-opus-5-5";
 
@@ -13,21 +14,24 @@ const FALLBACK_MODELS = new Set(["claude-opus-5-5", "claude-opus-5", "claude-fab
 // Models that accept output_config.effort. Others get the API default.
 const EFFORT_MODEL = /^claude-(fable|mythos|opus|sonnet|haiku)-5|^claude-opus-4-[5-8]|^claude-sonnet-4-6/;
 
-let client: Anthropic | null = null;
-function getClient(): Anthropic {
-  if (!process.env.ANTHROPIC_API_KEY) throw new ProviderError("ANTHROPIC_API_KEY is not set on the server.", "not_configured");
-  // 60 s per attempt, at most 2 retries (408/409/429/5xx and connection errors).
-  client ??= new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 60_000, maxRetries: 2 });
-  return client;
-}
+// One client and one model list per key: users with their own key may see different models.
+const clients = new Map<string, Anthropic>();
+const modelCache = new Map<string, { at: number; models: ModelInfo[] }>();
+const NO_KEY = "No Anthropic key for this account. Add your own in Settings, or ask the owner to share theirs.";
 
-let modelCache: { at: number; models: ModelInfo[] } | null = null;
+function getClient(): { client: Anthropic; key: string } {
+  const key = currentAiKey();
+  if (!key) throw new ProviderError(NO_KEY, "not_configured");
+  // 60 s per attempt, at most 2 retries (408/409/429/5xx and connection errors).
+  if (!clients.has(key)) clients.set(key, new Anthropic({ apiKey: key, timeout: 60_000, maxRetries: 2 }));
+  return { client: clients.get(key)!, key };
+}
 
 export function mapAnthropicError(err: unknown): ProviderError {
   if (err instanceof ProviderError) return err;
   if (err instanceof Anthropic.APIUserAbortError) return new ProviderError("Request cancelled.", "timeout");
   if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError)
-    return new ProviderError("Anthropic rejected the API key. Check ANTHROPIC_API_KEY.", "auth");
+    return new ProviderError("Anthropic rejected the API key. Check the key in Settings, or ANTHROPIC_API_KEY for the owner's.", "auth");
   if (err instanceof Anthropic.NotFoundError)
     return new ProviderError("That model isn't available to this API key.", "bad_request");
   if (err instanceof Anthropic.RateLimitError)
@@ -49,18 +53,18 @@ export const anthropicProvider: JarvisProvider = {
   defaultModel: DEFAULT_MODEL,
 
   status() {
-    return process.env.ANTHROPIC_API_KEY
-      ? { configured: true, external: true }
-      : { configured: false, external: true, reason: "Set ANTHROPIC_API_KEY in .env.local and restart the server." };
+    return currentAiKey() ? { configured: true, external: true } : { configured: false, external: true, reason: NO_KEY };
   },
 
   async listModels(signal) {
-    if (modelCache && Date.now() - modelCache.at < 10 * 60_000) return modelCache.models;
     try {
+      const { client, key } = getClient();
+      const cached = modelCache.get(key);
+      if (cached && Date.now() - cached.at < 10 * 60_000) return cached.models;
       const models: ModelInfo[] = [];
-      for await (const m of getClient().models.list({ limit: 100 }, { signal, timeout: 15_000 }))
+      for await (const m of client.models.list({ limit: 100 }, { signal, timeout: 15_000 }))
         models.push({ id: m.id, displayName: m.display_name });
-      modelCache = { at: Date.now(), models };
+      modelCache.set(key, { at: Date.now(), models });
       return models;
     } catch (err) {
       throw mapAnthropicError(err);
@@ -69,7 +73,7 @@ export const anthropicProvider: JarvisProvider = {
 
   async *stream(req: StreamRequest) {
     try {
-      const stream = getClient().beta.messages.stream(
+      const stream = getClient().client.beta.messages.stream(
         {
           model: req.model,
           max_tokens: 16000,

@@ -147,8 +147,8 @@ export function readForSync(accountId: number) {
 /** Enabled connections with a stored password, skipping those a wrong password has stopped. */
 export function listSchedulable() {
   return db()
-    .prepare("SELECT account_id, sync_interval_seconds, last_attempt_at FROM mt5_connections WHERE sync_enabled = 1 AND password_cipher IS NOT NULL AND status != 'auth_failed'")
-    .all() as { account_id: number; sync_interval_seconds: number; last_attempt_at: string | null }[];
+    .prepare("SELECT c.account_id, a.user_id, c.sync_interval_seconds, c.last_attempt_at FROM mt5_connections c JOIN accounts a ON a.id = c.account_id WHERE c.sync_enabled = 1 AND c.password_cipher IS NOT NULL AND c.status != 'auth_failed'")
+    .all() as { account_id: number; user_id: number; sync_interval_seconds: number; last_attempt_at: string | null }[];
 }
 
 export function saveConnection(accountId: number, login: string, server: string, cipher: string) {
