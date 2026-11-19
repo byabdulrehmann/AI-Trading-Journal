@@ -102,7 +102,7 @@ export function stopService(): Promise<void> {
 
 /** [time in the broker's clock, open, high, low, close, tick volume]. */
 export type RawBar = [number, number, number, number, number, number];
-export type BarsRequest = SessionRequest & { symbol: string; timeframe: "M1" | "M5" | "M15" | "H1"; to: number };
+export type BarsRequest = SessionRequest & { symbol: string; timeframe: "M1" | "M5" | "M15" | "H1" | "D1"; to: number };
 export type BarsResult = { ok: true; bars: RawBar[] } | { ok: false; category: SessionCategory; code?: number | null };
 
 async function call<T extends { ok: boolean; category?: SessionCategory; code?: number | null }>(endpoint: "/session" | "/bars", req: SessionRequest, onData: (data: T) => T): Promise<T | { ok: false; category: SessionCategory; code?: number | null }> {

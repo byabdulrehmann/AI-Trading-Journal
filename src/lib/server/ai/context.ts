@@ -45,7 +45,7 @@ export interface JarvisContext {
   hasSampleData: boolean;
   totalTrades: number;
   /** Public CFTC data, the same for everyone. */
-  positioning: Pick<Positioning, "asOf" | "assets" | "pairs" | "surprises"> & { macro: Positioning["macro"]["currencies"] };
+  positioning: Pick<Positioning, "asOf" | "assets" | "pairs" | "surprises"> & { macro: Positioning["macro"]["currencies"]; prices: Positioning["prices"]["pairs"] };
   disclosure: string[];
 }
 
@@ -102,7 +102,7 @@ export function buildContext(userId: number, settings: Settings, focusTradeId?: 
     memoryEnabled ? `${memories.length} active memory item(s)` : "No memories (memory turned off)",
     focus ? `The trade you asked about (#${focus.id})` : null,
     "Your coaching style preference and display name",
-    "Public CFTC positioning and FRED macro scores, and surprise scores from your economic calendar",
+    "Public CFTC positioning and FRED macro scores, surprise scores from your economic calendar, and seasonality and trend from your MT5 daily prices",
   ].filter((x): x is string => x !== null);
 
   return {
@@ -117,7 +117,7 @@ export function buildContext(userId: number, settings: Settings, focusTradeId?: 
     memories,
     hasSampleData: trades.some((t) => t.source === "sample"),
     totalTrades: reported.length,
-    positioning: { asOf: market.asOf, assets: market.assets, pairs: market.pairs, macro: market.macro.currencies, surprises: market.surprises.filter((s) => s.score !== null) },
+    positioning: { asOf: market.asOf, assets: market.assets, pairs: market.pairs, macro: market.macro.currencies, surprises: market.surprises.filter((s) => s.score !== null), prices: market.prices.pairs },
     disclosure,
   };
 }

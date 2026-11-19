@@ -2,7 +2,7 @@
  * Jarvis's positioning scorecard, built only from the CFTC's weekly Commitments of Traders report.
  * For each market: where large speculators' net position sits within its own 3-year range (the COT index),
  * and how it moved this week. A pair compares its two currencies, adding the macro (macro.ts) and surprise
- * (surprise.ts) scores when there are any.
+ * (surprise.ts) scores, and the pair's own seasonality and trend (seasonal.ts), when there are any.
  * Context for a review, not a trade signal.
  */
 
@@ -42,7 +42,11 @@ export interface PairPositioning {
   macro: number | null;
   /** From the user's economic calendar surprises, when both currencies have one. */
   surprise: number | null;
-  /** Whichever of the three exist, averaged. */
+  /** The pair's own record in this month of past years (seasonal.ts). */
+  seasonal: number | null;
+  /** The pair against its 20, 50 and 200-day averages (seasonal.ts). */
+  trend: number | null;
+  /** Whichever of these exist, averaged. */
   score: number;
   bias: "bullish" | "bearish" | "neutral";
 }
@@ -82,11 +86,17 @@ type Both = [base: number | null, quote: number | null];
 const spread = ([b, q]: Both) => (b === null || q === null ? null : round((b - q) / 2));
 
 /** A pair is bullish when speculators, and the macro backdrop and recent releases where known, favour the base over the quote. */
-export function scorePair(base: AssetPositioning, quote: AssetPositioning, macroScores: Both = [null, null], surpriseScores: Both = [null, null]): PairPositioning {
+export function scorePair(
+  base: AssetPositioning,
+  quote: AssetPositioning,
+  macroScores: Both = [null, null],
+  surpriseScores: Both = [null, null],
+  { seasonal = null, trend = null }: { seasonal?: number | null; trend?: number | null } = {},
+): PairPositioning {
   const cot = round((base.score - quote.score) / 2);
   const macro = spread(macroScores);
   const surprise = spread(surpriseScores);
-  const parts = [cot, macro, surprise].filter((x): x is number => x !== null);
+  const parts = [cot, macro, surprise, seasonal, trend].filter((x): x is number => x !== null);
   const score = round(parts.reduce((a, b) => a + b, 0) / parts.length);
-  return { symbol: base.key + quote.key, base: base.key, quote: quote.key, cot, macro, surprise, score, bias: biasOf(score) };
+  return { symbol: base.key + quote.key, base: base.key, quote: quote.key, cot, macro, surprise, seasonal, trend, score, bias: biasOf(score) };
 }

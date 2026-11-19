@@ -30,6 +30,14 @@ export function Positioning() {
     api<Data>("/api/market/positioning").then(setData).catch((e) => setError(e.message));
   }, []);
 
+  // Daily prices are read from MT5 in the background: ask again until they're in.
+  const reading = data?.prices.status === "reading";
+  useEffect(() => {
+    if (!reading) return;
+    const id = setTimeout(() => api<Data>("/api/market/positioning").then(setData).catch(() => {}), 10_000);
+    return () => clearTimeout(id);
+  }, [reading, data]);
+
   return (
     <Card className="mb-6" data-testid="positioning">
       <CardHeader
@@ -49,11 +57,13 @@ export function Positioning() {
                   <span className="font-medium">{p.symbol}</span>
                   <ScoreBar score={p.score} />
                   <span className="text-right text-ink-soft"><span className="capitalize">{p.bias}</span> <span className="num">{signed(p.score, 2)}</span></span>
-                  {(p.macro !== null || p.surprise !== null) && (
+                  {(p.macro !== null || p.surprise !== null || p.seasonal !== null || p.trend !== null) && (
                     <span className="col-span-3 text-[12px] text-muted">
                       Positioning <span className="num">{signed(p.cot, 2)}</span>
                       {p.macro !== null && <>, macro <span className="num">{signed(p.macro, 2)}</span></>}
                       {p.surprise !== null && <>, surprises <span className="num">{signed(p.surprise, 2)}</span></>}
+                      {p.seasonal !== null && <>, seasonality <span className="num">{signed(p.seasonal, 2)}</span></>}
+                      {p.trend !== null && <>, trend <span className="num">{signed(p.trend, 2)}</span></>}
                     </span>
                   )}
                 </li>
@@ -99,6 +109,7 @@ export function Positioning() {
       {data?.macro.notice && <div className="mt-4"><Notice>{data.macro.notice}</Notice></div>}
       {data && data.macro.currencies.length > 0 && <MacroTable macro={data.macro} />}
       {data && <SurpriseTable surprises={data.surprises} />}
+      {data && <PricesTable prices={data.prices} />}
       {data && !data.macro.configured && (
         <p className="mt-4 text-[13px] text-ink-soft">
           Add a free FRED key in <Link href="/settings#market-data" className="underline underline-offset-2">Settings, Market data</Link> to blend each economy&rsquo;s interest rate, growth and jobs into the pairs. Only the owner of this Jarvis can add it.
@@ -106,7 +117,7 @@ export function Positioning() {
       )}
       {data && (
         <p className="mt-4 text-[12.5px] text-muted">
-          Positioning is non-commercial (large speculator) futures positions. A pair scores its base against its quote: positive means speculators, and whatever else is scored, favour the base.{data.surprises.some((x) => x.score !== null) && " Surprises weigh each release from the last 30 days on your calendar as a beat or a miss against its forecast, high impact three times low; for unemployment and jobless claims, lower is the beat."}{data.macro.currencies.length > 0 && " Macro compares the eight economies with each other: higher rates, hikes, growth and falling unemployment score higher. FRED has no current euro area unemployment rate, so the euro is scored without it."} Crowded means the top or bottom tenth of the 3-year range, where positioning has the least room left. Context for your review, not a signal to trade.
+          Positioning is non-commercial (large speculator) futures positions. A pair scores its base against its quote: positive means speculators, and whatever else is scored, favour the base.{data.surprises.some((x) => x.score !== null) && " Surprises weigh each release from the last 30 days on your calendar as a beat or a miss against its forecast, high impact three times low; for unemployment and jobless claims, lower is the beat."}{data.prices.pairs.length > 0 && " Seasonality is how this calendar month went in past full years (at least five); trend is where the latest close sits against its 20, 50 and 200-day averages."}{data.macro.currencies.length > 0 && " Macro compares the eight economies with each other: higher rates, hikes, growth and falling unemployment score higher. FRED has no current euro area unemployment rate, so the euro is scored without it."} Crowded means the top or bottom tenth of the 3-year range, where positioning has the least room left. Context for your review, not a signal to trade.
         </p>
       )}
     </Card>
@@ -188,6 +199,60 @@ function SurpriseTable({ surprises }: { surprises: Data["surprises"] }) {
               </tr>
             );
           })}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const side = (v: boolean | null) => (v === null ? "not enough data" : v ? "above" : "below");
+
+/** Each pair's past record in this month, and where it sits against its averages, from the user's broker. */
+function PricesTable({ prices }: { prices: Data["prices"] }) {
+  if (!prices.pairs.length)
+    return (
+      <p className="mt-4 text-[13px] text-ink-soft">
+        {prices.status === "reading" ? "Reading daily prices from your MT5 account for seasonality and trend…" : (prices.notice ?? "Seasonality and trend come from daily prices in a connected MT5 account.")}
+        {prices.status !== "reading" && <> Connect one under <Link href="/accounts" className="underline underline-offset-2">Accounts</Link>.</>}
+      </p>
+    );
+  const month = MONTHS[new Date().getMonth()];
+  return (
+    <section className="mt-6 min-w-0 overflow-x-auto">
+      <h3 className="mb-1 text-[13px] font-medium text-muted">Seasonality and trend, from your broker&rsquo;s daily prices</h3>
+      {prices.status === "reading" && <p className="mb-1 text-[12.5px] text-muted">Still reading some pairs from MT5&hellip;</p>}
+      {prices.notice && <p className="mb-1 text-[12.5px] text-muted">{prices.notice}</p>}
+      <table className="w-full text-[13.5px]">
+        <caption className="sr-only">Each pair&rsquo;s record in {month} of past years, and its trend</caption>
+        <thead className="text-left text-[12.5px] text-muted">
+          <tr className="border-b border-line">
+            <th scope="col" className="py-1.5 pr-3 font-normal">Pair</th>
+            <th scope="col" className="py-1.5 pr-3 text-right font-normal">{month}, years up</th>
+            <th scope="col" className="py-1.5 pr-3 text-right font-normal">Average</th>
+            <th scope="col" className="hidden py-1.5 pr-3 font-normal sm:table-cell">Against its 20, 50, 200-day averages</th>
+            <th scope="col" className="py-1.5 text-right font-normal">Trend</th>
+          </tr>
+        </thead>
+        <tbody>
+          {prices.pairs.map((p) => (
+            <tr key={p.symbol} className="border-b border-line">
+              <td className="py-1.5 pr-3">
+                <span className="font-medium">{p.symbol}</span>
+                {p.brokerSymbol !== p.symbol && <span className="ml-1.5 text-[12px] text-muted">{p.brokerSymbol}</span>}
+              </td>
+              {p.seasonality ? (
+                <>
+                  <td className="num whitespace-nowrap py-1.5 pr-3 text-right">{p.seasonality.upYears} of {p.seasonality.years}</td>
+                  <td className={cx("num whitespace-nowrap py-1.5 pr-3 text-right", p.seasonality.avgPct > 0 ? "text-profit" : p.seasonality.avgPct < 0 ? "text-loss" : undefined)}>{p.seasonality.avgPct > 0 ? "+" : p.seasonality.avgPct < 0 ? "−" : ""}{Math.abs(p.seasonality.avgPct).toFixed(2)}%</td>
+                </>
+              ) : (
+                <td colSpan={2} className="py-1.5 pr-3 text-right text-[12.5px] text-muted">under 5 years of prices</td>
+              )}
+              <td className="hidden py-1.5 pr-3 text-ink-soft sm:table-cell">{(["20", "50", "200"] as const).map((n) => side(p.trend.above[n])).join(", ")}</td>
+              <td className={cx("num py-1.5 text-right", p.trend.score === null ? "text-muted" : p.trend.score > 0 ? "text-profit" : p.trend.score < 0 ? "text-loss" : undefined)}>{p.trend.score === null ? "none" : signed(p.trend.score, 2)}</td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </section>

@@ -10,6 +10,9 @@ test("the Market page shows the CFTC positioning scorecard, or says why it can't
     await expect(card.getByRole("row", { name: /^EUR Euro/ })).toBeVisible();
     await expect(card.getByText(/positions as of/)).toBeVisible();
   }
+  // No MT5 account here: seasonality and trend say where their prices come from instead of showing anything.
+  await expect(card.getByText(/connected MT5 account/)).toBeVisible({ timeout: 30_000 });
+  await expect(card.getByRole("link", { name: "Accounts" })).toBeVisible();
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/market.png`, fullPage: true });
 });
 

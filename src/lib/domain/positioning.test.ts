@@ -35,12 +35,14 @@ describe("positioning scorecard", () => {
   test("a pair favours the currency speculators prefer", () => {
     const eur = scoreAsset("EUR", "Euro", weeks([0, 100]))!; // index 100
     const usd = scoreAsset("USD", "Dollar", weeks([100, 0]))!; // index 0
-    assert.deepEqual(scorePair(eur, usd), { symbol: "EURUSD", base: "EUR", quote: "USD", cot: 1, macro: null, surprise: null, score: 1, bias: "bullish" });
+    assert.deepEqual(scorePair(eur, usd), { symbol: "EURUSD", base: "EUR", quote: "USD", cot: 1, macro: null, surprise: null, seasonal: null, trend: null, score: 1, bias: "bullish" });
     const both = scorePair(eur, usd, [-0.4, 0.4]);
     assert.deepEqual([both.cot, both.macro, both.score, both.bias], [1, -0.4, 0.3, "bullish"]);
     const all = scorePair(eur, usd, [-0.4, 0.4], [-1, 1]);
     assert.deepEqual([all.surprise, all.score, all.bias], [-1, -0.13, "neutral"]);
     assert.equal(scorePair(eur, usd, [null, 0.4], [null, null]).score, 1, "a missing side counts as no reading");
+    const priced = scorePair(eur, usd, [null, null], [null, null], { seasonal: -1, trend: -1 });
+    assert.deepEqual([priced.seasonal, priced.trend, priced.score], [-1, -1, -0.33]);
     assert.equal(scorePair(usd, eur).bias, "bearish");
     assert.equal(scorePair(eur, eur).bias, "neutral");
   });

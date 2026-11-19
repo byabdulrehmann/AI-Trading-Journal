@@ -14,7 +14,8 @@ export const SessionInput = z
   .object({
     name: z.string().trim().min(1, "Name is required").max(60),
     symbol: z.string().trim().min(1, "Symbol is required").max(20).toUpperCase(),
-    timeframe: z.enum(Object.keys(TIMEFRAME_SECONDS) as [Timeframe, ...Timeframe[]]),
+    // Daily bars are for the Market scorecard only; a replay steps through intraday ones.
+    timeframe: z.enum(["M1", "M5", "M15", "H1"]),
     start: z.iso.datetime(),
     end: z.iso.datetime(),
     startingBalance: z.number().min(0, "Balance can't be negative").max(1e12),

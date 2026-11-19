@@ -4,6 +4,7 @@ import { db, transaction } from "../db";
 import { macro as readMacro, type Macro } from "./fred";
 import { scoreSurprises, surpriseSince, type CurrencySurprise } from "@/lib/domain/surprise";
 import { listEvents } from "../news";
+import { prices as readPrices, type Prices } from "./prices";
 
 /** The CFTC's public Legacy futures-only report (Socrata). Free, no key, and nothing about the user is sent. */
 const ENDPOINT = "https://publicreporting.cftc.gov/resource/6dca-aqww.json";
@@ -26,7 +27,7 @@ export const ASSETS = [
   { key: "BTC", code: "133741", name: "Bitcoin (CME)" },
 ] as const;
 
-const PAIRS = ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "USDCAD", "AUDUSD", "NZDUSD", "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "XAUUSD"];
+export const PAIRS = ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "USDCAD", "AUDUSD", "NZDUSD", "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "XAUUSD"];
 const DAY = 86_400_000;
 // Each Friday's report is as of the Tuesday before, so the next one is due 10 days after the newest date.
 const STALE_AFTER = 11 * DAY;
@@ -39,6 +40,8 @@ export interface Positioning {
   macro: Macro;
   /** From this user's economic calendar. */
   surprises: CurrencySurprise[];
+  /** Seasonality and trend from this user's MT5 daily bars. */
+  prices: Prices;
   /** Set when the CFTC couldn't be reached; what's shown is the last report saved. */
   notice: string | null;
 }
@@ -113,10 +116,15 @@ export function positioning(userId: number): Positioning {
   const now = Date.now();
   const surprises = scoreSurprises(listEvents(userId, new Date(surpriseSince(now)).toISOString()), CURRENCIES, now);
   const surpriseOf = (k: string) => surprises.find((c) => c.key === k)?.score ?? null;
+  const prices = readPrices(userId);
+  const pricesOf = (p: string) => {
+    const found = prices.pairs.find((x) => x.symbol === p);
+    return { seasonal: found?.seasonality?.score ?? null, trend: found?.trend.score ?? null };
+  };
   const pairs = PAIRS.flatMap((p) => {
     const base = find(p.slice(0, 3));
     const quote = find(p.slice(3));
-    return base && quote ? [scorePair(base, quote, [macroOf(base.key), macroOf(quote.key)], [surpriseOf(base.key), surpriseOf(quote.key)])] : [];
+    return base && quote ? [scorePair(base, quote, [macroOf(base.key), macroOf(quote.key)], [surpriseOf(base.key), surpriseOf(quote.key)], pricesOf(p))] : [];
   });
   const asOf = assets.reduce<string | null>((d, a) => (d && d > a.date ? d : a.date), null);
   return {
@@ -125,6 +133,7 @@ export function positioning(userId: number): Positioning {
     pairs,
     macro,
     surprises,
+    prices,
     notice: state.error ? `${state.error} ${asOf ? `Showing the report as of ${asOf}.` : "No report is saved yet."}` : null,
   };
 }

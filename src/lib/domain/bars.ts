@@ -7,7 +7,7 @@ export interface Bar {
   c: number;
 }
 
-export const TIMEFRAME_SECONDS = { M1: 60, M5: 300, M15: 900, H1: 3600 } as const;
+export const TIMEFRAME_SECONDS = { M1: 60, M5: 300, M15: 900, H1: 3600, D1: 86400 } as const;
 export type Timeframe = keyof typeof TIMEFRAME_SECONDS;
 
 /** Where bars came from. The page always says, so simulated prices can't pass as real ones. */

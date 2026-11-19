@@ -18,7 +18,7 @@ Your job is to help the trader review what they recorded, notice patterns in the
 
 Rules:
 - Use only the trader record below for facts about this trader. If something isn't in the record, say you don't have it. Never invent trades, figures, market prices or news.
-- Jarvis gives you no prices or news. If asked, say you can't see them here. It does give the CFTC's weekly positioning and FRED macro readings (market_positioning, macro), and surprise scores from the trader's own economic calendar (surprises): you may explain it as background, with its date, but never as a reason to trade.
+- Jarvis gives you no prices or news. If asked, say you can't see them here. It does give the CFTC's weekly positioning and FRED macro readings (market_positioning, macro), surprise scores from the trader's own economic calendar (surprises), and seasonality and trend from their broker's daily prices (seasonality_and_trend): you may explain it as background, with its date, but never as a reason to trade.
 - Never tell the trader to buy, sell, enter, exit or size a position, and never urge them to trade. You can help them review their own plan and rules.
 - Don't diagnose or describe their mental state as fact. Phrase behavioural readings as possibilities ("this could mean…"), and invite correction.
 - Label claims clearly. Start lines with "Recorded:" for facts from the record, "Possible pattern:" for your inferences, and "Suggestion:" for ideas to try.
@@ -59,7 +59,7 @@ function renderRecord(ctx: JarvisContext): string {
   if (pos.asOf) {
     lines.push("", `market_positioning (CFTC Commitments of Traders, large speculators, as of ${pos.asOf}; score -1..+1, cot_index 0..100 within 3 years):`);
     for (const a of pos.assets) lines.push(`- ${a.key}: net ${a.netPct}% of open interest, week change ${a.weeklyChange ?? "n/a"}, cot_index ${a.cotIndex}${a.crowded ? " (crowded)" : ""}${a.date !== pos.asOf ? ` (last report ${a.date})` : ""}`);
-    lines.push(`pairs (score averages positioning, macro and surprises, whichever exist): ${pos.pairs.map((p) => `${p.symbol} ${p.bias} ${p.score} (positioning ${p.cot}${p.macro === null ? "" : `, macro ${p.macro}`}${p.surprise === null ? "" : `, surprises ${p.surprise}`})`).join("; ")}`);
+    lines.push(`pairs (score averages positioning, macro, surprises, seasonality and trend, whichever exist): ${pos.pairs.map((p) => `${p.symbol} ${p.bias} ${p.score} (positioning ${p.cot}${p.macro === null ? "" : `, macro ${p.macro}`}${p.surprise === null ? "" : `, surprises ${p.surprise}`}${p.seasonal === null ? "" : `, seasonality ${p.seasonal}`}${p.trend === null ? "" : `, trend ${p.trend}`})`).join("; ")}`);
   }
   if (pos.macro.length) {
     lines.push("", "macro (FRED; each factor scored -1..+1 against the other economies; rate %, 6-month changes in points, GDP % q/q):");
@@ -68,6 +68,11 @@ function renderRecord(ctx: JarvisContext): string {
   if (pos.surprises.length) {
     lines.push("", "surprises (the trader's calendar, last 30 days, actual vs forecast weighted by impact, -1..+1):");
     for (const s of pos.surprises) lines.push(`- ${s.key}: score ${s.score}; ${s.beats} beat, ${s.misses} missed, ${s.inline} in line; latest: ${s.releases.slice(0, 3).map((r) => `${r.title} ${r.actual} vs ${r.forecast} (${r.result})`).join("; ")}`);
+  }
+  if (pos.prices.length) {
+    lines.push("", "seasonality_and_trend (the trader's broker, daily closes; seasonality is this calendar month in past full years):");
+    for (const p of pos.prices)
+      lines.push(`- ${p.symbol}: ${p.seasonality ? `this month up ${p.seasonality.upYears} of ${p.seasonality.years} years, average ${p.seasonality.avgPct}%` : "seasonality n/a (under 5 years of data)"}; above 20/50/200-day averages: ${Object.values(p.trend.above).map((v) => (v === null ? "n/a" : v ? "yes" : "no")).join("/")}`);
   }
   if (ctx.focusTrade) lines.push("", "trade_under_review:", JSON.stringify(ctx.focusTrade));
   if (ctx.recentTrades.length) {

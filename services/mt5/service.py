@@ -28,7 +28,7 @@ HISTORY_SETTLE_SECONDS = 25
 # Deal times can run ahead of UTC by the broker's offset, so "now" alone could miss the newest deals.
 TO_MARGIN_SECONDS = 2 * 86400
 # Read-only price history. Keys are what Node may ask for.
-TIMEFRAMES = {"M1": mt5.TIMEFRAME_M1, "M5": mt5.TIMEFRAME_M5, "M15": mt5.TIMEFRAME_M15, "H1": mt5.TIMEFRAME_H1}
+TIMEFRAMES = {"M1": mt5.TIMEFRAME_M1, "M5": mt5.TIMEFRAME_M5, "M15": mt5.TIMEFRAME_M15, "H1": mt5.TIMEFRAME_H1, "D1": mt5.TIMEFRAME_D1}
 MAX_SYMBOL = 32
 SYMBOL_FIELDS = ("name", "trade_contract_size", "digits", "point", "trade_tick_size", "trade_tick_value", "currency_base", "currency_profit")
 
