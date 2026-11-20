@@ -134,7 +134,11 @@ function ModelPicker({ onSwitched }: { onSwitched: () => void }) {
         <section key={p.id} className="grid grid-cols-[minmax(0,1fr)] gap-x-10 gap-y-3 border-t border-line py-4 lg:grid-cols-[17rem_minmax(0,1fr)]">
           <div>
             <h2 className="text-[15px] font-medium text-ink">{p.label}</h2>
-            <p className="mt-0.5 text-[13px] text-muted">{p.external ? "Sends the shared context to this provider over the internet." : "Runs on this computer. No network calls."}</p>
+            <p className="mt-0.5 text-[13px] text-muted">{p.external
+                ? "Sends the shared context to this provider over the internet."
+                : p.id === "browser"
+                  ? "Runs in your browser with your graphics chip (WebGPU, recent Chrome or Edge on a computer). The model downloads once, then nothing you write leaves this device."
+                  : "Runs on this computer. No network calls."}</p>
             <p className="mt-1 text-[13px] text-ink-soft">{p.configured ? "Configured" : "Not configured"}</p>
           </div>
           <div className="min-w-0">

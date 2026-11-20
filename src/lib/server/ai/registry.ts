@@ -1,11 +1,13 @@
 import "server-only";
 import type { Settings } from "@/lib/domain/types";
 import { anthropicProvider } from "./providers/anthropic";
+import { browserProvider } from "./providers/browser";
+import { geminiProvider, groqProvider } from "./providers/free-key";
 import { demoProvider } from "./providers/demo";
 import { ProviderError, type JarvisProvider, type ModelInfo } from "./types";
 
 /** Add a provider by implementing JarvisProvider and listing it here. */
-export const PROVIDERS: JarvisProvider[] = [demoProvider, anthropicProvider];
+export const PROVIDERS: JarvisProvider[] = [demoProvider, browserProvider, geminiProvider, groqProvider, anthropicProvider];
 
 export function getProvider(id: string): JarvisProvider | undefined {
   return PROVIDERS.find((p) => p.id === id);

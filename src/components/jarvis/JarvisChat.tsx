@@ -214,7 +214,7 @@ function MessageView({ m, compact }: { m: UiMessage; compact?: boolean }) {
     <div className="animate-rise">
       <div className={cx("text-[14px] leading-relaxed text-ink", compact ? "" : "max-w-3xl")}>
         {m.error && <p className="mb-2 border-l-2 border-loss bg-loss-soft px-3 py-2 text-[13px]">{m.error}</p>}
-        {m.content ? <RichText text={m.content} /> : m.streaming ? <span className="typing-caret text-muted">Thinking</span> : null}
+        {m.content ? <RichText text={m.content} /> : m.streaming ? <span className="typing-caret text-muted">{m.progress || "Thinking"}</span> : null}
         {m.streaming && m.content && <span className="typing-caret" aria-hidden />}
       </div>
       {!m.streaming && m.content && m.provider !== "kestrel" && (

@@ -422,6 +422,17 @@ export const MIGRATIONS: { version: number; name: string; sql: string; run?: (db
       PRIMARY KEY (series_id, date)
     );`,
   },
+  {
+    version: 18,
+    name: "Each account's own keys for free AI providers",
+    // Gemini, Groq: encrypted like the Anthropic key on users, and gone with the account.
+    sql: `CREATE TABLE ai_keys (
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      provider TEXT NOT NULL,
+      key_cipher TEXT NOT NULL,
+      PRIMARY KEY (user_id, provider)
+    );`,
+  },
 ];
 
 const globalForDb = globalThis as unknown as { __kestrelDb?: DatabaseSync };

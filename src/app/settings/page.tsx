@@ -127,7 +127,7 @@ export default function SettingsPage() {
     <>
       <PageHeader title="Settings" description="Preferences, privacy and your data. Everything is stored in a local database on this computer." />
       <nav aria-label="Settings sections" className="mb-5 flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
-        {[["profile", "Profile"], ["defaults", "Trading defaults"], ["password", "Password"], ["recovery", "Recovery code"], ["sessions", "Signed-in browsers"], ["accounts", "Accounts"], ["autotags", "Auto-tags"], ["jarvis", "AI Coach"], ["ai-key", "AI key"], ["privacy", "Privacy"], ["data", "Your data"], ...(user?.isOwner ? [["backups", "Backups"], ["signups", "New accounts"], ["market-data", "Market data"], ["early-access", "Early access"]] : [])].map(([id, l]) => (
+        {[["profile", "Profile"], ["defaults", "Trading defaults"], ["password", "Password"], ["recovery", "Recovery code"], ["sessions", "Signed-in browsers"], ["accounts", "Accounts"], ["autotags", "Auto-tags"], ["jarvis", "AI Coach"], ["free-ai-keys", "Free AI keys"], ["ai-key", "Anthropic key"], ["privacy", "Privacy"], ["data", "Your data"], ...(user?.isOwner ? [["backups", "Backups"], ["signups", "New accounts"], ["market-data", "Market data"], ["early-access", "Early access"]] : [])].map(([id, l]) => (
           <a key={id} href={`#${id}`} className="py-1 text-ink-soft underline-offset-2 hover:text-ink hover:underline pointer-coarse:py-3">{l}</a>
         ))}
       </nav>
@@ -169,6 +169,7 @@ export default function SettingsPage() {
         </div>
       </Section>
 
+      <FreeAiKeys />
       <AiKey isOwner={!!user?.isOwner} />
       <Privacy />
       <DataControls />
@@ -584,8 +585,10 @@ interface EarlyAccessRequest {
 type KeyCall = (init: Parameters<typeof api>[1], done: string) => Promise<void>;
 
 /** Save, check and remove one secret key. The key never comes back from the server; `extra` adds controls that share the busy state. */
-function KeyForm({ endpoint, saved, label, hint, savedMessage, removeLabel, removedMessage, reload, extra }: {
+function KeyForm({ endpoint, provider, saved, label, hint, savedMessage, removeLabel, removedMessage, reload, extra }: {
   endpoint: string;
+  /** For endpoints that keep keys for several providers. */
+  provider?: string;
   saved: boolean;
   label: [empty: string, replace: string];
   hint: string;
@@ -604,7 +607,7 @@ function KeyForm({ endpoint, saved, label, hint, savedMessage, removeLabel, remo
     setBusy(true);
     setError(null);
     try {
-      await api(endpoint, init);
+      await api(provider ? `${endpoint}?provider=${provider}` : endpoint, init);
       setKey("");
       toast({ message: done, tone: "success" });
       reload();
@@ -617,7 +620,7 @@ function KeyForm({ endpoint, saved, label, hint, savedMessage, removeLabel, remo
 
   return (
     <>
-      <form onSubmit={(e) => (e.preventDefault(), void call({ method: "PUT", json: { key } }, savedMessage))} className="grid gap-3 sm:grid-cols-[minmax(0,22rem)_auto] sm:items-end">
+      <form onSubmit={(e) => (e.preventDefault(), void call({ method: "PUT", json: provider ? { key, provider } : { key } }, savedMessage))} className="grid gap-3 sm:grid-cols-[minmax(0,22rem)_auto] sm:items-end">
         <Field label={saved ? label[1] : label[0]} hint={hint}>
           {(p) => <input {...p} type="password" autoComplete="off" spellCheck={false} className={inputClass} value={key} onChange={(e) => setKey(e.target.value)} required />}
         </Field>
@@ -650,12 +653,63 @@ function FredKey() {
 }
 
 /** This account's own Anthropic key, and for the owner whether accounts without one may use theirs. */
+const FREE_KEYS = [
+  {
+    id: "gemini",
+    name: "Google Gemini",
+    where: "Get one free at aistudio.google.com/apikey (a Google account, no card).",
+    data: "On Google's free tier, Google may use what Jarvis sends to improve its products, and people at Google may read it. Google also limits its free tier to developers and to people outside the EU, UK and Switzerland.",
+  },
+  {
+    id: "groq",
+    name: "Groq",
+    where: "Get one free at console.groq.com/keys (an email sign-up, no card).",
+    data: "Groq runs open models such as Llama very fast. Its free plan has daily limits.",
+  },
+] as const;
+
+/** Each account's own keys for providers with a free tier. Jarvis never shares these between accounts. */
+function FreeAiKeys() {
+  const { data, reload } = useFetch<{ free: Record<(typeof FREE_KEYS)[number]["id"], boolean> }>("/api/jarvis/key");
+  return (
+    <Section
+      id="free-ai-keys"
+      title="Free AI keys"
+      description="Your own free key from Google Gemini or Groq lets the AI Coach use a full-size model at no cost. Jarvis sends what's listed under Privacy to that company. Keys are stored encrypted and never shown again. Choose the model under AI Coach → Model."
+    >
+      {data && (
+        <div className="space-y-6" data-testid="free-ai-keys">
+          {FREE_KEYS.map((p) => (
+            <div key={p.id} className="space-y-3">
+              <p className="text-[13.5px]">
+                <span className="font-medium">{p.name}</span>: {data.free[p.id] ? "key saved" : "no key"}
+              </p>
+              <p className="text-[13px] text-ink-soft">{p.where} {p.data}</p>
+              <KeyForm
+                endpoint="/api/jarvis/key"
+                provider={p.id}
+                saved={data.free[p.id]}
+                label={[`Your ${p.name} key`, `Replace your ${p.name} key`]}
+                hint={`Jarvis checks it with ${p.name} before saving.`}
+                savedMessage={`${p.name} key saved.`}
+                removeLabel={`Remove my ${p.name} key`}
+                removedMessage={`${p.name} key removed.`}
+                reload={reload}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </Section>
+  );
+}
+
 function AiKey({ isOwner }: { isOwner: boolean }) {
   const { data, reload } = useFetch<{ ownKey: boolean; using: "own" | "owner" | "none"; ownerSharing: boolean; ownerHasKey: boolean }>("/api/jarvis/key");
   const using = { own: "Your own key: you pay Anthropic for what you use.", owner: "The owner's key, shared with this account.", none: "No key: the AI Coach runs in demo mode." } as const;
 
   return (
-    <Section id="ai-key" title="AI key" description="The Anthropic key the AI Coach uses for this account. A saved key is stored encrypted on this computer and never shown again, not even to you.">
+    <Section id="ai-key" title="Anthropic key" description="The Anthropic key the AI Coach uses for this account. A saved key is stored encrypted on this computer and never shown again, not even to you.">
       {data && (
         <div className="space-y-4" data-testid="ai-key">
           <p className="text-[13.5px] text-ink-soft">Using now: <span className="font-medium text-ink">{using[data.using]}</span></p>

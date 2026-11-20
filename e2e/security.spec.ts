@@ -17,7 +17,7 @@ const ROUTES: [string, string][] = [
   ["DELETE", "data/sample"], ["DELETE", "events/ID"], ["POST", "events/import"], ["GET", "events"], ["POST", "events"], ["DELETE", "events"],
   ["POST", "excursions"], ["DELETE", "expenses/ID"], ["GET", "expenses"], ["POST", "expenses"], ["GET", "facets"], ["DELETE", "goals/ID"], ["POST", "goals"],
   ["GET", "imports/ID/errors"], ["DELETE", "imports/ID"], ["GET", "imports"], ["POST", "imports"], ["GET", "instruments"], ["POST", "jarvis/chat"],
-  ["GET", "jarvis/context"], ["GET", "jarvis/conversations/ID"], ["DELETE", "jarvis/conversations/ID"], ["GET", "jarvis/conversations"],
+  ["GET", "jarvis/context"], ["GET", "jarvis/conversations/ID"], ["POST", "jarvis/conversations/ID"], ["DELETE", "jarvis/conversations/ID"], ["GET", "jarvis/conversations"],
   ["DELETE", "jarvis/conversations"], ["PATCH", "jarvis/memories/ID"], ["DELETE", "jarvis/memories/ID"], ["GET", "jarvis/memories"], ["POST", "jarvis/memories"],
   ["DELETE", "jarvis/memories"], ["GET", "jarvis/providers"], ["POST", "jarvis/providers"], ["GET", "market"], ["GET", "market/positioning"], ["GET", "market/fred-key"], ["PUT", "market/fred-key"], ["DELETE", "market/fred-key"], ["DELETE", "missed/ID"], ["GET", "missed"],
   ["POST", "missed"], ["POST", "mt5/connect"], ["POST", "mt5/disconnect"], ["GET", "mt5/positions"], ["PATCH", "mt5/settings"], ["GET", "mt5/status"],
@@ -243,7 +243,8 @@ test("an account's AI key: never shown back, checked before saving, and only the
   await box.getByRole("button", { name: "Save key" }).click();
   await expect(box.getByText("That doesn't look like an Anthropic key.")).toBeVisible();
   const status = await (await page.request.get("/api/jarvis/key")).json();
-  expect(Object.keys(status).sort()).toEqual(["ownKey", "ownerHasKey", "ownerSharing", "using"]);
+  expect(Object.keys(status).sort()).toEqual(["free", "ownKey", "ownerHasKey", "ownerSharing", "using"]);
+  expect(status.free).toEqual({ gemini: false, groq: false }); // flags only, never a key
   // The owner's switch.
   const share = box.getByRole("switch", { name: "Share my key with accounts that have none" });
   await expect(share).toBeChecked();

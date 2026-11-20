@@ -37,7 +37,13 @@ export interface JarvisContext {
   currency: string;
   /** Other currencies with trades, left out of the metrics and patterns because they can't be added together. */
   otherCurrencies: string[];
-  metrics: Omit<Metrics, "bestTrade" | "worstTrade"> & { bestTradeId: number | null; worstTradeId: number | null };
+  metrics: Omit<Metrics, "bestTrade" | "worstTrade"> & {
+    bestTradeId: number | null;
+    worstTradeId: number | null;
+    /** "EURUSD, pnl -134": so a model doesn't guess the figures of a trade outside recent_trades. */
+    bestTradeSummary: string | null;
+    worstTradeSummary: string | null;
+  };
   patterns: PatternFinding[];
   recentTrades: ContextTrade[];
   focusTrade: ContextTrade | null;
@@ -72,7 +78,8 @@ function toContextTrade(t: Trade, currency: string, withNotes: boolean): Context
   };
 }
 
-export function buildContext(userId: number, settings: Settings, focusTradeId?: number | null): JarvisContext {
+/** recentLimit: a small in-browser model gets fewer trades, so the instructions fit and it starts answering sooner. */
+export function buildContext(userId: number, settings: Settings, focusTradeId?: number | null, recentLimit = RECENT_LIMIT): JarvisContext {
   const { sharing, memoryEnabled, behaviouralInsights, coachingStyle } = settings.jarvis;
   const accounts = listAccounts(userId);
   // Sample trades count only while they're all there is, and the record says so.
@@ -97,7 +104,7 @@ export function buildContext(userId: number, settings: Settings, focusTradeId?: 
     `Summary metrics (counts, P&L totals, win rate, R statistics)${otherCurrencies.length ? ` for your ${currency} accounts only` : ""}`,
     behaviouralInsights ? `${patterns.length} detected pattern(s) with their evidence trade ids` : "No behavioural patterns (turned off)",
     withTrades
-      ? `Up to ${RECENT_LIMIT} recent trades: symbol, currency, side, times, P&L, R, setup, emotions, plan flag, grade${withNotes ? ", and your written notes" : " (no written notes)"}`
+      ? `Up to ${recentLimit} recent trades: symbol, currency, side, times, P&L, R, setup, emotions, plan flag, grade${withNotes ? ", and your written notes" : " (no written notes)"}`
       : "No individual trades (sharing set to metrics only)",
     memoryEnabled ? `${memories.length} active memory item(s)` : "No memories (memory turned off)",
     focus ? `The trade you asked about (#${focus.id})` : null,
@@ -110,9 +117,15 @@ export function buildContext(userId: number, settings: Settings, focusTradeId?: 
     displayName: settings.displayName,
     currency,
     otherCurrencies,
-    metrics: { ...metrics, bestTradeId: bestTrade?.id ?? null, worstTradeId: worstTrade?.id ?? null },
+    metrics: {
+      ...metrics,
+      bestTradeId: bestTrade?.id ?? null,
+      worstTradeId: worstTrade?.id ?? null,
+      bestTradeSummary: withTrades && bestTrade ? `${bestTrade.symbol}, pnl ${bestTrade.pnl}` : null,
+      worstTradeSummary: withTrades && worstTrade ? `${worstTrade.symbol}, pnl ${worstTrade.pnl}` : null,
+    },
     patterns,
-    recentTrades: withTrades ? trades.slice(0, RECENT_LIMIT).map((t) => toContextTrade(t, currencyOf(t), withNotes)) : [],
+    recentTrades: withTrades ? trades.slice(0, recentLimit).map((t) => toContextTrade(t, currencyOf(t), withNotes)) : [],
     focusTrade: focus ? toContextTrade(focus, currencyOf(focus), withNotes) : null,
     memories,
     hasSampleData: trades.some((t) => t.source === "sample"),

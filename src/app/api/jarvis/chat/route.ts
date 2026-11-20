@@ -18,6 +18,9 @@ const Body = z.object({
 });
 
 const HISTORY_LIMIT = 20;
+// A small in-browser model has a short memory (8K tokens) and reads slowly: give it less.
+const BROWSER_TRADES = 10;
+const BROWSER_HISTORY = 6;
 // One reply at a time per person. Accounts on the owner's shared key also get a ceiling per minute and per day;
 // with their own key, they pay for what they use.
 const PER_MINUTE = 30;
@@ -103,13 +106,21 @@ async function answer(req: Request, user: User) {
 
 async function reply(userId: number, conversationId: number, focusTradeId: number | null, signal: AbortSignal, clientSignal: AbortSignal, send: Send) {
   const settings = getSettings(userId);
-  const context = buildContext(userId, settings, focusTradeId);
   const active = resolveActive(settings);
+  const inBrowser = active.provider.id === "browser";
+  const context = buildContext(userId, settings, focusTradeId, inBrowser ? BROWSER_TRADES : undefined);
   const history = listMessages(conversationId, HISTORY_LIMIT)
     .filter((m) => m.provider !== "kestrel")
     .map((m) => ({ role: m.role, content: m.content }));
   // The API expects the conversation to start with a user turn.
   while (history.length && history[0].role !== "user") history.shift();
+
+  if (inBrowser) {
+    // The browser writes the reply and saves it through POST /api/jarvis/conversations/[id].
+    send("meta", { conversationId, provider: "browser", providerLabel: active.provider.label, model: active.model, external: false, disclosure: ["Nothing. The model runs in your browser."], notice: null });
+    send("prompt", { system: systemPrompt(context), messages: history.slice(-BROWSER_HISTORY) });
+    return;
+  }
 
   const run = async (provider = active.provider, model = active.model) => {
     send("meta", {
@@ -203,12 +214,12 @@ async function handleModelCommand(userId: number, message: string): Promise<stri
 
   if (/\bdemo\b/i.test(phrase)) return apply("demo", null);
   if (/^(anthropic|claude)$/i.test(phrase)) return apply("anthropic", null);
+  if (/^browser$/i.test(phrase)) return apply("browser", null);
   const exact = PROVIDERS.find((p) => p.id === phrase.toLowerCase());
   if (exact) return apply(exact.id, null);
 
-  const anthropic = getProvider("anthropic")!;
-  if (!anthropic.status().configured)
-    return `I can't switch to "${phrase}": ${anthropic.label} isn't configured. ${anthropic.status().reason} Demo mode stays on until then.`;
+  if (!PROVIDERS.some((p) => p.status().external && p.status().configured))
+    return `I can't switch to "${phrase}": no AI provider has a key for this account yet. Add a free Gemini or Groq key in Settings → Free AI keys, or use \`/model browser\`.`;
   const matches = await findModels(phrase);
   const exactId = matches.find((x) => x.model.id === phrase);
   if (exactId) return apply(exactId.provider, exactId.model.id);

@@ -10,7 +10,7 @@ process.env.KESTREL_DB_PATH = path.join(mkdtempSync(path.join(tmpdir(), "jarvis-
 process.env.JARVIS_ENCRYPTION_KEY = randomBytes(32).toString("base64");
 
 const { createUser } = await import("./auth");
-const { currentAiKey, keyFor, saveOwnKey, setSharingOwnerKey, withAiKey } = await import("./ai/key");
+const { currentAiKey, hasFreeKey, keyFor, saveFreeKey, saveOwnKey, setSharingOwnerKey, withAiKey } = await import("./ai/key");
 const { db } = await import("./db");
 const { pickNext } = await import("./mt5/queue");
 
@@ -41,13 +41,24 @@ describe("whose Anthropic key a request uses", () => {
     saveOwnKey(other.id, "sk-ant-their-own");
     const seen = await withAiKey(other.id, async () => {
       await new Promise((r) => setTimeout(r, 5));
-      return currentAiKey();
+      return currentAiKey("anthropic");
     });
     assert.equal(seen, "sk-ant-their-own");
-    assert.equal(currentAiKey(), null);
+    assert.equal(currentAiKey("anthropic"), null);
     delete process.env.ANTHROPIC_API_KEY;
     saveOwnKey(other.id, null);
-    assert.equal(withAiKey(other.id, () => currentAiKey()), null, "no key anywhere: demo mode");
+    assert.equal(withAiKey(other.id, () => currentAiKey("anthropic")), null, "no key anywhere: demo mode");
+  });
+
+  test("free providers use only the account's own key, encrypted, per provider and per account", () => {
+    saveFreeKey(other.id, "groq", "gsk_their-groq-key");
+    assert.equal(withAiKey(other.id, () => currentAiKey("groq")), "gsk_their-groq-key");
+    assert.equal(withAiKey(other.id, () => currentAiKey("gemini")), null, "one provider's key isn't another's");
+    assert.equal(withAiKey(owner.id, () => currentAiKey("groq")), null, "never shared, not even by the owner");
+    const stored = (db().prepare("SELECT key_cipher FROM ai_keys WHERE user_id = ?").get(other.id) as { key_cipher: string }).key_cipher;
+    assert.ok(!stored.includes("their-groq"), "not readable in the database");
+    saveFreeKey(other.id, "groq", null);
+    assert.equal(hasFreeKey(other.id, "groq"), false);
   });
 });
 

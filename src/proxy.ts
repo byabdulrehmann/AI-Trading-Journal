@@ -13,12 +13,14 @@ const isDev = process.env.NODE_ENV !== "production";
 const policy = (nonce: string) =>
   [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
+    // 'wasm-unsafe-eval' lets the AI Coach's in-browser model compile its WebAssembly; it doesn't allow eval().
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'${isDev ? " 'unsafe-eval'" : ""}`,
     // React writes style attributes, which a nonce can't cover; a style can't run code.
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self'",
-    `connect-src 'self'${isDev ? " ws:" : ""}`,
+    // The in-browser model downloads once: weights from Hugging Face, its runtime from WebLLM's GitHub (lib/client/browser-model.ts).
+    `connect-src 'self' https://huggingface.co https://*.hf.co https://raw.githubusercontent.com${isDev ? " ws:" : ""}`,
     "object-src 'none'",
     "frame-ancestors 'none'",
     "base-uri 'self'",

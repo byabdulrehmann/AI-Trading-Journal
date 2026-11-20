@@ -20,7 +20,7 @@ const modelCache = new Map<string, { at: number; models: ModelInfo[] }>();
 const NO_KEY = "No Anthropic key for this account. Add your own in Settings, or ask the owner to share theirs.";
 
 function getClient(): { client: Anthropic; key: string } {
-  const key = currentAiKey();
+  const key = currentAiKey("anthropic");
   if (!key) throw new ProviderError(NO_KEY, "not_configured");
   // 60 s per attempt, at most 2 retries (408/409/429/5xx and connection errors).
   if (!clients.has(key)) clients.set(key, new Anthropic({ apiKey: key, timeout: 60_000, maxRetries: 2 }));
@@ -53,7 +53,7 @@ export const anthropicProvider: JarvisProvider = {
   defaultModel: DEFAULT_MODEL,
 
   status() {
-    return currentAiKey() ? { configured: true, external: true } : { configured: false, external: true, reason: NO_KEY };
+    return currentAiKey("anthropic") ? { configured: true, external: true } : { configured: false, external: true, reason: NO_KEY };
   },
 
   async listModels(signal) {

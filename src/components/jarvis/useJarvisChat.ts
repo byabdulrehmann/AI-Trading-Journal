@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "@/lib/domain/types";
 import { api, goToLogin } from "@/lib/client/api";
+import { generate, unsupported } from "@/lib/client/browser-model";
 
 export interface UiMessage {
   key: string;
@@ -13,6 +14,8 @@ export interface UiMessage {
   model?: string | null;
   error?: string;
   streaming?: boolean;
+  /** While the in-browser model loads: what it's doing. */
+  progress?: string;
 }
 
 export interface ChatMeta {
@@ -87,6 +90,10 @@ export function useJarvisChat(onModelSwitched?: () => void) {
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buf = "";
+        // Set when the model runs in this browser: the server sends the instructions instead of a reply.
+        let prompt: { system: string; messages: { role: "user" | "assistant"; content: string }[] } | null = null;
+        let model: string | null = null;
+        let savedIn: number | null = conversationId;
         for (;;) {
           const { value, done } = await reader.read();
           if (done) break;
@@ -101,8 +108,12 @@ export function useJarvisChat(onModelSwitched?: () => void) {
             const data = JSON.parse(dataLine);
             if (event === "meta") {
               setConversationId(data.conversationId);
+              savedIn = data.conversationId;
+              model = data.model;
               setMeta(data);
               patch((m) => ({ ...m, provider: data.provider, model: data.model }));
+            } else if (event === "prompt") {
+              prompt = data;
             } else if (event === "delta") {
               patch((m) => ({ ...m, content: m.content + data.text }));
             } else if (event === "error") {
@@ -114,6 +125,7 @@ export function useJarvisChat(onModelSwitched?: () => void) {
             }
           }
         }
+        if (prompt && model && savedIn) await replyInBrowser(prompt, model, savedIn, ctrl.signal, patch);
       } catch (err) {
         if (ctrl.signal.aborted) patch((m) => ({ ...m, content: m.content ? `${m.content}\n\n_(stopped)_` : "_(stopped)_" }));
         else patch((m) => ({ ...m, error: err instanceof Error ? err.message : "Something went wrong." }));
@@ -127,4 +139,34 @@ export function useJarvisChat(onModelSwitched?: () => void) {
   );
 
   return { conversationId, messages, busy, meta, send, stop, load };
+}
+
+/** Writes the reply with the in-browser model, then saves it to the conversation. */
+async function replyInBrowser(
+  prompt: { system: string; messages: { role: "user" | "assistant"; content: string }[] },
+  model: string,
+  conversationId: number,
+  signal: AbortSignal,
+  patch: (fn: (m: UiMessage) => UiMessage) => void,
+) {
+  const reason = await unsupported();
+  if (reason) throw new Error(`${reason} You can switch to demo mode under Model.`);
+  let text = "";
+  try {
+    const messages = [{ role: "system" as const, content: prompt.system }, ...prompt.messages];
+    for await (const piece of generate(model, messages, signal, (progress) => patch((m) => ({ ...m, progress })))) {
+      text += piece;
+      patch((m) => ({ ...m, progress: undefined, content: m.content + piece }));
+    }
+  } finally {
+    // Keep whatever arrived, including a reply the user stopped part-way, as the server does for other models.
+    if (text.trim()) {
+      const saved = await api<{ message: ChatMessage }>(`/api/jarvis/conversations/${conversationId}`, {
+        method: "POST",
+        json: { content: signal.aborted ? `${text}\n\n_(stopped)_` : text, model },
+      }).catch(() => null);
+      if (saved) patch((m) => ({ ...m, id: saved.message.id }));
+    }
+  }
+  if (signal.aborted) throw new Error("aborted"); // shows "(stopped)" like the other models
 }

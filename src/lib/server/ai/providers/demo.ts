@@ -31,7 +31,7 @@ const pct = (x: number | null) => (x === null ? "n/a" : `${Math.round(x * 100)}%
 function compose(question: string, ctx: JarvisContext): string {
   const q = question.toLowerCase();
   const m = ctx.metrics;
-  const intro = "_Demo mode: this reply is built from your records with fixed templates, not by an AI model. Connect a provider in Settings for real conversation._\n\n";
+  const intro = "_Demo mode: this reply is built from your records with fixed templates, not by an AI model. For real conversation, add a free Gemini or Groq key in Settings → Free AI keys, or choose the in-browser model under AI Coach → Model._\n\n";
   if (m.closedTrades === 0)
     return `${intro}Recorded: there are no closed trades in your journal yet, so I have nothing to review.\n\nSuggestion: add a trade in the Journal, import a CSV, or load the sample journal from Settings to try things out.`;
 

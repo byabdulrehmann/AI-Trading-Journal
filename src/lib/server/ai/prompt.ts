@@ -44,7 +44,7 @@ function renderRecord(ctx: JarvisContext): string {
     `avg_r: ${m.avgR ?? "n/a"} (from ${m.rSample} trades with a stop); max_drawdown: ${m.maxDrawdown}`,
     `plan_adherence: ${pct(m.planAdherence)} (from ${m.planSample} answers)`,
     `median_hold_minutes: winners ${fmt(m.holdWinnersMin)}, losers ${fmt(m.holdLosersMin)}`,
-    `best_trade: ${m.bestTradeId ? `#${m.bestTradeId}` : "n/a"}; worst_trade: ${m.worstTradeId ? `#${m.worstTradeId}` : "n/a"}`,
+    `best_trade: ${m.bestTradeId ? `#${m.bestTradeId}${m.bestTradeSummary ? ` (${m.bestTradeSummary})` : ""}` : "n/a"}; worst_trade: ${m.worstTradeId ? `#${m.worstTradeId}${m.worstTradeSummary ? ` (${m.worstTradeSummary})` : ""}` : "n/a"}`,
   ];
   if (ctx.patterns.length) {
     lines.push("", "detected_patterns (rule-based, tentative):");
